@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Plus, MapPin, Building2, Edit, Trash2, Image as ImageIcon, DollarSign, CheckCircle, Users, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@/localization';
 
 const imageSource = (path) => {
     if (!path) return null;
@@ -9,6 +10,7 @@ const imageSource = (path) => {
 };
 
 export default function PropertiesIndex({ properties, filters, isAdmin, currentUserId }) {
+    const { t, language } = useTranslation();
     const [search, setSearch] = useState(filters.search || '');
     const [propertyToDelete, setPropertyToDelete] = useState(null);
     const isFirstRender = useRef(true);
@@ -35,8 +37,8 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
     };
 
     return (
-        <AuthenticatedLayout header="My Properties">
-            <Head title="My Properties" />
+        <AuthenticatedLayout header="Properties">
+            <Head title={t('Properties')} />
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 max-w-xs">
@@ -44,7 +46,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                     <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search properties..."
+                        placeholder={t('Search properties...')}
                         className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-9 pr-3 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
                     />
                 </div>
@@ -55,7 +57,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                         className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                     >
                         <Plus size={15} />
-                        Add Property
+                        {t('Add Property')}
                     </Link>
                 </div>
             </div>
@@ -64,17 +66,17 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                 {properties.data.length === 0 ? (
                     <div className="p-12 text-center">
                         <Building2 size={48} className="mx-auto mb-4 text-gray-300" />
-                        <h3 className="text-lg font-medium text-gray-900">No properties found</h3>
+                        <h3 className="text-lg font-medium text-gray-900">{t('No properties found')}</h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            {search || status ? 'Try adjusting your search filters' : 'Get started by adding your first property'}
+                            {t(search ? 'Try adjusting your search filters' : 'Get started by adding your first property')}
                         </p>
-                        {!search && !status && (
+                        {!search && (
                             <Link
                                 href={route('properties.create')}
                                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                             >
                                 <Plus size={15} />
-                                Add Property
+                                {t('Add Property')}
                             </Link>
                         )}
                     </div>
@@ -97,13 +99,13 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                             </div>
                                             <div className="absolute bottom-2 left-2 flex flex-col gap-1">
                                                 <span className="inline-flex items-center gap-1 rounded-md bg-black/50 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-[1.03]">
-                                                    <CheckCircle size={10} className="text-green-300" /> Available {property.units_available_count ?? 0}
+                                                    <CheckCircle size={10} className="text-green-300" /> {t('Available')} {property.units_available_count ?? 0}
                                                 </span>
                                                 <span className="inline-flex items-center gap-1 rounded-md bg-black/50 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-[1.03]">
-                                                    <Users size={10} className="text-blue-300" /> Occupied {property.units_occupied_count ?? 0}
+                                                    <Users size={10} className="text-blue-300" /> {t('Occupied')} {property.units_occupied_count ?? 0}
                                                 </span>
                                                 <span className="inline-flex items-center gap-1 rounded-md bg-black/50 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-[1.03]">
-                                                    <Wrench size={10} className="text-amber-300" /> Maint {property.units_maintenance_count ?? 0}
+                                                    <Wrench size={10} className="text-amber-300" /> {t('Maint')} {property.units_maintenance_count ?? 0}
                                                 </span>
                                             </div>
                                         </div>
@@ -114,13 +116,13 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                             </div>
                                             <div className="absolute bottom-2 left-2 flex flex-col gap-1">
                                                 <span className="inline-flex items-center gap-1 rounded-md bg-gray-800/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-[1.03]">
-                                                    <CheckCircle size={10} className="text-green-300" /> Available {property.units_available_count ?? 0}
+                                                    <CheckCircle size={10} className="text-green-300" /> {t('Available')} {property.units_available_count ?? 0}
                                                 </span>
                                                 <span className="inline-flex items-center gap-1 rounded-md bg-gray-800/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-[1.03]">
-                                                    <Users size={10} className="text-blue-300" /> Occupied {property.units_occupied_count ?? 0}
+                                                    <Users size={10} className="text-blue-300" /> {t('Occupied')} {property.units_occupied_count ?? 0}
                                                 </span>
                                                 <span className="inline-flex items-center gap-1 rounded-md bg-gray-800/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-[1.03]">
-                                                    <Wrench size={10} className="text-amber-300" /> Maint {property.units_maintenance_count ?? 0}
+                                                    <Wrench size={10} className="text-amber-300" /> {t('Maint')} {property.units_maintenance_count ?? 0}
                                                 </span>
                                             </div>
                                         </div>
@@ -141,7 +143,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                         )}
                                         {isAdmin && property.owner && (
                                             <p className="mt-1 text-xs text-[#0E3B2E]">
-                                                Created by: {property.owner.name || `${property.owner.first_name || ''} ${property.owner.last_name || ''}`.trim()}
+                                                {t('Created by:')} {property.owner.name || `${property.owner.first_name || ''} ${property.owner.last_name || ''}`.trim()}
                                             </p>
                                         )}
                                         {(() => {
@@ -159,7 +161,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                 <div className="mt-2 flex flex-wrap gap-1">
                                                     {visible.map(k => (
                                                         <span key={k} className="rounded-md bg-[#0E3B2E]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#0E3B2E]">
-                                                            {keyIcons[k]}
+                                                            {t(keyIcons[k])}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -171,15 +173,14 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                     <span className="text-xs text-gray-400">
                                                         {(() => {
                                                         const displayUnits = property.units_count !== undefined ? Number(property.units_count) : 0;
-                                                        const label = `${displayUnits} unit${displayUnits === 1 ? '' : 's'}`;
-                                                        return label;
+                                                        return t(':count :unit', { count: displayUnits, unit: t(displayUnits === 1 ? 'unit' : 'units') });
                                                     })()}
                                                     </span>
                                                 </div>
                                                 {property.units_monthly_rent_sum && Number(property.units_monthly_rent_sum) > 0 ? (
                                                     <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[#0E3B2E]">
                                                         <DollarSign size={11} />
-                                                        {Number(property.units_monthly_rent_sum).toLocaleString()} RWF/mo
+                                                        {Number(property.units_monthly_rent_sum).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} RWF/mo
                                                     </span>
                                                 ) : null}
                                             </div>
@@ -188,7 +189,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                     href={route('properties.show', property)}
                                                     className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] transition-colors hover:bg-[#0E3B2E]/10"
                                                 >
-                                                    View
+                                                    {t('View')}
                                                 </Link>
                                                 {(isAdmin || property.owner_id === currentUserId) && (
                                                     <>
@@ -216,7 +217,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                         {properties.links && properties.links.length > 3 && (
                             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/30 p-4">
                                 <p className="text-xs text-gray-400">
-                                    Showing {properties.from} to {properties.to} of {properties.total} properties
+                                    {t('Showing :from to :to of :total properties', { from: properties.from, to: properties.to, total: properties.total })}
                                 </p>
                                 <div className="flex gap-1">
                                     {properties.links.map((link, i) => (
@@ -244,22 +245,22 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
             {propertyToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                        <h3 className="text-lg font-semibold text-gray-900">Delete Property</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('Delete Property')}</h3>
                         <p className="mt-2 text-sm text-gray-500">
-                            Are you sure you want to delete "{propertyToDelete.name}"? This action cannot be undone and will also delete all associated units and images.
+                            {t('Are you sure you want to delete :name? This action cannot be undone and will also delete all associated units and images.', { name: propertyToDelete.name })}
                         </p>
                         <div className="mt-6 flex justify-end gap-3">
                             <button
                                 onClick={() => setPropertyToDelete(null)}
                                 className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
                             >
-                                Cancel
+                                {t('Cancel')}
                             </button>
                             <button
                                 onClick={confirmDelete}
                                 className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
                             >
-                                Delete
+                                {t('Delete')}
                             </button>
                         </div>
                     </div>

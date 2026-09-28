@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileCompletionController;
 use App\Http\Controllers\PropertyController;
@@ -34,9 +35,9 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     $searchTerm = trim($filters['search'] ?? '');
     $categoryTypes = $categoryTypeNames[$filters['category'] ?? ''] ?? [];
     $priceRange = $filters['price_range'] ?? 'any';
-    $applyUnitFilters = function ($unitQuery) use ($categoryTypes, $priceRange) {
-        $unitQuery->where('status', 'available')
-            ->when($categoryTypes, fn ($query) => $query->whereHas('unitType', fn ($typeQuery) => $typeQuery->whereIn('name', $categoryTypes)))
+    $availableUnits = \App\Models\Unit::query()
+        ->where('status', 'available')
+        ->when($categoryTypes, fn ($query) => $query->whereHas('unitType', fn ($typeQuery) => $typeQuery->whereIn('name', $categoryTypes)))
             ->when($priceRange !== 'any', function ($query) use ($priceRange) {
                 match ($priceRange) {
                     'under-500000' => $query->where('rent_amount', '<', 500000),
@@ -45,41 +46,38 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
                     '5000000-plus' => $query->where('rent_amount', '>=', 5000000),
                     default => null,
                 };
-            });
-    };
-
-    $properties = \App\Models\Property::query()
-        ->whereHas('units', $applyUnitFilters)
-        ->when(!empty($filters['province_id']), fn ($query) => $query->whereHas('cell.sector.district.province', fn ($locationQuery) => $locationQuery->whereKey($filters['province_id'])))
-        ->when(!empty($filters['district_id']), fn ($query) => $query->whereHas('cell.sector.district', fn ($locationQuery) => $locationQuery->whereKey($filters['district_id'])))
-        ->when(!empty($filters['sector_id']), fn ($query) => $query->whereHas('cell.sector', fn ($locationQuery) => $locationQuery->whereKey($filters['sector_id'])))
-        ->when($searchTerm !== '', function ($query) use ($searchTerm) {
-            $like = '%' . $searchTerm . '%';
-            $query->where(function ($propertyQuery) use ($like) {
-                $propertyQuery
-                    ->where('name', 'like', $like)
-                    ->orWhere('address', 'like', $like)
-                    ->orWhereHas('cell.sector', fn ($locationQuery) => $locationQuery->where('name', 'like', $like))
-                    ->orWhereHas('cell.sector.district', fn ($locationQuery) => $locationQuery->where('name', 'like', $like))
-                    ->orWhereHas('cell.sector.district.province', fn ($locationQuery) => $locationQuery->where('name', 'like', $like));
-            });
+            })
+        ->whereHas('property', function ($query) use ($filters, $searchTerm) {
+            $query
+                ->when(!empty($filters['province_id']), fn ($propertyQuery) => $propertyQuery->whereHas('cell.sector.district.province', fn ($locationQuery) => $locationQuery->whereKey($filters['province_id'])))
+                ->when(!empty($filters['district_id']), fn ($propertyQuery) => $propertyQuery->whereHas('cell.sector.district', fn ($locationQuery) => $locationQuery->whereKey($filters['district_id'])))
+                ->when(!empty($filters['sector_id']), fn ($propertyQuery) => $propertyQuery->whereHas('cell.sector', fn ($locationQuery) => $locationQuery->whereKey($filters['sector_id'])))
+                ->when($searchTerm !== '', function ($propertyQuery) use ($searchTerm) {
+                    $like = '%' . $searchTerm . '%';
+                    $propertyQuery->where(function ($searchQuery) use ($like) {
+                        $searchQuery
+                            ->where('name', 'like', $like)
+                            ->orWhere('address', 'like', $like)
+                            ->orWhereHas('cell.sector', fn ($locationQuery) => $locationQuery->where('name', 'like', $like))
+                            ->orWhereHas('cell.sector.district', fn ($locationQuery) => $locationQuery->where('name', 'like', $like))
+                            ->orWhereHas('cell.sector.district.province', fn ($locationQuery) => $locationQuery->where('name', 'like', $like));
+                    });
+                });
         })
         ->with([
-            'images:id,property_id,image_path,is_cover',
-            'cell.sector.district.province',
-            'units' => function ($query) use ($applyUnitFilters) {
-                $applyUnitFilters($query);
-                $query->with('unitType:id,name')->latest();
-            },
+            'unitType',
+            'images',
+            'property.images',
+            'property.cell.sector.district.province',
         ])
-        ->latest()
-        ->take(24)
-        ->get();
+        ->latest();
+
+    $units = \Inertia\Inertia::scroll(fn () => $availableUnits->paginate(12)->withQueryString());
 
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'properties' => $properties,
+        'units' => $units,
         'propertyCategories' => [
             ['slug' => 'offices', 'name' => 'Offices'],
             ['slug' => 'apartments', 'name' => 'Apartments'],
@@ -112,10 +110,11 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
 });
 
 Route::get('/spaces/{property}', [PublicPropertyController::class, 'show'])->name('public.properties.show');
+Route::get('/spaces/{property}/units/{unit}', [PublicPropertyController::class, 'showUnit'])->name('public.units.show');
 Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'inquire'])->name('public.properties.inquiries.store');
-Route::post('/inquiries/{inquiry}/responded', [PublicPropertyController::class, 'markResponded'])
+Route::post('/inquiries/{inquiry}/read', [PublicPropertyController::class, 'markRead'])
     ->middleware(['auth', 'verified', 'profile.complete', 'owner.approved'])
-    ->name('inquiries.responded');
+    ->name('inquiries.read');
 
 Route::get('/account/status', function (\Illuminate\Http\Request $request) {
     abort_unless($request->user()->role === 'owner', 404);
@@ -128,7 +127,6 @@ Route::get('/account/status', function (\Illuminate\Http\Request $request) {
 
 Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
-    $user->loadMissing('sector.district.province');
     $properties = \App\Models\Property::query()
         ->when(!$user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
         ->with(['images'])
@@ -169,18 +167,6 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
         'recentProperties' => $properties->take(4)->values(),
         'recentTenancies' => $recentTenancies,
         'recentInquiries' => $recentInquiries,
-        'ownerProfile' => $user->isAdmin() ? null : [
-            'first_name' => $user->first_name,
-            'last_name' => $user->last_name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'address' => $user->address,
-            'identity_document_type' => $user->identity_document_type,
-            'national_id' => $user->national_id,
-            'sector' => $user->sector?->name,
-            'district' => $user->sector?->district?->name,
-            'province' => $user->sector?->district?->province?->name,
-        ],
     ]);
 })->middleware(['auth', 'verified', 'profile.complete', 'owner.approved'])->name('dashboard');
 
@@ -237,6 +223,9 @@ Route::middleware('auth')->group(function () {
             Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
             Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
             Route::post('/{unit}/tenancy', [TenancyController::class, 'store'])->name('tenancy.store');
+            Route::post('/{unit}/tenancy/{tenancy}/renewals', [TenancyController::class, 'renew'])->name('tenancy.renewals.store');
+            Route::post('/{unit}/tenancy/{tenancy}/move-out', [TenancyController::class, 'moveOut'])->name('tenancy.move-out');
+            Route::post('/{unit}/tenancy/{tenancy}/charges/{charge}/payments', [TenancyController::class, 'storePayment'])->name('tenancy.payments.store');
             Route::post('/{unit}/tenancy/{tenancy}/leases', [TenancyController::class, 'uploadLease'])->name('tenancy.leases.store');
             Route::get('/{unit}/tenancy/{tenancy}/leases/{lease}', [TenancyController::class, 'downloadLease'])->name('tenancy.leases.download');
             Route::delete('/{unit}/tenancy/{tenancy}/leases/{lease}', [TenancyController::class, 'deleteLease'])->name('tenancy.leases.destroy');
@@ -246,7 +235,14 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware(['verified', 'profile.complete', 'owner.approved'])->get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
+    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
     Route::middleware(['verified', 'profile.complete', 'owner.approved'])->post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
+    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->put('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
+    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->group(function () {
+        Route::get('/leases', [ManagementController::class, 'leases'])->name('leases.index');
+        Route::get('/payments', [ManagementController::class, 'payments'])->name('payments.index');
+        Route::get('/reports', [ManagementController::class, 'reports'])->name('reports.index');
+    });
 
     Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])->name('api.ai.generate-property-description');
 });

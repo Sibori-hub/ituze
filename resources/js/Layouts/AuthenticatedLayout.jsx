@@ -2,6 +2,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
 import InlineAlert from '@/Components/InlineAlert';
+import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import {
@@ -10,7 +11,6 @@ import {
     Users as UsersIcon,
     FileText,
     CreditCard,
-    Wrench,
     MessageSquare,
     BarChart3,
     ShieldCheck,
@@ -20,35 +20,28 @@ import {
     ChevronDown,
     CheckCircle,
 } from 'lucide-react';
+import { useTranslation } from '@/localization';
 
 const ownerNavigation = [
-    { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard, ready: true },
-    { name: 'Properties', href: 'properties.index', icon: Building2, ready: true },
-    { name: 'Tenants', href: 'tenants.index', icon: UsersIcon, ready: true },
-    { name: 'Leases', href: 'dashboard', icon: FileText, ready: false },
-    { name: 'Payments', href: 'dashboard', icon: CreditCard, ready: false },
-    { name: 'Maintenance', href: 'dashboard', icon: Wrench, ready: false },
-    { name: 'Messages', href: 'dashboard', icon: MessageSquare, ready: true },
-    { name: 'Reports', href: 'dashboard', icon: BarChart3, ready: false },
+    { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
+    { name: 'Properties', href: 'properties.index', icon: Building2 },
+    { name: 'Tenants', href: 'tenants.index', icon: UsersIcon },
+    { name: 'Leases', href: 'leases.index', icon: FileText },
+    { name: 'Payments', href: 'payments.index', icon: CreditCard },
+    { name: 'Messages', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
+    { name: 'Reports', href: 'reports.index', icon: BarChart3 },
 ];
 
 const adminNavigation = [
-    { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard, ready: true },
-    { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck, ready: true },
-    { name: 'All Users', href: 'admin.users', icon: UsersIcon, ready: true },
-    { name: 'Properties', href: 'properties.index', icon: Building2, ready: true },
-    { name: 'Tenants', href: 'tenants.index', icon: UsersIcon, ready: true },
-    { name: 'Leases', href: 'dashboard', icon: FileText, ready: false },
-    { name: 'Payments', href: 'dashboard', icon: CreditCard, ready: false },
-    { name: 'Maintenance', href: 'dashboard', icon: Wrench, ready: false },
-    { name: 'Messages', href: 'dashboard', icon: MessageSquare, ready: true },
-    { name: 'Reports', href: 'dashboard', icon: BarChart3, ready: false },
-];
-
-const languages = [
-    { code: 'EN', flag: '🇬🇧' },
-    { code: 'FR', flag: '🇫🇷' },
-    { code: 'RW', flag: '🇷🇼' },
+    { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
+    { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck },
+    { name: 'All Users', href: 'admin.users', icon: UsersIcon },
+    { name: 'Properties', href: 'properties.index', icon: Building2 },
+    { name: 'Tenants', href: 'tenants.index', icon: UsersIcon },
+    { name: 'Leases', href: 'leases.index', icon: FileText },
+    { name: 'Payments', href: 'payments.index', icon: CreditCard },
+    { name: 'Messages', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
+    { name: 'Reports', href: 'reports.index', icon: BarChart3 },
 ];
 
 export default function AuthenticatedLayout({ header, children }) {
@@ -56,9 +49,9 @@ export default function AuthenticatedLayout({ header, children }) {
     const user = pageProps.auth.user;
     const flash = pageProps.flash || {};
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeLang, setActiveLang] = useState('EN');
     const [toasts, setToasts] = useState([]);
     const [successModal, setSuccessModal] = useState(null);
+    const { t } = useTranslation();
 
     const navigation = user.role === 'admin' ? adminNavigation : ownerNavigation;
 
@@ -81,7 +74,7 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     return (
-        <div className="flex min-h-screen flex-col bg-[#F4F6F5] font-[Inter]">
+        <div className="flex h-screen flex-col overflow-hidden bg-[#F4F6F5] font-[Inter]">
             {toasts.length > 0 && (
                 <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
                     {toasts.map(t => (
@@ -100,20 +93,20 @@ export default function AuthenticatedLayout({ header, children }) {
                         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
                             <CheckCircle size={34} className="text-emerald-600" />
                         </div>
-                        <h2 className="mt-5 text-xl font-bold text-gray-900">Success</h2>
+                        <h2 className="mt-5 text-xl font-bold text-gray-900">{t('Success')}</h2>
                         <p className="mt-2 text-sm leading-6 text-gray-600">{successModal}</p>
                         <button
                             type="button"
                             onClick={() => setSuccessModal(null)}
                             className="mt-6 inline-flex min-w-32 items-center justify-center rounded-xl bg-[#0E3B2E] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0a2e23]"
                         >
-                            Continue
+                            {t('Continue')}
                         </button>
                     </div>
                 </div>
             )}
 
-            <div className="flex flex-1">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
                 {sidebarOpen && (
                     <div
                         className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -123,7 +116,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* Sidebar */}
                 <aside
-                    className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col transform bg-[#0E3B2E] transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+                    className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto transform bg-[#0E3B2E] transition-transform duration-200 ease-in-out lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${
                         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
                 >
@@ -150,18 +143,14 @@ export default function AuthenticatedLayout({ header, children }) {
 
                     <nav className="flex flex-1 flex-col gap-1.5 px-4 pt-4">
                         {navigation.map((item) => {
-                            const isActive =
-                                item.ready && route().current(item.href);
-                            return (
-                                <Link
-                                    key={item.name}
-                                    href={route(item.href)}
-                                    className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                                        isActive
-                                            ? 'bg-[#D9A441] text-[#0E3B2E] shadow-sm'
-                                            : 'text-white/60 hover:bg-white/10 hover:text-white'
-                                    }`}
-                                >
+                            const isActive = route().current(item.href);
+                            const className = `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                                isActive
+                                    ? 'bg-[#D9A441] text-[#0E3B2E] shadow-sm'
+                                    : 'text-white/60 hover:bg-white/10 hover:text-white'
+                            }`;
+                            const content = (
+                                <>
                                     <item.icon
                                         size={18}
                                         className={
@@ -170,19 +159,24 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 : 'text-white/50 group-hover:text-white'
                                         }
                                     />
-                                    {item.name}
-                                    {!item.ready && (
-                                        <span className="ml-auto text-[9px] uppercase tracking-wide text-white/30">
-                                            soon
-                                        </span>
-                                    )}
+                                    {t(item.name)}
+                                </>
+                            );
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={`${route(item.href)}${item.anchor || ''}`}
+                                    onClick={() => setSidebarOpen(false)}
+                                    className={className}
+                                >
+                                    {content}
                                 </Link>
                             );
                         })}
                     </nav>
 
                     <div className="border-t border-white/10 px-6 py-4">
-                        <p className="text-xs text-white/40">Signed in as</p>
+                        <p className="text-xs text-white/40">{t('Signed in as')}</p>
                         <p className="text-sm font-medium text-white/80">
                             {user.name}
                         </p>
@@ -190,9 +184,9 @@ export default function AuthenticatedLayout({ header, children }) {
                 </aside>
 
                 {/* Main content area */}
-                <div className="flex flex-1 flex-col">
+                <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                     {/* Top bar */}
-                    <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-[#111827] px-4 sm:px-6">
+                    <header className="z-30 flex h-16 shrink-0 items-center justify-between bg-[#0E3B2E] px-4 sm:px-6">
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={() => setSidebarOpen(true)}
@@ -202,30 +196,13 @@ export default function AuthenticatedLayout({ header, children }) {
                             </button>
                             {header && (
                                 <h1 className="font-[Sora] text-lg font-semibold text-white">
-                                    {header}
+                                    {t(header)}
                                 </h1>
                             )}
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className="hidden items-center gap-1 rounded-full bg-white/5 px-2 py-1 sm:flex">
-                                {languages.map((lang) => (
-                                    <button
-                                        key={lang.code}
-                                        onClick={() =>
-                                            setActiveLang(lang.code)
-                                        }
-                                        className={`flex h-7 w-7 items-center justify-center rounded-full text-sm transition-colors ${
-                                            activeLang === lang.code
-                                                ? 'bg-white/15'
-                                                : 'hover:bg-white/10'
-                                        }`}
-                                        title={lang.code}
-                                    >
-                                        {lang.flag}
-                                    </button>
-                                ))}
-                            </div>
+                            <LanguageSwitcher />
 
                             <button className="relative rounded-full p-2 text-white/60 hover:bg-white/5 hover:text-white">
                                 <Bell size={18} />
@@ -249,14 +226,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <Dropdown.Link
                                         href={route('profile.edit')}
                                     >
-                                        Profile
+                                        {t('Profile')}
                                     </Dropdown.Link>
                                     <Dropdown.Link
                                         href={route('logout')}
                                         method="post"
                                         as="button"
                                     >
-                                        Log Out
+                                        {t('Log Out')}
                                     </Dropdown.Link>
                                 </Dropdown.Content>
                             </Dropdown>
@@ -264,7 +241,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     </header>
 
                     {/* Page content */}
-                    <main className="flex-1 p-4 sm:p-6">
+                    <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
                         {flash.error && (
                             <div className="mb-4 max-w-7xl mx-auto">
                                 <InlineAlert message={flash.error} type="error" />
@@ -282,56 +259,13 @@ export default function AuthenticatedLayout({ header, children }) {
                         )}
                         {children}
                     </main>
+                    <footer className="shrink-0 bg-[#111827] px-4 py-3 sm:px-6">
+                        <p className="mx-auto max-w-7xl text-xs text-white/40">
+                            © {new Date().getFullYear()} Ituze QR Ltd. {t('All rights reserved.')}
+                        </p>
+                    </footer>
                 </div>
             </div>
-
-            {/* Footer */}
-            <footer className="bg-[#111827] px-4 py-8 sm:px-6">
-                <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 sm:grid-cols-3">
-                    <div>
-                        <div className="flex items-center gap-2.5">
-                            <ApplicationLogo className="h-7 w-7" />
-                            <span className="font-[Sora] text-lg font-bold text-white">
-                                Ituze QR Ltd
-                            </span>
-                        </div>
-                        <p className="mt-2 text-sm text-white/50">
-                            Simplifying property management for landlords and
-                            tenants across Rwanda.
-                        </p>
-                    </div>
-
-                    <div>
-                        <p className="font-[Sora] text-sm font-semibold text-white">
-                            Support
-                        </p>
-                        <ul className="mt-2 space-y-1.5 text-sm text-white/50">
-                            <li>Help center & FAQs</li>
-                            <li>Contact admin</li>
-                            <li>Live chat</li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <p className="font-[Sora] text-sm font-semibold text-white">
-                            Company
-                        </p>
-                        <ul className="mt-2 space-y-1.5 text-sm text-white/50">
-                            <li>Privacy Policy</li>
-                            <li>Terms of Service</li>
-                            <li>Contact Us</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="mx-auto mt-8 max-w-7xl border-t border-white/10 pt-4">
-                    <p className="text-xs text-white/30">
-                        © {new Date().getFullYear()} Ituze QR Ltd. All rights
-                        reserved. Made for landlords and tenants across Rwanda
-                        🇷🇼
-                    </p>
-                </div>
-            </footer>
         </div>
     );
 }

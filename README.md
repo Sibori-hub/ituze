@@ -7,6 +7,10 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Ituze rental management
+
+Rental charges and scheduled lease activations use Laravel's scheduler. During local Windows development, keep `php artisan schedule:work` running. On production, configure the host's task scheduler or cron to run `php artisan schedule:run` every minute. Apply pending database migrations with `php artisan migrate` before using the rent ledger.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

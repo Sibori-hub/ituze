@@ -1,13 +1,16 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import FlashToast from '@/Components/FlashToast';
 import InlineAlert from '@/Components/InlineAlert';
+import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/localization';
 
 export default function GuestLayout({ children }) {
     const isLogin = route().current('login');
     const isRegister = route().current('register');
     const flash = usePage().props.flash || {};
+    const { t } = useTranslation();
 
     const [toasts, setToasts] = useState([]);
 
@@ -28,7 +31,8 @@ export default function GuestLayout({ children }) {
     };
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#EAF2EE] via-[#F1F5F2] to-[#F4F6F5] px-4 py-10 font-[Inter]">
+        <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#EAF2EE] via-[#F1F5F2] to-[#F4F6F5] px-4 py-10 font-[Inter]">
+            <LanguageSwitcher className="absolute right-4 top-4 rounded-lg bg-[#0E3B2E] p-1.5 sm:right-6 sm:top-6" />
             <Link href="/" className="mb-6 flex items-center gap-2">
                 <ApplicationLogo className="h-10 w-10 fill-current text-[#0E3B2E]" />
                 <span className="font-[Sora] text-lg font-bold text-[#0E3B2E]">
@@ -63,7 +67,7 @@ export default function GuestLayout({ children }) {
                                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}
                         >
-                            Login
+                            {t('Login')}
                         </Link>
                         <Link
                             href={route('register')}
@@ -73,7 +77,7 @@ export default function GuestLayout({ children }) {
                                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}
                         >
-                            Register
+                            {t('Register')}
                         </Link>
                     </div>
                 )}

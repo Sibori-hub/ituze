@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Search, Plus, DoorOpen, Edit, Trash2, ArrowLeft, DollarSign, Home } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@/localization';
 
 const statusStyles = {
     available: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
@@ -12,13 +13,14 @@ const statusStyles = {
 };
 
 export default function UnitsIndex({ property, units, unitTypes, filters, tenants = [] }) {
+    const { t } = useTranslation();
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
     const [unitToDelete, setUnitToDelete] = useState(null);
     const [unitToAssign, setUnitToAssign] = useState(null);
     const [showTenantForm, setShowTenantForm] = useState(false);
-    const assignmentForm = useForm({ tenant_type: 'individual', first_name: '', last_name: '', company_name: '', registration_number: '', contact_person: '', email: '', phone: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', monthly_rent: '', deposit_amount: '', lease: null, notes: '' });
-    const tenantForm = useForm({ type: 'individual', name: '', registration_number: '', contact_person: '', national_id: '', email: '', phone: '', address: '' });
+    const assignmentForm = useForm({ tenant_type: 'individual', first_name: '', last_name: '', company_name: '', registration_number: '', tax_identification_number: '', contact_person: '', email: '', phone: '', address: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', monthly_rent: '', rent_frequency: 'monthly', due_day: '1', deposit_amount: '', lease: null, notes: '' });
+    const tenantForm = useForm({ type: 'individual', first_name: '', last_name: '', identity_type: 'national_id', identity_number: '', company_name: '', registration_number: '', tax_identification_number: '', contact_person: '', email: '', phone: '', address: '' });
     const isFirstRender = useRef(true);
 
     useEffect(() => {
@@ -42,7 +44,11 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
 
     const openAssignment = (unit) => {
         setUnitToAssign(unit);
-        assignmentForm.setData('monthly_rent', unit.rent_amount || '');
+        assignmentForm.setData({
+            ...assignmentForm.data,
+            monthly_rent: unit.rent_amount || '',
+            rent_frequency: unit.rent_frequency || 'monthly',
+        });
     };
 
     const assignTenant = (e) => {
@@ -62,8 +68,8 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
     };
 
     return (
-        <AuthenticatedLayout header={`${property.name} - Units`}>
-            <Head title={`${property.name} - Units`} />
+        <AuthenticatedLayout header={t(':property - Units', { property: property.name })}>
+            <Head title={t(':property - Units', { property: property.name })} />
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -72,7 +78,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         className="inline-flex items-center gap-1.5 text-sm text-gray-600 transition-colors hover:text-[#0E3B2E]"
                     >
                         <ArrowLeft size={16} />
-                        Back to Property
+                        {t('Back to Property')}
                     </Link>
                 </div>
 
@@ -81,14 +87,14 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         onClick={() => setShowTenantForm(true)}
                         className="rounded-xl border border-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-[#0E3B2E] transition-colors hover:bg-[#0E3B2E]/5"
                     >
-                        New Tenant
+                        {t('New Tenant')}
                     </button>
                     <div className="relative flex-1 max-w-xs">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search units..."
+                            placeholder={t('Search units...')}
                             className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-9 pr-3 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
                         />
                     </div>
@@ -98,12 +104,12 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         onChange={(e) => setStatus(e.target.value)}
                         className="rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 px-3 text-sm text-gray-600 transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
                     >
-                        <option value="">All Status</option>
-                        <option value="available">Available</option>
-                        <option value="occupied">Occupied</option>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="reserved">Reserved</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="">{t('All Status')}</option>
+                        <option value="available">{t('Available')}</option>
+                        <option value="occupied">{t('Occupied')}</option>
+                        <option value="maintenance">{t('Maintenance')}</option>
+                        <option value="reserved">{t('Reserved')}</option>
+                        <option value="inactive">{t('Inactive')}</option>
                     </select>
 
                     <Link
@@ -111,7 +117,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                     >
                         <Plus size={15} />
-                        Add Unit
+                        {t('Add Unit')}
                     </Link>
                 </div>
             </div>
@@ -120,9 +126,9 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                 {units.data.length === 0 ? (
                     <div className="p-12 text-center">
                         <DoorOpen size={48} className="mx-auto mb-4 text-gray-300" />
-                        <h3 className="text-lg font-medium text-gray-900">No units found</h3>
+                        <h3 className="text-lg font-medium text-gray-900">{t('No units found')}</h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            {search || status ? 'Try adjusting your search filters' : 'Get started by adding your first unit to this property'}
+                            {t(search || status ? 'Try adjusting your search filters' : 'Get started by adding your first unit to this property')}
                         </p>
                         {!search && !status && (
                             <Link
@@ -130,7 +136,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                             >
                                 <Plus size={15} />
-                                Add Unit
+                                {t('Add Unit')}
                             </Link>
                         )}
                     </div>
@@ -140,13 +146,13 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                             <table className="w-full text-left text-sm">
                                 <thead>
                                     <tr className="border-b border-gray-100 bg-gray-50/50 text-xs uppercase tracking-wide text-gray-400">
-                                        <th className="px-5 py-3 font-semibold">Unit</th>
-                                        <th className="px-5 py-3 font-semibold">Type</th>
-                                        <th className="px-5 py-3 font-semibold">Rent</th>
-                                        <th className="px-5 py-3 font-semibold">Size</th>
-                                        <th className="px-5 py-3 font-semibold">Status</th>
-                                        <th className="px-5 py-3 font-semibold">Tenant</th>
-                                        <th className="px-5 py-3 font-semibold text-right">Actions</th>
+                                        <th className="px-5 py-3 font-semibold">{t('Unit')}</th>
+                                        <th className="px-5 py-3 font-semibold">{t('Type')}</th>
+                                        <th className="px-5 py-3 font-semibold">{t('Rent')}</th>
+                                        <th className="px-5 py-3 font-semibold">{t('Size')}</th>
+                                        <th className="px-5 py-3 font-semibold">{t('Status')}</th>
+                                        <th className="px-5 py-3 font-semibold">{t('Tenant')}</th>
+                                        <th className="px-5 py-3 font-semibold text-right">{t('Actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -157,9 +163,19 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                         >
                                             <td className="px-5 py-3.5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0E3B2E]/10 text-xs font-semibold text-[#0E3B2E]">
-                                                        <Home size={16} />
-                                                    </div>
+                                                    {unit.images?.length ? (
+                                                        <img
+                                                            src={/^https?:\/\//i.test(unit.images.find((image) => image.is_cover)?.image_path || unit.images[0].image_path)
+                                                                ? unit.images.find((image) => image.is_cover)?.image_path || unit.images[0].image_path
+                                                                : `/storage/${unit.images.find((image) => image.is_cover)?.image_path || unit.images[0].image_path}`}
+                                                            alt=""
+                                                            className="h-10 w-10 rounded-lg object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0E3B2E]/10 text-xs font-semibold text-[#0E3B2E]">
+                                                            <Home size={16} />
+                                                        </div>
+                                                    )}
                                                     <div>
                                                         <p className="font-medium text-gray-800">
                                                             {unit.unit_number}
@@ -200,7 +216,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                             </td>
                                             <td className="px-5 py-3.5">
                                                 <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusStyles[unit.status]}`}>
-                                                    {unit.status}
+                                                    {t(unit.status)}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-3.5 text-gray-600">
@@ -210,7 +226,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                 <div className="flex items-center justify-end gap-2">
                                                     {unit.status === 'available' && (
                                                         <button onClick={() => openAssignment(unit)} className="rounded-lg bg-[#0E3B2E]/10 px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] hover:bg-[#0E3B2E]/20">
-                                                            Assign tenant
+                                                            {t('Assign tenant')}
                                                         </button>
                                                     )}
                                                     <Link
@@ -229,21 +245,36 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
 
                                                 {unitToAssign && (
                                                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                                                        <form onSubmit={assignTenant} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-                                                            <h3 className="text-lg font-semibold text-gray-900">Assign tenant to {unitToAssign.unit_number}</h3>
-                                                            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                                                                <label className="text-sm font-medium text-gray-700">Tenant type<select value={assignmentForm.data.tenant_type} onChange={e => assignmentForm.setData('tenant_type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">Individual</option><option value="company">Company</option></select></label>
-                                                                {assignmentForm.data.tenant_type === 'individual' ? <><label className="text-sm font-medium text-gray-700">First name<input required value={assignmentForm.data.first_name} onChange={e => assignmentForm.setData('first_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Last name<input required value={assignmentForm.data.last_name} onChange={e => assignmentForm.setData('last_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Identity type<select value={assignmentForm.data.identity_type} onChange={e => assignmentForm.setData('identity_type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="national_id">National ID</option><option value="passport">Passport</option></select></label><label className="text-sm font-medium text-gray-700">Identity number<input required value={assignmentForm.data.identity_number} onChange={e => assignmentForm.setData('identity_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label></> : <><label className="text-sm font-medium text-gray-700">Company name<input required value={assignmentForm.data.company_name} onChange={e => assignmentForm.setData('company_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Registration number<input required value={assignmentForm.data.registration_number} onChange={e => assignmentForm.setData('registration_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Contact person<input required value={assignmentForm.data.contact_person} onChange={e => assignmentForm.setData('contact_person', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label></>}
-                                                                <label className="text-sm font-medium text-gray-700">Email<input type="email" value={assignmentForm.data.email} onChange={e => assignmentForm.setData('email', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">Phone<input value={assignmentForm.data.phone} onChange={e => assignmentForm.setData('phone', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">Start date<input type="date" required value={assignmentForm.data.start_date} onChange={e => assignmentForm.setData('start_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">End date<input type="date" required value={assignmentForm.data.end_date} onChange={e => assignmentForm.setData('end_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">Monthly rent<input type="number" min="0" step="0.01" required value={assignmentForm.data.monthly_rent} onChange={e => assignmentForm.setData('monthly_rent', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">Deposit<input type="number" min="0" step="0.01" value={assignmentForm.data.deposit_amount} onChange={e => assignmentForm.setData('deposit_amount', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">Lease (PDF, DOC, DOCX, JPG or PNG)<input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => assignmentForm.setData('lease', e.target.files[0])} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">Notes<textarea value={assignmentForm.data.notes} onChange={e => assignmentForm.setData('notes', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                        <form onSubmit={assignTenant} className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+                                                            <h3 className="text-lg font-semibold text-gray-900">{t('Create tenancy for :unit', { unit: unitToAssign.unit_number })}</h3>
+                                                            <p className="mt-1 text-sm text-gray-500">{t('Tenant identity, contact information, signed lease, and rent terms are required.')}</p>
+                                                            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                                                                <label className="text-sm font-medium text-gray-700">{t('Tenant type')}<select value={assignmentForm.data.tenant_type} onChange={e => assignmentForm.setData('tenant_type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">{t('Individual')}</option><option value="company">{t('Company')}</option></select></label>
+                                                                {assignmentForm.data.tenant_type === 'individual' ? <>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('First name')}<input required value={assignmentForm.data.first_name} onChange={e => assignmentForm.setData('first_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Last name')}<input required value={assignmentForm.data.last_name} onChange={e => assignmentForm.setData('last_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                </> : <>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Company name')}<input required value={assignmentForm.data.company_name} onChange={e => assignmentForm.setData('company_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Company registration number')}<input required value={assignmentForm.data.registration_number} onChange={e => assignmentForm.setData('registration_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Company TIN')}<input required value={assignmentForm.data.tax_identification_number} onChange={e => assignmentForm.setData('tax_identification_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Representative full name')}<input required value={assignmentForm.data.contact_person} onChange={e => assignmentForm.setData('contact_person', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                </>}
+                                                                <label className="text-sm font-medium text-gray-700">{t('Identity type')}<select value={assignmentForm.data.identity_type} onChange={e => assignmentForm.setData('identity_type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="national_id">{t('National ID')}</option><option value="passport">{t('Passport')}</option></select></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t(assignmentForm.data.tenant_type === 'company' ? 'Representative ID / passport number' : 'Identity number')}<input required value={assignmentForm.data.identity_number} onChange={e => assignmentForm.setData('identity_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Email')}<input required type="email" value={assignmentForm.data.email} onChange={e => assignmentForm.setData('email', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required value={assignmentForm.data.phone} onChange={e => assignmentForm.setData('phone', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">{t('Residential / business address')}<textarea required value={assignmentForm.data.address} onChange={e => assignmentForm.setData('address', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Tenancy start date')}<input type="date" required value={assignmentForm.data.start_date} onChange={e => assignmentForm.setData('start_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Tenancy end date')}<input type="date" required value={assignmentForm.data.end_date} onChange={e => assignmentForm.setData('end_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Rent frequency')}<select value={assignmentForm.data.rent_frequency} onChange={e => assignmentForm.setData('rent_frequency', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="daily">{t('Daily')}</option><option value="weekly">{t('Weekly')}</option><option value="monthly">{t('Monthly')}</option><option value="quarterly">{t('Quarterly')}</option><option value="yearly">{t('Yearly')}</option></select></label>
+                                                                {assignmentForm.data.rent_frequency === 'monthly' && <label className="text-sm font-medium text-gray-700">{t('Monthly due day')}<input type="number" min="1" max="31" required value={assignmentForm.data.due_day} onChange={e => assignmentForm.setData('due_day', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs text-gray-500">{t('The first full rent period starts on the tenancy start date.')}</span></label>}
+                                                                <label className="text-sm font-medium text-gray-700">{t('Rent per period (RWF)')}<input type="number" min="0.01" step="0.01" required value={assignmentForm.data.monthly_rent} onChange={e => assignmentForm.setData('monthly_rent', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Security deposit (RWF)')}<input type="number" min="0" step="0.01" value={assignmentForm.data.deposit_amount} onChange={e => assignmentForm.setData('deposit_amount', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">{t('Signed lease (PDF, DOC, DOCX, JPG or PNG)')}<input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => assignmentForm.setData('lease', e.target.files[0])} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">{t('Notes')}<textarea value={assignmentForm.data.notes} onChange={e => assignmentForm.setData('notes', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                                                             </div>
-                                                            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setUnitToAssign(null)} className="rounded-xl px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">Cancel</button><button disabled={assignmentForm.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white">Assign tenant</button></div>
+                                                            {Object.values(assignmentForm.errors).length > 0 && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{Object.values(assignmentForm.errors)[0]}</p>}
+                                                            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setUnitToAssign(null)} className="rounded-xl px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">{t('Cancel')}</button><button disabled={assignmentForm.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{assignmentForm.processing ? t('Saving…') : t('Create tenancy')}</button></div>
                                                         </form>
                                                     </div>
                                                 )}
@@ -251,15 +282,26 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                 {showTenantForm && (
                                                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                                                         <form onSubmit={createTenant} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-                                                            <h3 className="text-lg font-semibold text-gray-900">Create tenant</h3>
+                                                            <h3 className="text-lg font-semibold text-gray-900">{t('Create tenant')}</h3>
                                                             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                                                                <label className="text-sm font-medium text-gray-700">Type<select value={tenantForm.data.type} onChange={e => tenantForm.setData('type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">Individual</option><option value="company">Company</option></select></label>
-                                                                <label className="text-sm font-medium text-gray-700">Name<input required value={tenantForm.data.name} onChange={e => tenantForm.setData('name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">Email<input type="email" value={tenantForm.data.email} onChange={e => tenantForm.setData('email', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">Phone<input value={tenantForm.data.phone} onChange={e => tenantForm.setData('phone', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                {tenantForm.data.type === 'individual' ? <label className="text-sm font-medium text-gray-700">National ID<input required value={tenantForm.data.national_id} onChange={e => tenantForm.setData('national_id', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label> : <><label className="text-sm font-medium text-gray-700">Registration number<input required value={tenantForm.data.registration_number} onChange={e => tenantForm.setData('registration_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Contact person<input required value={tenantForm.data.contact_person} onChange={e => tenantForm.setData('contact_person', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label></>}
+                                                                <label className="text-sm font-medium text-gray-700">{t('Type')}<select value={tenantForm.data.type} onChange={e => tenantForm.setData('type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">{t('Individual')}</option><option value="company">{t('Company')}</option></select></label>
+                                                                {tenantForm.data.type === 'individual' ? <>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('First name')}<input required value={tenantForm.data.first_name} onChange={e => tenantForm.setData('first_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Last name')}<input required value={tenantForm.data.last_name} onChange={e => tenantForm.setData('last_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                </> : <>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Company name')}<input required value={tenantForm.data.company_name} onChange={e => tenantForm.setData('company_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Registration number')}<input required value={tenantForm.data.registration_number} onChange={e => tenantForm.setData('registration_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Company TIN')}<input required value={tenantForm.data.tax_identification_number} onChange={e => tenantForm.setData('tax_identification_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Representative full name')}<input required value={tenantForm.data.contact_person} onChange={e => tenantForm.setData('contact_person', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                </>}
+                                                                <label className="text-sm font-medium text-gray-700">{t('Identity type')}<select value={tenantForm.data.identity_type} onChange={e => tenantForm.setData('identity_type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="national_id">{t('National ID')}</option><option value="passport">{t('Passport')}</option></select></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Identity number')}<input required value={tenantForm.data.identity_number} onChange={e => tenantForm.setData('identity_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Email')}<input required type="email" value={tenantForm.data.email} onChange={e => tenantForm.setData('email', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required value={tenantForm.data.phone} onChange={e => tenantForm.setData('phone', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">{t('Address')}<textarea required value={tenantForm.data.address} onChange={e => tenantForm.setData('address', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                                                             </div>
-                                                            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setShowTenantForm(false)} className="rounded-xl px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">Cancel</button><button disabled={tenantForm.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white">Create tenant</button></div>
+                                                            {Object.values(tenantForm.errors).length > 0 && <p className="mt-4 text-sm text-red-700">{Object.values(tenantForm.errors)[0]}</p>}
+                                                            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setShowTenantForm(false)} className="rounded-xl px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">{t('Cancel')}</button><button disabled={tenantForm.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white">{t('Create tenant')}</button></div>
                                                         </form>
                                                     </div>
                                                 )}
@@ -273,7 +315,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         {units.links && units.links.length > 3 && (
                             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/30 p-4">
                                 <p className="text-xs text-gray-400">
-                                    Showing {units.from} to {units.to} of {units.total} units
+                                    {t('Showing :from to :to of :total units', { from: units.from, to: units.to, total: units.total })}
                                 </p>
                                 <div className="flex gap-1">
                                     {units.links.map((link, i) => (
@@ -301,22 +343,22 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
             {unitToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                        <h3 className="text-lg font-semibold text-gray-900">Delete Unit</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('Delete Unit')}</h3>
                         <p className="mt-2 text-sm text-gray-500">
-                            Are you sure you want to delete unit "{unitToDelete.unit_number}"? This action cannot be undone.
+                            {t('Are you sure you want to delete unit :unit? This action cannot be undone.', { unit: unitToDelete.unit_number })}
                         </p>
                         <div className="mt-6 flex justify-end gap-3">
                             <button
                                 onClick={() => setUnitToDelete(null)}
                                 className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
                             >
-                                Cancel
+                                {t('Cancel')}
                             </button>
                             <button
                                 onClick={confirmDelete}
                                 className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
                             >
-                                Delete
+                                {t('Delete')}
                             </button>
                         </div>
                     </div>

@@ -253,6 +253,18 @@ export default function PropertyShow({ property, isAdmin, canEdit }) {
                                 <div key={unit.id} className="p-6 hover:bg-gray-50/50 transition-colors">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
+                                            {unit.images?.length > 0 && (
+                                                <div className="mb-3 flex gap-2">
+                                                    {unit.images.slice(0, 3).map((image) => (
+                                                        <img
+                                                            key={image.id}
+                                                            src={imageSource(image.image_path)}
+                                                            alt={`Unit ${unit.unit_number}`}
+                                                            className="h-16 w-20 rounded-lg object-cover"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
                                             <div className="flex items-center gap-2">
                                                 <h4 className="font-semibold text-gray-900">Unit {unit.unit_number}</h4>
                                                 {unit.unit_type && (

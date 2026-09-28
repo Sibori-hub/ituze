@@ -1,26 +1,163 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Building2, Mail, Phone, Search, Users, Plus, X } from 'lucide-react';
+import { Building2, Search, Users, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@/localization';
 
 export default function TenantsIndex({ tenants, filters }) {
+    const { t } = useTranslation();
     const [search, setSearch] = useState(filters.search || '');
     const first = useRef(true);
     const [showCreate, setShowCreate] = useState(false);
-    const form = useForm({ type: 'individual', name: '', registration_number: '', contact_person: '', national_id: '', email: '', phone: '', address: '' });
+    const form = useForm({
+        type: 'individual',
+        first_name: '',
+        last_name: '',
+        company_name: '',
+        registration_number: '',
+        tax_identification_number: '',
+        contact_person: '',
+        identity_type: 'national_id',
+        identity_number: '',
+        email: '',
+        phone: '',
+        address: '',
+    });
+
     useEffect(() => {
-        if (first.current) { first.current = false; return; }
-        const timeout = setTimeout(() => router.get(route('tenants.index'), { search }, { preserveState: true, replace: true }), 350);
+        if (first.current) {
+            first.current = false;
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            router.get(route('tenants.index'), { search }, { preserveState: true, replace: true });
+        }, 350);
         return () => clearTimeout(timeout);
     }, [search]);
 
-    const createTenant = (e) => {
-        e.preventDefault();
+    const createTenant = (event) => {
+        event.preventDefault();
         form.post(route('tenants.store'), {
             preserveScroll: true,
-            onSuccess: () => { setShowCreate(false); form.reset(); },
+            onSuccess: () => {
+                setShowCreate(false);
+                form.reset();
+            },
         });
     };
 
-    return <AuthenticatedLayout header="Tenants"><Head title="Tenants" /><div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h1 className="font-[Sora] text-2xl font-bold text-gray-900">Tenants</h1><p className="mt-1 text-sm text-gray-500">Manage the people and businesses occupying your units.</p></div><div className="flex w-full gap-2 sm:w-auto"><div className="relative w-full sm:w-72"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tenants..." className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15" /></div><button onClick={() => setShowCreate(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0a2e23]"><Plus size={16} />Create tenant</button></div></div><div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">{tenants.data.length ? <div className="divide-y divide-gray-100">{tenants.data.map(tenant => <div key={tenant.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-4"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0E3B2E]/5"><Users size={20} className="text-[#0E3B2E]" /></div><div><div className="flex items-center gap-2"><h3 className="font-semibold text-gray-900">{tenant.name}</h3><span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-500">{tenant.type}</span></div><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">{tenant.email && <span className="inline-flex items-center gap-1"><Mail size={12} />{tenant.email}</span>}{tenant.phone && <span className="inline-flex items-center gap-1"><Phone size={12} />{tenant.phone}</span>}</div></div></div><div className="flex items-center gap-4 text-sm text-gray-500"><span className="inline-flex items-center gap-1.5"><Building2 size={15} />{tenant.active_tenancies_count} active unit{tenant.active_tenancies_count === 1 ? '' : 's'}</span>{tenant.active_tenancies?.[0]?.unit?.property && <span className="hidden text-xs text-gray-400 md:inline">{tenant.active_tenancies[0].unit.property.name}</span>}</div></div>)}</div> : <div className="p-14 text-center"><Users size={44} className="mx-auto text-gray-300" /><h3 className="mt-4 font-semibold text-gray-900">No tenants found</h3><p className="mt-1 text-sm text-gray-500">{search ? 'Try a different search.' : 'Tenants will appear here when assigned to a unit.'}</p></div>}{tenants.links?.length > 3 && <div className="flex flex-wrap gap-2 border-t border-gray-100 p-4">{tenants.links.map((link, i) => <Link key={i} href={link.url || '#'} className={`rounded-lg px-3 py-1.5 text-sm ${link.active ? 'bg-[#0E3B2E] text-white' : 'bg-gray-50 text-gray-600'} ${!link.url ? 'pointer-events-none opacity-40' : ''}`} dangerouslySetInnerHTML={{ __html: link.label }} />)}</div>}    </div>{showCreate && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><form onSubmit={createTenant} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-semibold text-gray-900">Create tenant</h2><button type="button" onClick={() => setShowCreate(false)}><X size={20} /></button></div><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium text-gray-700">Type<select value={form.data.type} onChange={e => form.setData('type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">Individual</option><option value="company">Company</option></select></label><label className="text-sm font-medium text-gray-700">Name<input required value={form.data.name} onChange={e => form.setData('name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">National ID<input value={form.data.national_id} onChange={e => form.setData('national_id', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Registration number<input value={form.data.registration_number} onChange={e => form.setData('registration_number', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Contact person<input value={form.data.contact_person} onChange={e => form.setData('contact_person', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Email<input type="email" value={form.data.email} onChange={e => form.setData('email', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700">Phone<input value={form.data.phone} onChange={e => form.setData('phone', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label><label className="text-sm font-medium text-gray-700 sm:col-span-2">Address<textarea value={form.data.address} onChange={e => form.setData('address', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label></div><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setShowCreate(false)} className="rounded-xl px-4 py-2 text-sm text-gray-600">Cancel</button><button disabled={form.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white">Create tenant</button></div></form></div>}</AuthenticatedLayout>;
+    return (
+        <AuthenticatedLayout header="Tenants">
+            <Head title="Tenants" />
+            <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div>
+                    <h1 className="font-[Sora] text-2xl font-bold text-gray-900">{t('Tenants')}</h1>
+                    <p className="mt-1 text-sm text-gray-500">{t('Manage the people and businesses occupying your units.')}</p>
+                </div>
+                <div className="flex w-full gap-2 sm:w-auto">
+                    <div className="relative w-full sm:w-72">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('Search tenants...')} className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15" />
+                    </div>
+                    <button onClick={() => setShowCreate(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0a2e23]">
+                        <Plus size={16} />{t('Create tenant')}
+                    </button>
+                </div>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                {tenants.data.length ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[850px] text-left text-sm">
+                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                                <tr>
+                                    <th className="px-5 py-3 font-semibold">{t('Tenant')}</th>
+                                    <th className="px-5 py-3 font-semibold">{t('Identity')}</th>
+                                    <th className="px-5 py-3 font-semibold">{t('Contact')}</th>
+                                    <th className="px-5 py-3 font-semibold">{t('Active units')}</th>
+                                    <th className="px-5 py-3 font-semibold">{t('Property')}</th>
+                                    <th className="px-5 py-3 font-semibold">{t('Action')}</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {tenants.data.map(tenant => (
+                                    <tr key={tenant.id} className="transition hover:bg-gray-50/70">
+                                        <td className="px-5 py-4">
+                                            <Link href={route('tenants.show', tenant.id)} className="font-semibold text-gray-900 hover:text-[#0E3B2E] hover:underline">{tenant.name}</Link>
+                                            <p className="mt-1 text-xs capitalize text-gray-500">{t(tenant.type)}{tenant.type === 'company' && tenant.registration_number ? ` · ${t('Reg.')}. ${tenant.registration_number}` : ''}</p>
+                                            {tenant.type === 'company' && tenant.contact_person && <p className="mt-1 text-xs text-gray-500">{t('Representative')}: {tenant.contact_person}</p>}
+                                        </td>
+                                        <td className="px-5 py-4 text-gray-700">
+                                            <p>{tenant.identity_type === 'passport' ? t('Passport') : t('ID')}: {tenant.identity_number || tenant.national_id || '—'}</p>
+                                            {tenant.type === 'company' && tenant.tax_identification_number && <p className="mt-1 text-xs text-gray-500">TIN: {tenant.tax_identification_number}</p>}
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <p className="text-gray-700">{tenant.phone || '—'}</p>
+                                            <p className="mt-1 text-xs text-gray-500">{tenant.email || t('No email')}</p>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <span className="inline-flex items-center gap-1.5 text-gray-700"><Building2 size={15} className="text-[#0E3B2E]" />{tenant.active_tenancies_count}</span>
+                                        </td>
+                                        <td className="px-5 py-4 text-gray-600">{tenant.active_tenancies?.[0]?.unit?.property?.name || '—'}</td>
+                                        <td className="px-5 py-4"><Link href={route('tenants.show', tenant.id)} className="whitespace-nowrap rounded-lg bg-[#0E3B2E]/5 px-3 py-2 text-xs font-semibold text-[#0E3B2E] hover:bg-[#0E3B2E]/10">{t('View & assign')}</Link></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="p-14 text-center">
+                        <Users size={44} className="mx-auto text-gray-300" />
+                        <h3 className="mt-4 font-semibold text-gray-900">{t('No tenants found')}</h3>
+                        <p className="mt-1 text-sm text-gray-500">{t(search ? 'Try a different search.' : 'Tenants will appear here when assigned to a unit.')}</p>
+                    </div>
+                )}
+                {tenants.links?.length > 3 && (
+                    <div className="flex flex-wrap gap-2 border-t border-gray-100 p-4">
+                        {tenants.links.map((link, index) => (
+                            <Link key={index} href={link.url || '#'} className={`rounded-lg px-3 py-1.5 text-sm ${link.active ? 'bg-[#0E3B2E] text-white' : 'bg-gray-50 text-gray-600'} ${!link.url ? 'pointer-events-none opacity-40' : ''}`} dangerouslySetInnerHTML={{ __html: link.label }} />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {showCreate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <form onSubmit={createTenant} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+                        <div className="mb-5 flex items-center justify-between">
+                            <div><h2 className="text-lg font-semibold text-gray-900">{t('Create tenant')}</h2><p className="mt-1 text-sm text-gray-500">{t('Identity and contact details are required for all tenants.')}</p></div>
+                            <button type="button" onClick={() => setShowCreate(false)} aria-label="Close"><X size={20} /></button>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="text-sm font-medium text-gray-700">{t('Type')}
+                                <select value={form.data.type} onChange={event => form.setData('type', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">{t('Individual')}</option><option value="company">{t('Company')}</option></select>
+                            </label>
+                            {form.data.type === 'individual' ? <>
+                                <label className="text-sm font-medium text-gray-700">{t('First name')}<input required value={form.data.first_name} onChange={event => form.setData('first_name', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                <label className="text-sm font-medium text-gray-700">{t('Last name')}<input required value={form.data.last_name} onChange={event => form.setData('last_name', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                            </> : <>
+                                <label className="text-sm font-medium text-gray-700">{t('Company name')}<input required value={form.data.company_name} onChange={event => form.setData('company_name', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                <label className="text-sm font-medium text-gray-700">{t('Company registration number')}<input required value={form.data.registration_number} onChange={event => form.setData('registration_number', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                <label className="text-sm font-medium text-gray-700">{t('Company TIN')}<input required value={form.data.tax_identification_number} onChange={event => form.setData('tax_identification_number', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                <label className="text-sm font-medium text-gray-700">{t('Representative full name')}<input required value={form.data.contact_person} onChange={event => form.setData('contact_person', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                            </>}
+                            <label className="text-sm font-medium text-gray-700">{t('Identity type')}
+                                <select value={form.data.identity_type} onChange={event => form.setData('identity_type', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="national_id">{t('National ID')}</option><option value="passport">{t('Passport')}</option></select>
+                            </label>
+                            <label className="text-sm font-medium text-gray-700">{t('Identity number')}<input required value={form.data.identity_number} onChange={event => form.setData('identity_number', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                            <label className="text-sm font-medium text-gray-700">{t('Email')}<input required type="email" value={form.data.email} onChange={event => form.setData('email', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                            <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required value={form.data.phone} onChange={event => form.setData('phone', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                            <label className="text-sm font-medium text-gray-700 sm:col-span-2">{t('Address')}<textarea required value={form.data.address} onChange={event => form.setData('address', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                        </div>
+                        {Object.values(form.errors).length > 0 && <p className="mt-4 text-sm text-red-700">{Object.values(form.errors)[0]}</p>}
+                        <div className="mt-6 flex justify-end gap-2">
+                            <button type="button" onClick={() => setShowCreate(false)} className="rounded-xl px-4 py-2 text-sm text-gray-600">{t('Cancel')}</button>
+                            <button disabled={form.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{form.processing ? t('Saving…') : t('Create tenant')}</button>
+                        </div>
+                    </form>
+                </div>
+            )}
+        </AuthenticatedLayout>
+    );
 }

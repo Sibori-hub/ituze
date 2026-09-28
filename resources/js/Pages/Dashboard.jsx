@@ -3,15 +3,16 @@ import CompleteProfileModal from '@/Components/CompleteProfileModal';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Activity, ArrowUpRight, Building2, CalendarX, CheckCircle2,
-    DoorOpen, Home, IdCard, Mail, MapPin, MessageSquare, Phone, Plus, Settings2, Users,
+    DoorOpen, Home, Mail, MessageSquare, Phone, Plus, Users,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from '@/localization';
 
 const cards = [
-    { key: 'properties', label: 'Properties', icon: Building2, color: 'bg-emerald-50 text-emerald-700' },
-    { key: 'units', label: 'Total units', icon: DoorOpen, color: 'bg-blue-50 text-blue-700' },
-    { key: 'occupiedUnits', label: 'Occupied units', icon: Users, color: 'bg-violet-50 text-violet-700' },
-    { key: 'availableUnits', label: 'Available units', icon: Home, color: 'bg-amber-50 text-amber-700' },
+    { key: 'properties', label: 'Properties', icon: Building2, color: 'bg-emerald-50 text-emerald-700', route: 'properties.index' },
+    { key: 'units', label: 'Total units', icon: DoorOpen, color: 'bg-blue-50 text-blue-700', route: 'properties.index' },
+    { key: 'occupiedUnits', label: 'Occupied units', icon: Users, color: 'bg-violet-50 text-violet-700', route: 'tenants.index' },
+    { key: 'availableUnits', label: 'Available units', icon: Home, color: 'bg-amber-50 text-amber-700', route: 'properties.index' },
 ];
 
 const imageSource = (path) => {
@@ -19,57 +20,51 @@ const imageSource = (path) => {
     return /^https?:\/\//i.test(path) ? path : `/storage/${path}`;
 };
 
-export default function Dashboard({ summary, ownerProfile, recentProperties = [], recentTenancies = [], recentInquiries = [] }) {
+export default function Dashboard({ summary, recentProperties = [], recentTenancies = [], recentInquiries = [] }) {
     const { auth } = usePage().props;
+    const { t } = useTranslation();
     const user = auth.user;
     const [modalDismissed, setModalDismissed] = useState(false);
     const isAdmin = user.role === 'admin';
     const isExpired = !isAdmin && user.expires_at && new Date(user.expires_at) < new Date();
 
     if (isExpired) {
-        return <AuthenticatedLayout header="Dashboard"><Head title="Dashboard" /><div className="mx-auto max-w-lg rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50"><CalendarX size={30} className="text-red-500" /></div><h2 className="mt-4 font-[Sora] text-xl font-bold text-gray-800">Your account has expired</h2><p className="mt-2 text-sm text-gray-500">Your subscription ended on {new Date(user.expires_at).toLocaleDateString()}. Please contact support to renew access.</p></div></AuthenticatedLayout>;
+        return <AuthenticatedLayout header="Dashboard"><Head title={t('Dashboard')} /><div className="mx-auto max-w-lg rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50"><CalendarX size={30} className="text-red-500" /></div><h2 className="mt-4 font-[Sora] text-xl font-bold text-gray-800">{t('Your account has expired')}</h2><p className="mt-2 text-sm text-gray-500">{t('Your subscription ended on :date. Please contact support to renew access.', { date: new Date(user.expires_at).toLocaleDateString() })}</p></div></AuthenticatedLayout>;
     }
     if (!user.profile_completed && !modalDismissed) {
-        return <AuthenticatedLayout header="Dashboard"><Head title="Dashboard" /><CompleteProfileModal onDone={() => setModalDismissed(true)} /></AuthenticatedLayout>;
+        return <AuthenticatedLayout header="Dashboard"><Head title={t('Dashboard')} /><CompleteProfileModal onDone={() => setModalDismissed(true)} /></AuthenticatedLayout>;
     }
 
     return (
         <AuthenticatedLayout header="Dashboard">
-            <Head title="Dashboard" />
+            <Head title={t('Dashboard')} />
             <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                <div><p className="text-sm font-medium text-[#D9A441]">Overview</p><h1 className="mt-1 font-[Sora] text-2xl font-bold text-gray-900">Good to see you, {user.name?.split(' ')[0]}</h1><p className="mt-1 text-sm text-gray-500">Here’s what’s happening across your portfolio.</p></div>
-                <Link href={route('properties.create')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#0a2e23]"><Plus size={16} /> Add property</Link>
+                <div><p className="text-sm font-medium text-[#D9A441]">{t('Overview')}</p><h1 className="mt-1 font-[Sora] text-2xl font-bold text-gray-900">{t('Good to see you, :name', { name: user.name?.split(' ')[0] })}</h1><p className="mt-1 text-sm text-gray-500">{t('Here’s what’s happening across your portfolio.')}</p></div>
+                <Link href={route('properties.create')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#0a2e23]"><Plus size={16} /> {t('Add property')}</Link>
             </div>
-
-            {ownerProfile && (
-                <section className="mb-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                    <div className="mb-4">
-                        <h2 className="font-[Sora] font-semibold text-gray-900">Owner profile</h2>
-                        <p className="mt-1 text-xs text-gray-500">Your registration and verified profile details.</p>
-                    </div>
-                    <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                        <p><span className="block text-xs text-gray-400">Name</span><span className="font-medium text-gray-800">{ownerProfile.first_name} {ownerProfile.last_name}</span></p>
-                        <p className="flex items-start gap-2"><Mail size={15} className="mt-0.5 text-[#0E3B2E]" /><span><span className="block text-xs text-gray-400">Email</span><span className="font-medium text-gray-800">{ownerProfile.email}</span></span></p>
-                        <p className="flex items-start gap-2"><Phone size={15} className="mt-0.5 text-[#0E3B2E]" /><span><span className="block text-xs text-gray-400">Phone</span><span className="font-medium text-gray-800">{ownerProfile.phone}</span></span></p>
-                        <p className="flex items-start gap-2"><MapPin size={15} className="mt-0.5 text-[#0E3B2E]" /><span><span className="block text-xs text-gray-400">Address</span><span className="font-medium text-gray-800">{[ownerProfile.address, ownerProfile.sector, ownerProfile.district, ownerProfile.province].filter(Boolean).join(', ') || 'Not provided'}</span></span></p>
-                        <p className="flex items-start gap-2"><IdCard size={15} className="mt-0.5 text-[#0E3B2E]" /><span><span className="block text-xs text-gray-400">{ownerProfile.identity_document_type === 'passport' ? 'Passport' : 'NIDA'}</span><span className="font-medium text-gray-800">{ownerProfile.national_id || 'Not provided'}</span></span></p>
-                    </div>
-                </section>
-            )}
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {cards.map(({ key, label, icon: Icon, color }) => <div key={key} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}><Icon size={19} /></div>{key === 'properties' && <Link href={route('properties.index')}><ArrowUpRight size={17} className="text-gray-400 hover:text-[#0E3B2E]" /></Link>}</div><p className="mt-4 font-[Sora] text-2xl font-bold text-gray-900">{summary?.[key] ?? 0}</p><p className="mt-1 text-sm text-gray-500">{label}</p></div>)}
+                {cards.map(({ key, label, icon: Icon, color, route: destination }) => (
+                    <Link key={key} href={route(destination)} className="group rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#0E3B2E]/20 hover:shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}><Icon size={19} /></div>
+                            <ArrowUpRight size={17} className="text-gray-400 transition group-hover:text-[#0E3B2E]" />
+                        </div>
+                        <p className="mt-4 font-[Sora] text-2xl font-bold text-gray-900">{summary?.[key] ?? 0}</p>
+                        <p className="mt-1 text-sm text-gray-500">{t(label)}</p>
+                    </Link>
+                ))}
             </div>
 
-            <div className="mt-5 grid gap-5 lg:grid-cols-3">
-                <div className="rounded-2xl bg-[#0E3B2E] p-6 text-white shadow-sm lg:col-span-1">
-                    <div className="flex items-center gap-2 text-white/70"><Activity size={17} /><span className="text-sm">Portfolio occupancy</span></div>
-                    <div className="mt-5 flex items-end gap-2"><span className="font-[Sora] text-4xl font-bold">{summary?.occupancyRate ?? 0}%</span><span className="mb-1 text-sm text-white/60">occupied</span></div>
+            <div id="portfolio-summary" className="mt-5 grid scroll-mt-20 gap-5 lg:grid-cols-3">
+                <Link href={route('properties.index')} className="rounded-2xl bg-[#0E3B2E] p-6 text-white shadow-sm transition hover:bg-[#0b3328] lg:col-span-1">
+                    <div className="flex items-center gap-2 text-white/70"><Activity size={17} /><span className="text-sm">{t('Portfolio occupancy')}</span></div>
+                    <div className="mt-5 flex items-end gap-2"><span className="font-[Sora] text-4xl font-bold">{summary?.occupancyRate ?? 0}%</span><span className="mb-1 text-sm text-white/60">{t('occupied')}</span></div>
                     <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-[#D9A441]" style={{ width: `${summary?.occupancyRate ?? 0}%` }} /></div>
-                    <p className="mt-3 text-xs text-white/60">{summary?.availableUnits ?? 0} available · {summary?.maintenanceUnits ?? 0} under maintenance</p>
-                </div>
+                    <p className="mt-3 text-xs text-white/60">{t(':available available · :maintenance under maintenance', { available: summary?.availableUnits ?? 0, maintenance: summary?.maintenanceUnits ?? 0 })}</p>
+                </Link>
                 <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm lg:col-span-2">
-                    <div className="mb-4 flex items-center justify-between"><h2 className="font-[Sora] font-semibold text-gray-900">Recent properties</h2><Link href={route('properties.index')} className="text-sm font-medium text-[#0E3B2E] hover:underline">View all</Link></div>
+                    <div className="mb-4 flex items-center justify-between"><h2 className="font-[Sora] font-semibold text-gray-900">{t('Recent properties')}</h2><Link href={route('properties.index')} className="text-sm font-medium text-[#0E3B2E] hover:underline">{t('View all')}</Link></div>
                     {recentProperties.length ? <div className="grid gap-3 sm:grid-cols-2">{recentProperties.map(property => {
                         const coverPath = property.images?.find(img => img.is_cover)?.image_path || property.images?.[0]?.image_path;
                         return (
@@ -94,12 +89,76 @@ export default function Dashboard({ summary, ownerProfile, recentProperties = []
                                 <ArrowUpRight size={15} className="text-gray-400" />
                             </Link>
                         );
-                    })}</div> : <div className="rounded-xl bg-gray-50 p-6 text-center"><p className="text-sm text-gray-500">No properties yet.</p><Link href={route('properties.create')} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#0E3B2E]"><Plus size={14} /> Add your first property</Link></div>}
+                    })}</div> : <div className="rounded-xl bg-gray-50 p-6 text-center"><p className="text-sm text-gray-500">{t('No properties yet.')}</p><Link href={route('properties.create')} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#0E3B2E]"><Plus size={14} /> {t('Add your first property')}</Link></div>}
                 </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"><div className="mb-4 flex items-center justify-between"><h2 className="font-[Sora] font-semibold text-gray-900">Recent occupancy</h2><Link href={route('tenants.index')} className="text-sm font-medium text-[#0E3B2E] hover:underline">View tenants</Link></div>{recentTenancies.length ? <div className="divide-y divide-gray-100">{recentTenancies.map(tenancy => <div key={tenancy.id} className="flex flex-col gap-2 py-3 first:pt-0 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50"><CheckCircle2 size={17} className="text-emerald-600" /></div><div><p className="text-sm font-semibold text-gray-800">{tenancy.tenant?.name}</p><p className="text-xs text-gray-500">{tenancy.unit?.property?.name} · Unit {tenancy.unit?.unit_number}</p></div></div><p className="text-xs text-gray-500">Started {new Date(tenancy.start_date).toLocaleDateString()}</p></div>)}</div> : <p className="py-4 text-sm text-gray-500">No active tenants yet. Assign tenants from a property’s units.</p>}</div>
-            <div className="mt-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm"><div className="mb-4 flex items-center justify-between"><div><h2 className="font-[Sora] font-semibold text-gray-900">Visitor inquiries</h2><p className="mt-1 text-xs text-gray-500">Mark an inquiry as responded after you contact the visitor.</p></div><MessageSquare size={18} className="text-[#D9A441]" /></div>{recentInquiries.length ? <div className="divide-y divide-gray-100">{recentInquiries.map((inquiry) => <div key={inquiry.id} className="py-4 first:pt-0"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-sm font-semibold text-gray-800">{inquiry.visitor_name}</p><p className="text-xs text-gray-500">{inquiry.property?.name} · Unit {inquiry.unit?.unit_number}</p></div><span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${inquiry.status === 'responded' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{inquiry.status}</span></div><p className="mt-2 text-sm text-gray-600">{inquiry.message}</p><p className="mt-2 text-xs text-gray-400">{inquiry.visitor_phone}{inquiry.visitor_email ? ` · ${inquiry.visitor_email}` : ''}</p>{inquiry.status !== 'responded' && <button type="button" onClick={() => router.post(route('inquiries.responded', inquiry.id), {}, { preserveScroll: true })} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0E3B2E] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0a2e23]"><CheckCircle2 size={14} /> Mark as responded</button>}</div>)}</div> : <p className="py-4 text-sm text-gray-500">No visitor inquiries yet.</p>}</div>
+            <section className="mt-5 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-6">
+                    <div><h2 className="font-[Sora] font-semibold text-gray-900">{t('Tenants & active leases')}</h2><p className="mt-1 text-xs text-gray-500">{t('Current occupants, lease terms, and direct tenant records.')}</p></div>
+                    <Link href={route('tenants.index')} className="text-sm font-medium text-[#0E3B2E] hover:underline">{t('Open tenant directory')}</Link>
+                </div>
+                {recentTenancies.length ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[760px] text-left text-sm">
+                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500"><tr><th className="px-6 py-3 font-semibold">{t('Tenant')}</th><th className="px-6 py-3 font-semibold">{t('Property / unit')}</th><th className="px-6 py-3 font-semibold">{t('Lease term')}</th><th className="px-6 py-3 font-semibold">{t('Rent')}</th><th className="px-6 py-3 font-semibold">{t('Status')}</th><th className="px-6 py-3 font-semibold">{t('Details')}</th></tr></thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {recentTenancies.map(tenancy => (
+                                    <tr key={tenancy.id} className="transition hover:bg-gray-50/70">
+                                        <td className="px-6 py-4"><Link href={route('tenants.show', tenancy.tenant?.id)} className="font-semibold text-gray-900 hover:text-[#0E3B2E] hover:underline">{tenancy.tenant?.name || t('Tenant')}</Link><p className="mt-1 text-xs text-gray-500">{tenancy.tenant?.phone || tenancy.tenant?.email || '—'}</p></td>
+                                        <td className="px-6 py-4"><p className="font-medium text-gray-800">{tenancy.unit?.property?.name || t('Property')}</p><p className="mt-1 text-xs text-gray-500">{t('Unit')} {tenancy.unit?.unit_number || '—'}</p></td>
+                                        <td className="px-6 py-4 text-xs text-gray-600">{tenancy.start_date} – {tenancy.end_date || t('Ongoing')}</td>
+                                        <td className="px-6 py-4 font-medium text-gray-800">{Number(tenancy.monthly_rent || 0).toLocaleString()} RWF <span className="text-xs font-normal text-gray-500">/{tenancy.rent_frequency || 'monthly'}</span></td>
+                                        <td className="px-6 py-4"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"><CheckCircle2 size={13} /> {t('Active')}</span></td>
+                                        <td className="px-6 py-4"><Link href={route('properties.units.show', [tenancy.unit?.property_id, tenancy.unit?.id])} className="inline-flex items-center gap-1 font-medium text-[#0E3B2E] hover:underline">{t('Open unit')} <ArrowUpRight size={14} /></Link></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : <p className="p-6 text-sm text-gray-500">{t('No active tenants yet. Add a lease from a unit or assign a tenant from the tenant directory.')}</p>}
+            </section>
+            <div id="visitor-inquiries" className="mt-5 scroll-mt-20 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                    <div>
+                        <h2 className="font-[Sora] font-semibold text-gray-900">{t('Visitor inquiries')}</h2>
+                        <p className="mt-1 text-xs text-gray-500">{t('Contact the visitor, then mark the inquiry as read to allow a new inquiry for this property.')}</p>
+                    </div>
+                    <MessageSquare size={18} className="text-[#D9A441]" />
+                </div>
+                {recentInquiries.length ? (
+                    <div className="divide-y divide-gray-100">
+                        {recentInquiries.map((inquiry) => {
+                            const replyText = `Hello ${inquiry.visitor_name}, regarding your inquiry about ${inquiry.property?.name}${inquiry.unit?.unit_number ? `, unit ${inquiry.unit.unit_number}` : ''}.`;
+
+                            return (
+                                <div key={inquiry.id} className="py-4 first:pt-0">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-800">{inquiry.visitor_name}</p>
+                                            <p className="text-xs text-gray-500">{inquiry.property?.name} · Unit {inquiry.unit?.unit_number}</p>
+                                        </div>
+                                        <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${inquiry.status === 'read' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                            {t(inquiry.status === 'new' ? 'New' : inquiry.status)}
+                                        </span>
+                                    </div>
+                                    <p className="mt-2 text-sm text-gray-600">{inquiry.message}</p>
+                                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                        <a href={`tel:${inquiry.visitor_phone}`} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 font-semibold text-gray-700 transition hover:border-[#0E3B2E] hover:bg-emerald-50"><Phone size={13} /> {t('Call')}</a>
+                                        <a href={`sms:${inquiry.visitor_phone}?body=${encodeURIComponent(replyText)}`} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 font-semibold text-gray-700 transition hover:border-[#0E3B2E] hover:bg-emerald-50"><MessageSquare size={13} /> {t('SMS visitor')}</a>
+                                        {inquiry.visitor_email && <a href={`mailto:${inquiry.visitor_email}`} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 font-semibold text-gray-700 transition hover:border-[#0E3B2E] hover:bg-emerald-50"><Mail size={13} /> {t('Email')}</a>}
+                                    </div>
+                                    {inquiry.status !== 'read' && (
+                                        <button type="button" onClick={() => router.post(route('inquiries.read', inquiry.id), {}, { preserveScroll: true })} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0E3B2E] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0a2e23]">
+                                            <CheckCircle2 size={14} /> {t('Mark as read')}
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : <p className="py-4 text-sm text-gray-500">{t('No visitor inquiries yet.')}</p>}
+            </div>
         </AuthenticatedLayout>
     );
 }

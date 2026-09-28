@@ -37,6 +37,11 @@ class Unit extends Model
         return $this->belongsTo(UnitType::class);
     }
 
+    public function images()
+    {
+        return $this->hasMany(UnitImage::class);
+    }
+
     public function tenancies()
     {
         return $this->hasMany(Tenancy::class);
@@ -45,5 +50,12 @@ class Unit extends Model
     public function activeTenancy()
     {
         return $this->hasOne(Tenancy::class)->where('status', 'active');
+    }
+
+    public function scheduledTenancy()
+    {
+        return $this->hasOne(Tenancy::class)
+            ->where('status', 'scheduled')
+            ->whereNull('renewed_from_id');
     }
 }

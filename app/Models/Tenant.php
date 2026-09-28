@@ -18,6 +18,7 @@ class Tenant extends Model
         'company_name',
         'identity_type',
         'identity_number',
+        'tax_identification_number',
         'registration_number',
         'contact_person',
         'email',

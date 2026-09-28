@@ -3,8 +3,10 @@ import ConfirmActionModal from '@/Components/ConfirmActionModal';
 import { Head, router, usePage } from '@inertiajs/react';
 import { CheckCircle2, XCircle, IdCard, MapPin } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from '@/localization';
 
 export default function Approvals({ pendingUsers }) {
+    const { t } = useTranslation();
     const { flash } = usePage().props;
     const [confirmAction, setConfirmAction] = useState(null); // { type: 'approve'|'reject', user }
     const [processing, setProcessing] = useState(false);
@@ -36,8 +38,8 @@ export default function Approvals({ pendingUsers }) {
     };
 
     return (
-        <AuthenticatedLayout header="Pending Approvals">
-            <Head title="Pending Approvals" />
+        <AuthenticatedLayout header="Approvals">
+            <Head title={t('Approvals')} />
 
             {flash?.status && (
                 <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
@@ -48,7 +50,7 @@ export default function Approvals({ pendingUsers }) {
             {pendingUsers.length === 0 ? (
                 <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
                     <p className="text-sm text-gray-500">
-                        No accounts waiting for approval right now.
+                        {t('No accounts waiting for approval right now.')}
                     </p>
                 </div>
             ) : (
@@ -74,24 +76,24 @@ export default function Approvals({ pendingUsers }) {
                                     <div className="flex items-center gap-2">
                                         <p className="font-[Sora] font-semibold text-gray-800">{user.name}</p>
                                         <span className="rounded-full bg-[#D9A441]/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-[#8a651c]">
-                                            {user.role}
+                                            {t(user.role)}
                                         </span>
                                     </div>
                                     <p className="text-sm text-gray-500">
                                         {user.email} · {user.phone}
                                     </p>
                                     <p className="mt-1 text-xs font-medium text-green-700">
-                                        Email verified · Profile complete
+                                        {t('Email verified · Profile complete')}
                                     </p>
                                     {user.address && (
                                         <p className="mt-1 text-xs text-gray-500">
-                                            Address: {user.address}
+                                            {t('Address')}: {user.address}
                                         </p>
                                     )}
                                     <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-400">
                                         <span className="flex items-center gap-1">
                                             <IdCard size={13} />
-                                            {user.identity_document_type === 'passport' ? 'Passport' : 'NIDA'}: {user.national_id}
+                                            {t(user.identity_document_type === 'passport' ? 'Passport' : 'NIDA')}: {user.national_id}
                                         </span>
                                         {user.sector && (
                                             <span className="flex items-center gap-1">
@@ -114,14 +116,14 @@ export default function Approvals({ pendingUsers }) {
                                     className="flex items-center gap-1.5 rounded-lg bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                                 >
                                     <CheckCircle2 size={16} />
-                                    Approve
+                                    {t('Approve')}
                                 </button>
                                 <button
                                     onClick={() => openConfirm('reject', user)}
                                     className="flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                                 >
                                     <XCircle size={16} />
-                                    Reject
+                                    {t('Reject')}
                                 </button>
                             </div>
                         </div>
@@ -131,20 +133,20 @@ export default function Approvals({ pendingUsers }) {
 
             <ConfirmActionModal
                 open={!!confirmAction}
-                title={
+                title={t(
                     confirmAction?.type === 'approve'
                         ? 'Approve this account?'
-                        : 'Reject this account?'
-                }
+                        : 'Reject this account?',
+                )}
                 message={
                     confirmAction
                         ? confirmAction.type === 'approve'
-                            ? `Confirm that payment was verified outside the app. ${confirmAction.user.name} will then be approved, and their one-year subscription will start today.`
-                            : `${confirmAction.user.name} will not be able to access the dashboard. You can reconsider this later.`
+                            ? t('Confirm that payment was verified outside the app. :name will then be approved, and their one-year subscription will start today.', { name: confirmAction.user.name })
+                            : t(':name will not be able to access the dashboard. You can reconsider this later.', { name: confirmAction.user.name })
                         : ''
                 }
                 confirmLabel={
-                    confirmAction?.type === 'approve' ? 'Yes, Approve' : 'Yes, Reject'
+                    t(confirmAction?.type === 'approve' ? 'Yes, Approve' : 'Yes, Reject')
                 }
                 tone={confirmAction?.type === 'reject' ? 'danger' : 'default'}
                 processing={processing}

@@ -3,8 +3,10 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/localization';
 
 export default function Login({ status, canResetPassword }) {
+    const { t } = useTranslation();
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -16,12 +18,12 @@ export default function Login({ status, canResetPassword }) {
     useEffect(() => {
         let t1, t2;
         if (processing) {
-            setLoginStage('Checking credentials...');
+            setLoginStage(t('Checking credentials...'));
             t1 = setTimeout(() => {
-                setLoginStage('Authenticating session...');
+                setLoginStage(t('Authenticating session...'));
             }, 700);
             t2 = setTimeout(() => {
-                setLoginStage('Redirecting to dashboard...');
+                setLoginStage(t('Redirecting to dashboard...'));
             }, 1500);
         } else {
             setLoginStage('');
@@ -41,14 +43,14 @@ export default function Login({ status, canResetPassword }) {
 
     return (
         <GuestLayout>
-            <Head title="Log in" />
+            <Head title={t('Log in')} />
 
             <div className="pt-4 text-center">
                 <h2 className="font-[Sora] text-xl font-bold text-gray-800">
-                    Welcome back
+                    {t('Welcome back')}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                    Log in to continue
+                    {t('Log in to continue')}
                 </p>
             </div>
 
@@ -70,7 +72,7 @@ export default function Login({ status, canResetPassword }) {
                         htmlFor="email"
                         className="mb-1 block text-sm font-medium text-gray-700"
                     >
-                        Email
+                        {t('Email')}
                     </label>
                     <div className="relative">
                         <Mail
@@ -98,7 +100,7 @@ export default function Login({ status, canResetPassword }) {
                         htmlFor="password"
                         className="mb-1 block text-sm font-medium text-gray-700"
                     >
-                        Password
+                        {t('Password')}
                     </label>
                     <div className="relative">
                         <Lock
@@ -134,7 +136,7 @@ export default function Login({ status, canResetPassword }) {
                             }
                             className="rounded border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]"
                         />
-                        Remember me
+                        {t('Remember me')}
                     </label>
 
                     {canResetPassword && (
@@ -142,7 +144,7 @@ export default function Login({ status, canResetPassword }) {
                             href={route('password.request')}
                             className="text-sm text-[#0E3B2E] hover:underline"
                         >
-                            Forgot password?
+                            {t('Forgot password?')}
                         </Link>
                     )}
                 </div>
@@ -155,11 +157,11 @@ export default function Login({ status, canResetPassword }) {
                     {processing ? (
                         <>
                             <Loader2 size={18} className="animate-spin text-[#D9A441]" />
-                            <span>{loginStage || 'Signing you in...'}</span>
+                            <span>{loginStage || t('Signing you in...')}</span>
                         </>
                     ) : (
                         <>
-                            <span>LOG IN</span>
+                            <span>{t('LOG IN')}</span>
                             <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
                         </>
                     )}
@@ -168,17 +170,17 @@ export default function Login({ status, canResetPassword }) {
                 {processing && (
                     <div className="flex items-center justify-center gap-2 rounded-xl border border-[#0E3B2E]/15 bg-[#0E3B2E]/5 py-2.5 px-3 text-xs font-medium text-[#0E3B2E] animate-pulse">
                         <Loader2 size={14} className="animate-spin text-[#0E3B2E]" />
-                        <span>{loginStage || 'Authenticating...'}</span>
+                        <span>{loginStage || t('Authenticating...')}</span>
                     </div>
                 )}
 
                 <p className="text-center text-sm text-gray-500">
-                    Don't have an account?{' '}
+                    {t("Don't have an account?")}{' '}
                     <Link
                         href={route('register')}
                         className="font-medium text-[#0E3B2E] hover:underline"
                     >
-                        Register
+                        {t('Register')}
                     </Link>
                 </p>
             </form>

@@ -3,6 +3,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { User, Mail, Phone, Lock, Check, X } from 'lucide-react';
 import { useMemo } from 'react';
+import { useTranslation } from '@/localization';
 
 function getPasswordStrength(password) {
     let score = 0;
@@ -32,6 +33,7 @@ function getNetwork(phone) {
 }
 
 export default function Register() {
+    const { t } = useTranslation();
     const { data, setData, post, processing, errors, reset } = useForm({
         first_name: '',
         last_name: '',
@@ -88,14 +90,14 @@ export default function Register() {
 
     return (
         <GuestLayout>
-            <Head title="Register" />
+            <Head title={t('Register')} />
 
             <div className="pt-5 text-center">
                 <h2 className="font-[Sora] text-2xl font-bold text-gray-800">
-                    Create Account
+                    {t('Create Account')}
                 </h2>
                 <p className="mt-1.5 text-sm text-gray-500">
-                    Join Ituze QR Ltd to manage your properties
+                    {t('Join Ituze QR Ltd to manage your properties')}
                 </p>
             </div>
 
@@ -106,7 +108,7 @@ export default function Register() {
                             htmlFor="first_name"
                             className="mb-1.5 block text-sm font-medium text-gray-700"
                         >
-                            First Name
+                            {t('First Name')}
                         </label>
                         <div className={inputWrap}>
                             <User size={18} className={inputIcon} />
@@ -135,7 +137,7 @@ export default function Register() {
                             htmlFor="last_name"
                             className="mb-1.5 block text-sm font-medium text-gray-700"
                         >
-                            Last Name
+                            {t('Last Name')}
                         </label>
                         <div className={inputWrap}>
                             <User size={18} className={inputIcon} />
@@ -164,7 +166,7 @@ export default function Register() {
                         htmlFor="email"
                         className="mb-1.5 block text-sm font-medium text-gray-700"
                     >
-                        Email
+                        {t('Email')}
                     </label>
                     <div className={inputWrap}>
                         <Mail size={18} className={inputIcon} />
@@ -194,7 +196,7 @@ export default function Register() {
                     </div>
                     {data.email !== '' && !emailValid && (
                         <p className="mt-1 text-xs text-red-500">
-                            Enter a valid email address
+                            {t('Enter a valid email address')}
                         </p>
                     )}
                     <InputError message={errors.email} className="mt-1" />
@@ -205,7 +207,7 @@ export default function Register() {
                         htmlFor="phone"
                         className="mb-1.5 block text-sm font-medium text-gray-700"
                     >
-                        Phone Number
+                        {t('Phone Number')}
                     </label>
                     <div className={inputWrap}>
                         <Phone size={18} className={inputIcon} />
@@ -241,13 +243,12 @@ export default function Register() {
                     </div>
                     {data.phone !== '' && phoneValid && network && (
                         <p className="mt-1 text-xs font-medium text-green-600">
-                            {network} number detected
+                            {t(':network number detected', { network })}
                         </p>
                     )}
                     {data.phone !== '' && !phoneValid && (
                         <p className="mt-1 text-xs text-red-500">
-                            Enter a valid 10-digit Rwanda mobile number
-                            (072, 073, 078, or 079)
+                            {t('Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079)')}
                         </p>
                     )}
                     <InputError message={errors.phone} className="mt-1" />
@@ -259,7 +260,7 @@ export default function Register() {
                             htmlFor="password"
                             className="mb-1.5 block text-sm font-medium text-gray-700"
                         >
-                            Password
+                            {t('Password')}
                         </label>
                         <div className={inputWrap}>
                             <Lock size={19} className={inputIcon} />
@@ -288,7 +289,7 @@ export default function Register() {
                             htmlFor="password_confirmation"
                             className="mb-1.5 block text-sm font-medium text-gray-700"
                         >
-                            Confirm Password
+                            {t('Confirm Password')}
                         </label>
                         <div className={inputWrap}>
                             <Lock size={19} className={inputIcon} />
@@ -317,7 +318,7 @@ export default function Register() {
                         {data.password_confirmation !== '' &&
                             !passwordsMatch && (
                                 <p className="mt-1 text-xs text-red-500">
-                                    Passwords do not match
+                                    {t('Passwords do not match')}
                                 </p>
                             )}
                         <InputError
@@ -330,9 +331,9 @@ export default function Register() {
                 {data.password !== '' && (
                     <div>
                         <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>Password strength</span>
+                            <span>{t('Password strength')}</span>
                             <span className="font-medium">
-                                {strength.label}
+                                {t(strength.label)}
                             </span>
                         </div>
                         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
@@ -342,8 +343,7 @@ export default function Register() {
                             />
                         </div>
                         <p className="mt-1.5 text-xs text-gray-400">
-                            Use at least 8 characters with upper/lowercase,
-                            numbers, and symbols.
+                            {t('Use at least 8 characters with upper/lowercase, numbers, and symbols.')}
                         </p>
                     </div>
                 )}
@@ -354,22 +354,22 @@ export default function Register() {
                         disabled={!isFormValid || processing}
                         className="w-full rounded-xl bg-[#D9A441] py-3.5 text-sm font-semibold tracking-wide text-[#0E3B2E] shadow-sm transition-all hover:bg-[#c9962f] hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
                     >
-                        {processing ? 'CREATING ACCOUNT...' : 'REGISTER'}
+                        {processing ? t('CREATING ACCOUNT...') : t('REGISTER')}
                     </button>
                     {!isFormValid && (
                         <p className="mt-2 text-center text-xs text-gray-400">
-                            Fill in all fields correctly to continue
+                            {t('Fill in all fields correctly to continue')}
                         </p>
                     )}
                 </div>
 
                 <p className="text-center text-sm text-gray-500">
-                    Already have an account?{' '}
+                    {t('Already have an account?')}{' '}
                     <Link
                         href={route('login')}
                         className="font-medium text-[#0E3B2E] hover:underline"
                     >
-                        Login
+                        {t('Login')}
                     </Link>
                 </p>
             </form>

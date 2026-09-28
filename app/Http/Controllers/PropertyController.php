@@ -140,7 +140,7 @@ class PropertyController extends Controller
     {
         $this->authorizePropertyAccess($request->user(), $property);
 
-        $property->load(['owner', 'cell.sector.district.province', 'images', 'units.unitType']);
+        $property->load(['owner', 'cell.sector.district.province', 'images', 'units.unitType', 'units.images']);
         $property->loadCount([
             'units as units_available_count' => function ($q) { $q->where('status', 'available'); },
             'units as units_occupied_count' => function ($q) { $q->where('status', 'occupied'); },

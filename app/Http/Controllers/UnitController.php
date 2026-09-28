@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Property;
+use App\Models\RentPayment;
 use App\Models\Unit;
 use App\Models\UnitType;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +26,7 @@ class UnitController extends Controller
     {
         $this->authorizePropertyAccess($request->user(), $property);
 
-        $units = Unit::with(['unitType', 'activeTenancy.tenant'])
+        $units = Unit::with(['unitType', 'images', 'activeTenancy.tenant'])
             ->where('property_id', $property->id)
             ->when($request->status, function ($query, $status) {
                 return $query->where('status', $status);
@@ -99,6 +103,8 @@ class UnitController extends Controller
                 'floor_number' => 'nullable|integer|min:-10|max:200',
                 'rent_frequency' => 'required|in:monthly,weekly,daily,quarterly,yearly',
                 'status' => 'required|in:available,occupied,maintenance,reserved,inactive',
+                'images' => 'nullable|array|max:10',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
 
             $unit = Unit::create([
@@ -112,6 +118,8 @@ class UnitController extends Controller
                 'description' => $request->description,
                 'status' => $request->status,
             ]);
+
+            $this->storeImages($unit, $request->file('images', []));
 
             Log::info('Unit created: #' . $unit->id . ' ('. $unit->unit_number .') for property #' . $property->id);
 
@@ -140,7 +148,31 @@ class UnitController extends Controller
             abort(404);
         }
 
-        $unit->load('unitType', 'property', 'activeTenancy.tenant', 'activeTenancy.leases');
+        $unit->load([
+            'unitType',
+            'property',
+            'images',
+            'scheduledTenancy.tenant',
+            'scheduledTenancy.rentCharges.payments',
+            'activeTenancy.tenant',
+            'activeTenancy.leases',
+            'activeTenancy.rentCharges.payments',
+            'activeTenancy.renewals',
+            'activeTenancy.moveOutInspection',
+            'tenancies.tenant',
+            'tenancies.rentCharges.payments',
+            'tenancies.renewedFrom',
+            'tenancies.moveOutInspection',
+        ]);
+        if ($unit->activeTenancy) {
+            $chainIds = $unit->activeTenancy->renewalChain()->pluck('id');
+            $depositPaid = RentPayment::query()
+                ->whereHas('charge', fn ($query) => $query
+                    ->whereIn('tenancy_id', $chainIds)
+                    ->where('charge_type', 'deposit'))
+                ->sum('amount');
+            $unit->activeTenancy->setAttribute('deposit_received_amount', number_format((float) $depositPaid, 2, '.', ''));
+        }
 
         return Inertia::render('Units/Show', [
             'property' => $property,
@@ -163,7 +195,7 @@ class UnitController extends Controller
 
         return Inertia::render('Units/Edit', [
             'property' => $property,
-            'unit' => $unit->load('unitType'),
+            'unit' => $unit->load('unitType', 'images'),
             'unitTypes' => $unitTypes,
         ]);
     }
@@ -189,18 +221,52 @@ class UnitController extends Controller
                 'floor_number' => 'nullable|integer|min:-10|max:200',
                 'rent_frequency' => 'required|in:monthly,weekly,daily,quarterly,yearly',
                 'status' => 'required|in:available,occupied,maintenance,reserved,inactive',
+                'images' => 'nullable|array|max:10',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'delete_images' => 'nullable|array',
+                'delete_images.*' => [
+                    'integer',
+                    Rule::exists('unit_images', 'id')->where('unit_id', $unit->id),
+                ],
             ]);
 
-            $unit->update([
-                'unit_type_id' => $request->unit_type_id,
-                'unit_number' => $request->unit_number,
-                'floor_number' => $request->floor_number,
-                'rent_amount' => $request->rent_amount,
-                'rent_frequency' => $request->rent_frequency,
-                'size_sqm' => $request->size_sqm,
-                'description' => $request->description,
-                'status' => $request->status,
-            ]);
+            DB::transaction(function () use ($request, $unit) {
+                $lockedUnit = Unit::query()->whereKey($unit->id)->lockForUpdate()->firstOrFail();
+                if ($lockedUnit->tenancies()->where('status', 'active')->exists() && $request->status !== 'occupied') {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'status' => 'A unit with an active tenancy must remain occupied.',
+                    ]);
+                }
+                if ($lockedUnit->tenancies()->where('status', 'scheduled')->whereNull('renewed_from_id')->exists()
+                    && $request->status !== 'reserved') {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'status' => 'A unit with a scheduled move-in must remain reserved.',
+                    ]);
+                }
+
+                $lockedUnit->update([
+                    'unit_type_id' => $request->unit_type_id,
+                    'unit_number' => $request->unit_number,
+                    'floor_number' => $request->floor_number,
+                    'rent_amount' => $request->rent_amount,
+                    'rent_frequency' => $request->rent_frequency,
+                    'size_sqm' => $request->size_sqm,
+                    'description' => $request->description,
+                    'status' => $request->status,
+                ]);
+            });
+
+            foreach ($request->input('delete_images', []) as $imageId) {
+                $image = $unit->images()->findOrFail($imageId);
+                $this->deleteImageFile($image->image_path);
+                $image->delete();
+            }
+
+            if (!$unit->images()->where('is_cover', true)->exists()) {
+                $unit->images()->oldest('id')->first()?->update(['is_cover' => true]);
+            }
+
+            $this->storeImages($unit, $request->file('images', []));
 
             Log::info('Unit updated: #' . $unit->id . ' (' . $unit->unit_number . ')');
 
@@ -230,8 +296,25 @@ class UnitController extends Controller
                 abort(404);
             }
 
+            $imagePaths = DB::transaction(function () use ($unit) {
+                $lockedUnit = Unit::query()->whereKey($unit->id)->lockForUpdate()->firstOrFail();
+                if ($lockedUnit->tenancies()->exists()) {
+                    return null;
+                }
+
+                $paths = $lockedUnit->images()->pluck('image_path')->all();
+                $lockedUnit->delete();
+
+                return $paths;
+            });
+            if ($imagePaths === null) {
+                return back()->with('error', 'This unit has tenancy history and cannot be deleted.');
+            }
+
             $unitNum = $unit->unit_number;
-            $unit->delete();
+            foreach ($imagePaths as $imagePath) {
+                $this->deleteImageFile($imagePath);
+            }
 
             Log::info('Unit deleted: ' . $unitNum . ' (property #' . $property->id . ')');
 
@@ -252,6 +335,26 @@ class UnitController extends Controller
     {
         if (!$user->isAdmin() && $property->owner_id !== $user->id) {
             abort(403, 'You do not have permission to access this property.');
+        }
+    }
+
+    private function storeImages(Unit $unit, array $images): void
+    {
+        foreach ($images as $image) {
+            $path = $image->store('unit-images', 'public');
+            $isCover = !$unit->images()->where('is_cover', true)->exists();
+
+            $unit->images()->create([
+                'image_path' => $path,
+                'is_cover' => $isCover,
+            ]);
+        }
+    }
+
+    private function deleteImageFile(string $path): void
+    {
+        if (!preg_match('/^https?:\/\//i', $path)) {
+            Storage::disk('public')->delete($path);
         }
     }
 }
