@@ -25,8 +25,26 @@ class Tenant extends Model
         'phone',
         'national_id',
         'address',
+        'province_id',
+        'district_id',
+        'sector_id',
         'status',
     ];
+
+    public function province()
+    {
+        return $this->belongsTo(Province::class);
+    }
+
+    public function district()
+    {
+        return $this->belongsTo(District::class);
+    }
+
+    public function sector()
+    {
+        return $this->belongsTo(Sector::class);
+    }
 
     public function tenancies()
     {

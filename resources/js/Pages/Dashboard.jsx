@@ -20,16 +20,27 @@ const imageSource = (path) => {
     return /^https?:\/\//i.test(path) ? path : `/storage/${path}`;
 };
 
+const localeForLanguage = (language) => ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
+
+const formatDate = (value, language) => {
+    if (!value) return '—';
+    const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+
+    return Number.isNaN(date.getTime())
+        ? '—'
+        : new Intl.DateTimeFormat(localeForLanguage(language), { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+};
+
 export default function Dashboard({ summary, recentProperties = [], recentTenancies = [], recentInquiries = [] }) {
     const { auth } = usePage().props;
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const user = auth.user;
     const [modalDismissed, setModalDismissed] = useState(false);
     const isAdmin = user.role === 'admin';
     const isExpired = !isAdmin && user.expires_at && new Date(user.expires_at) < new Date();
 
     if (isExpired) {
-        return <AuthenticatedLayout header="Dashboard"><Head title={t('Dashboard')} /><div className="mx-auto max-w-lg rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50"><CalendarX size={30} className="text-red-500" /></div><h2 className="mt-4 font-[Sora] text-xl font-bold text-gray-800">{t('Your account has expired')}</h2><p className="mt-2 text-sm text-gray-500">{t('Your subscription ended on :date. Please contact support to renew access.', { date: new Date(user.expires_at).toLocaleDateString() })}</p></div></AuthenticatedLayout>;
+        return <AuthenticatedLayout header="Dashboard"><Head title={t('Dashboard')} /><div className="mx-auto max-w-lg rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50"><CalendarX size={30} className="text-red-500" /></div><h2 className="mt-4 font-[Sora] text-xl font-bold text-gray-800">{t('Your account has expired')}</h2><p className="mt-2 text-sm text-gray-500">{t('Your subscription ended on :date. Please contact support to renew access.', { date: formatDate(user.expires_at, language) })}</p></div></AuthenticatedLayout>;
     }
     if (!user.profile_completed && !modalDismissed) {
         return <AuthenticatedLayout header="Dashboard"><Head title={t('Dashboard')} /><CompleteProfileModal onDone={() => setModalDismissed(true)} /></AuthenticatedLayout>;
@@ -107,7 +118,7 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
                                     <tr key={tenancy.id} className="transition hover:bg-gray-50/70">
                                         <td className="px-6 py-4"><Link href={route('tenants.show', tenancy.tenant?.id)} className="font-semibold text-gray-900 hover:text-[#0E3B2E] hover:underline">{tenancy.tenant?.name || t('Tenant')}</Link><p className="mt-1 text-xs text-gray-500">{tenancy.tenant?.phone || tenancy.tenant?.email || '—'}</p></td>
                                         <td className="px-6 py-4"><p className="font-medium text-gray-800">{tenancy.unit?.property?.name || t('Property')}</p><p className="mt-1 text-xs text-gray-500">{t('Unit')} {tenancy.unit?.unit_number || '—'}</p></td>
-                                        <td className="px-6 py-4 text-xs text-gray-600">{tenancy.start_date} – {tenancy.end_date || t('Ongoing')}</td>
+                                        <td className="px-6 py-4 text-xs text-gray-600">{formatDate(tenancy.start_date, language)} – {tenancy.end_date ? formatDate(tenancy.end_date, language) : t('Ongoing')}</td>
                                         <td className="px-6 py-4 font-medium text-gray-800">{Number(tenancy.monthly_rent || 0).toLocaleString()} RWF <span className="text-xs font-normal text-gray-500">/{tenancy.rent_frequency || 'monthly'}</span></td>
                                         <td className="px-6 py-4"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"><CheckCircle2 size={13} /> {t('Active')}</span></td>
                                         <td className="px-6 py-4"><Link href={route('properties.units.show', [tenancy.unit?.property_id, tenancy.unit?.id])} className="inline-flex items-center gap-1 font-medium text-[#0E3B2E] hover:underline">{t('Open unit')} <ArrowUpRight size={14} /></Link></td>

@@ -12,6 +12,7 @@ import {
     CalendarClock,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/localization';
 
 const statusStyles = {
     approved: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
@@ -24,9 +25,14 @@ const roleStyles = {
     owner: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/10',
 };
 
-function formatDate(value) {
+function formatDate(value, language) {
     if (!value) return '—';
-    return new Date(`${String(value).slice(0, 10)}T12:00:00`).toLocaleDateString();
+    const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+    const locale = ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
+
+    return Number.isNaN(date.getTime())
+        ? '—'
+        : new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
 function toInputDate(value) {
@@ -79,6 +85,7 @@ function PlanBadge({ user }) {
 
 export default function Users({ users, filters }) {
     const { auth, flash } = usePage().props;
+    const { language } = useTranslation();
     const currentUserId = auth.user.id;
     const [search, setSearch] = useState(filters.search || '');
     const [exportOpen, setExportOpen] = useState(false);
@@ -388,13 +395,13 @@ export default function Users({ users, filters }) {
                                                     <p className="text-xs text-gray-400">Owner plan not applicable</p>
                                                 ) : (
                                                     <p className="text-xs text-gray-400">
-                                                        {user.expires_at ? `Until ${formatDate(user.expires_at)}` : 'No expiry date set'}
+                                                        {user.expires_at ? `Until ${formatDate(user.expires_at, language)}` : 'No expiry date set'}
                                                     </p>
                                                 )}
                                             </div>
                                         </td>
                                         <td className="px-5 py-3.5 text-xs text-gray-400">
-                                            {formatDate(user.created_at)}
+                                            {formatDate(user.created_at, language)}
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center justify-end gap-2">

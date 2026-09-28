@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Tenant;
 use App\Models\Unit;
+use App\Services\TenantLocationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Validation\Rule;
 
 class TenantController extends Controller
 {
@@ -15,23 +17,24 @@ class TenantController extends Controller
     {
         abort_unless($request->user() && in_array($request->user()->role, ['admin', 'owner'], true), 403);
         $data = $request->validate([
+            ...app(TenantLocationService::class)->validationRules($request),
             'type' => ['required', 'in:individual,company'],
             'first_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'last_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'company_name' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'identity_type' => ['required', 'in:national_id,passport'],
-            'identity_number' => ['required', 'string', 'max:100'],
-            'registration_number' => ['required_if:type,company', 'nullable', 'string', 'max:100'],
+            'identity_number' => ['required', 'string', 'max:100', Rule::when($request->input('identity_type') === 'national_id', ['digits:16'])],
             'tax_identification_number' => ['required_if:type,company', 'nullable', 'string', 'max:100'],
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
-            'address' => ['required', 'string', 'max:1000'],
+            'phone' => ['required', 'regex:/^(078|072|073)[0-9]{7}$/'],
         ]);
 
         Tenant::create($data + [
             'name' => $data['company_name'] ?? trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? '')),
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
+            'registration_number' => null,
+            'address' => app(TenantLocationService::class)->address($data),
             'created_by' => $request->user()->id,
             'status' => 'active',
         ]);
@@ -46,29 +49,29 @@ class TenantController extends Controller
         $this->authorizeTenantAccess($user, $tenant);
 
         $data = $request->validate([
+            ...app(TenantLocationService::class)->validationRules($request),
             'type' => ['required', 'in:individual,company'],
             'first_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'last_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'company_name' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'identity_type' => ['required', 'in:national_id,passport'],
-            'identity_number' => ['required', 'string', 'max:100'],
-            'registration_number' => ['required_if:type,company', 'nullable', 'string', 'max:100'],
+            'identity_number' => ['required', 'string', 'max:100', Rule::when($request->input('identity_type') === 'national_id', ['digits:16'])],
             'tax_identification_number' => ['required_if:type,company', 'nullable', 'string', 'max:100'],
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
-            'address' => ['required', 'string', 'max:1000'],
+            'phone' => ['required', 'regex:/^(078|072|073)[0-9]{7}$/'],
         ]);
 
         $tenant->update([
             ...$data,
+            'address' => app(TenantLocationService::class)->address($data),
             'name' => $data['type'] === 'company'
                 ? $data['company_name']
                 : trim($data['first_name'].' '.$data['last_name']),
             'first_name' => $data['type'] === 'individual' ? $data['first_name'] : null,
             'last_name' => $data['type'] === 'individual' ? $data['last_name'] : null,
             'company_name' => $data['type'] === 'company' ? $data['company_name'] : null,
-            'registration_number' => $data['type'] === 'company' ? $data['registration_number'] : null,
+            'registration_number' => null,
             'tax_identification_number' => $data['type'] === 'company' ? $data['tax_identification_number'] : null,
             'contact_person' => $data['type'] === 'company' ? $data['contact_person'] : null,
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,

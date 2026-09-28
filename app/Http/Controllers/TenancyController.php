@@ -11,6 +11,7 @@ use App\Models\Tenancy;
 use App\Models\Tenant;
 use App\Models\Unit;
 use App\Services\RentScheduleService;
+use App\Services\TenantLocationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TenancyController extends Controller
@@ -35,19 +37,18 @@ class TenancyController extends Controller
         $this->authorizePropertyAccess($request->user(), $property);
 
         $data = $request->validate([
+            ...app(TenantLocationService::class)->validationRules($request),
             'type' => ['required', 'in:individual,company'],
             'first_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'last_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'identity_type' => ['required', 'in:national_id,passport'],
-            'identity_number' => ['required', 'string', 'max:100'],
+            'identity_number' => ['required', 'string', 'max:100', Rule::when($request->input('identity_type') === 'national_id', ['digits:16'])],
             'name' => ['nullable', 'string', 'max:255'],
             'company_name' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
-            'registration_number' => ['nullable', 'required_if:type,company', 'string', 'max:100'],
             'tax_identification_number' => ['nullable', 'required_if:type,company', 'string', 'max:100'],
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
-            'address' => ['required', 'string', 'max:1000'],
+            'phone' => ['required', 'regex:/^(078|072|073)[0-9]{7}$/'],
         ]);
 
         Tenant::create([
@@ -56,6 +57,8 @@ class TenancyController extends Controller
                 ? $data['company_name']
                 : trim($data['first_name'].' '.$data['last_name']),
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
+            'registration_number' => null,
+            'address' => app(TenantLocationService::class)->address($data),
             'created_by' => $request->user()->id,
             'status' => 'active',
         ]);
@@ -82,25 +85,28 @@ class TenancyController extends Controller
         $data = $request->validate([
             'tenant_id' => ['nullable', 'exists:tenants,id'],
             'tenant_type' => ['required_without:tenant_id', 'nullable', 'in:individual,company'],
-            'first_name' => [$requiredForNewTenant('individual'), 'string', 'max:255'],
-            'last_name' => [$requiredForNewTenant('individual'), 'string', 'max:255'],
+            'first_name' => [$requiredForNewTenant('individual'), 'nullable', 'string', 'max:255'],
+            'last_name' => [$requiredForNewTenant('individual'), 'nullable', 'string', 'max:255'],
             'email' => [$hasExistingTenant ? 'nullable' : 'required', 'email', 'max:255'],
-            'phone' => [$hasExistingTenant ? 'nullable' : 'required', 'string', 'max:30'],
-            'address' => [$hasExistingTenant ? 'nullable' : 'required', 'string', 'max:1000'],
+            'phone' => [$hasExistingTenant ? 'nullable' : 'required', 'regex:/^(078|072|073)[0-9]{7}$/'],
             'identity_type' => [$hasExistingTenant ? 'nullable' : 'required', 'in:national_id,passport'],
-            'identity_number' => [$hasExistingTenant ? 'nullable' : 'required', 'string', 'max:100'],
-            'company_name' => [$requiredForNewTenant('company'), 'string', 'max:255'],
-            'registration_number' => [$requiredForNewTenant('company'), 'string', 'max:100'],
-            'tax_identification_number' => [$requiredForNewTenant('company'), 'string', 'max:100'],
-            'contact_person' => [$requiredForNewTenant('company'), 'string', 'max:255'],
+            'identity_number' => [
+                $hasExistingTenant ? 'nullable' : 'required',
+                'string',
+                'max:100',
+                Rule::when(! $hasExistingTenant && $request->input('identity_type') === 'national_id', ['digits:16']),
+            ],
+            'company_name' => [$requiredForNewTenant('company'), 'nullable', 'string', 'max:255'],
+            'tax_identification_number' => [$requiredForNewTenant('company'), 'nullable', 'string', 'max:100'],
+            'contact_person' => [$requiredForNewTenant('company'), 'nullable', 'string', 'max:255'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after:start_date'],
             'monthly_rent' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
             'rent_frequency' => ['required', 'in:daily,weekly,monthly,quarterly,yearly'],
-            'due_day' => ['nullable', 'required_if:rent_frequency,monthly', 'integer', 'between:1,31'],
             'deposit_amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
+            ...($hasExistingTenant ? [] : app(TenantLocationService::class)->validationRules($request)),
         ]);
 
         DB::transaction(function () use ($data, $request, $unit, $tenantType) {
@@ -125,7 +131,7 @@ class TenancyController extends Controller
                     'first_name' => $data['first_name'] ?? null,
                     'last_name' => $data['last_name'] ?? null,
                     'company_name' => $data['company_name'] ?? null,
-                    'registration_number' => $data['registration_number'] ?? null,
+                    'registration_number' => null,
                     'tax_identification_number' => $data['tax_identification_number'] ?? null,
                     'contact_person' => $data['contact_person'] ?? null,
                     'identity_type' => $data['identity_type'] ?? null,
@@ -133,7 +139,10 @@ class TenancyController extends Controller
                     'national_id' => ($data['identity_type'] ?? null) === 'national_id' ? $data['identity_number'] : null,
                     'email' => $data['email'] ?? null,
                     'phone' => $data['phone'] ?? null,
-                    'address' => $data['address'] ?? null,
+                    'address' => app(TenantLocationService::class)->address($data),
+                    'province_id' => $data['province_id'],
+                    'district_id' => $data['district_id'],
+                    'sector_id' => $data['sector_id'],
                     'status' => 'active',
                 ]);
                 $tenantQuery = Tenant::whereKey($tenant->id);
@@ -159,7 +168,6 @@ class TenancyController extends Controller
                 || ($tenant->type === 'individual' && (! $tenant->first_name || ! $tenant->last_name))
                 || ($tenant->type === 'company' && (
                     ! $tenant->company_name
-                    || ! $tenant->registration_number
                     || ! $tenant->tax_identification_number
                     || ! $tenant->contact_person
                 ))
@@ -177,7 +185,7 @@ class TenancyController extends Controller
                 'end_date' => $data['end_date'],
                 'monthly_rent' => $data['monthly_rent'],
                 'rent_frequency' => $data['rent_frequency'],
-                'due_day' => $data['rent_frequency'] === 'monthly' ? $data['due_day'] : null,
+                'due_day' => null,
                 'deposit_amount' => $data['deposit_amount'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'status' => CarbonImmutable::parse($data['start_date'])->isFuture() ? 'scheduled' : 'active',

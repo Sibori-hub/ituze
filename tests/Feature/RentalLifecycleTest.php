@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Lease;
+use App\Models\District;
 use App\Models\Property;
+use App\Models\Province;
 use App\Models\RentCharge;
 use App\Models\RentPayment;
+use App\Models\Sector;
 use App\Models\Tenancy;
 use App\Models\Tenant;
 use App\Models\Unit;
@@ -27,7 +30,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'users'] as $table) {
+        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -45,6 +48,26 @@ class RentalLifecycleTest extends TestCase
             $table->string('remember_token')->nullable();
             $table->timestamps();
         });
+        Schema::create('provinces', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        Schema::create('districts', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('province_id');
+            $table->string('name');
+            $table->timestamps();
+        });
+        Schema::create('sectors', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('district_id');
+            $table->string('name');
+            $table->timestamps();
+        });
+        $province = Province::create(['name' => 'Kigali City']);
+        $district = District::create(['name' => 'Nyarugenge', 'province_id' => $province->id]);
+        Sector::create(['name' => 'Nyarugenge', 'district_id' => $district->id]);
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
             $table->foreignId('owner_id')->constrained('users');
@@ -89,6 +112,9 @@ class RentalLifecycleTest extends TestCase
             $table->string('phone')->nullable();
             $table->string('national_id')->nullable();
             $table->text('address')->nullable();
+            $table->unsignedBigInteger('province_id')->nullable();
+            $table->unsignedBigInteger('district_id')->nullable();
+            $table->unsignedBigInteger('sector_id')->nullable();
             $table->string('status')->default('active');
             $table->timestamps();
         });
@@ -251,19 +277,17 @@ class RentalLifecycleTest extends TestCase
             ->post(route('properties.units.tenancy.store', [$property, $unit]), [
                 'tenant_type' => 'company',
                 'company_name' => 'Example Services Ltd',
-                'registration_number' => 'REG-2048',
                 'tax_identification_number' => 'TIN-883422',
                 'contact_person' => 'Aline Representative',
                 'identity_type' => 'passport',
                 'identity_number' => 'PA123456',
                 'email' => 'aline@example.com',
-                'phone' => '+250780123456',
-                'address' => 'Kigali, Rwanda',
+                'phone' => '0780123456',
+                ...$this->tenantLocationData(),
                 'start_date' => '2026-01-01',
                 'end_date' => '2026-12-31',
                 'monthly_rent' => '600.00',
                 'rent_frequency' => 'monthly',
-                'due_day' => '15',
                 'deposit_amount' => '250.00',
                 'lease' => UploadedFile::fake()->create('signed-lease.pdf', 30, 'application/pdf'),
             ])
@@ -273,13 +297,80 @@ class RentalLifecycleTest extends TestCase
         $this->assertSame('Aline Representative', $tenant->contact_person);
         $this->assertSame('TIN-883422', $tenant->tax_identification_number);
         $this->assertSame('PA123456', $tenant->identity_number);
+        $this->assertNull($tenant->registration_number);
+        $this->assertSame('Kigali City, Nyarugenge, Nyarugenge', $tenant->address);
+        $this->assertSame(1, $tenant->province_id);
         $tenancy = Tenancy::query()->where('tenant_id', $tenant->id)->firstOrFail();
         $this->assertSame('monthly', $tenancy->rent_frequency);
-        $this->assertSame(15, $tenancy->due_day);
+        $this->assertNull($tenancy->due_day);
         $this->assertSame('occupied', $unit->fresh()->status);
         $this->assertSame(1, $tenancy->leases()->count());
-        $this->assertSame(13, $tenancy->rentCharges()->where('charge_type', 'rent')->count());
+        $this->assertSame(12, $tenancy->rentCharges()->where('charge_type', 'rent')->count());
         $this->assertSame(1, $tenancy->rentCharges()->where('charge_type', 'deposit')->count());
+    }
+
+    public function test_tenant_creation_validates_identity_phone_and_location_hierarchy(): void
+    {
+        [$property, $owner] = $this->makeUnitAndTenant();
+        $location = $this->tenantLocationData();
+        $otherProvince = Province::create(['name' => 'Eastern Province']);
+        $otherDistrict = District::create(['name' => 'Rwamagana', 'province_id' => $otherProvince->id]);
+        $otherSector = Sector::create(['name' => 'Rwamagana', 'district_id' => $otherDistrict->id]);
+        $payload = [
+            'type' => 'individual',
+            'first_name' => 'Aline',
+            'last_name' => 'Tenant',
+            'identity_type' => 'national_id',
+            'identity_number' => '123456789012345',
+            'email' => 'aline-new@example.com',
+            'phone' => '0780123456',
+            ...$location,
+        ];
+
+        $this->actingAs($owner)
+            ->post(route('tenants.store'), $payload)
+            ->assertSessionHasErrors('identity_number');
+
+        $payload['identity_number'] = '1234567890123456';
+        $payload['phone'] = '0790123456';
+        $this->post(route('tenants.store'), $payload)
+            ->assertSessionHasErrors('phone');
+
+        $payload['phone'] = '0720123456';
+        $payload['sector_id'] = $otherSector->id;
+        $this->post(route('tenants.store'), $payload)
+            ->assertSessionHasErrors('sector_id');
+
+        $payload['sector_id'] = $location['sector_id'];
+        $this->post(route('tenants.store'), $payload)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('tenants', [
+            'email' => 'aline-new@example.com',
+            'identity_number' => '1234567890123456',
+            'phone' => '0720123456',
+            'province_id' => $location['province_id'],
+            'district_id' => $location['district_id'],
+            'sector_id' => $location['sector_id'],
+            'address' => 'Kigali City, Nyarugenge, Nyarugenge',
+        ]);
+
+        $payload['email'] = 'property-tenant@example.com';
+        $payload['identity_number'] = '2234567890123456';
+        $payload['phone'] = '0781234567';
+        $this->post(route('properties.tenants.store', $property), $payload)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('tenants', [
+            'email' => 'property-tenant@example.com',
+            'identity_number' => '2234567890123456',
+            'phone' => '0781234567',
+            'province_id' => $location['province_id'],
+            'district_id' => $location['district_id'],
+            'sector_id' => $location['sector_id'],
+        ]);
     }
 
     public function test_future_move_in_reserves_then_occupies_the_unit_automatically(): void
@@ -296,8 +387,8 @@ class RentalLifecycleTest extends TestCase
                 'identity_type' => 'national_id',
                 'identity_number' => '1199887766554433',
                 'email' => 'future@example.com',
-                'phone' => '+250780999000',
-                'address' => 'Kigali, Rwanda',
+                'phone' => '0780999000',
+                ...$this->tenantLocationData(),
                 'start_date' => '2026-01-02',
                 'end_date' => '2026-12-31',
                 'monthly_rent' => '500.00',
@@ -533,6 +624,15 @@ class RentalLifecycleTest extends TestCase
                 ->where('summary.payments_received', 200)
                 ->where('summary.outstanding_balance', 300)
                 ->has('properties', 1));
+    }
+
+    private function tenantLocationData(): array
+    {
+        return [
+            'province_id' => Province::query()->value('id'),
+            'district_id' => District::query()->value('id'),
+            'sector_id' => Sector::query()->value('id'),
+        ];
     }
 
     private function makeUnitAndTenant(): array

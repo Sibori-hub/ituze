@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Building2, Search, Users, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
+import TenantLocationFields from '@/Components/TenantLocationFields';
 
 export default function TenantsIndex({ tenants, filters }) {
     const { t } = useTranslation();
@@ -14,14 +15,15 @@ export default function TenantsIndex({ tenants, filters }) {
         first_name: '',
         last_name: '',
         company_name: '',
-        registration_number: '',
         tax_identification_number: '',
         contact_person: '',
         identity_type: 'national_id',
         identity_number: '',
         email: '',
         phone: '',
-        address: '',
+        province_id: '',
+        district_id: '',
+        sector_id: '',
     });
 
     useEffect(() => {
@@ -85,7 +87,7 @@ export default function TenantsIndex({ tenants, filters }) {
                                     <tr key={tenant.id} className="transition hover:bg-gray-50/70">
                                         <td className="px-5 py-4">
                                             <Link href={route('tenants.show', tenant.id)} className="font-semibold text-gray-900 hover:text-[#0E3B2E] hover:underline">{tenant.name}</Link>
-                                            <p className="mt-1 text-xs capitalize text-gray-500">{t(tenant.type)}{tenant.type === 'company' && tenant.registration_number ? ` · ${t('Reg.')}. ${tenant.registration_number}` : ''}</p>
+                                            <p className="mt-1 text-xs capitalize text-gray-500">{t(tenant.type)}</p>
                                             {tenant.type === 'company' && tenant.contact_person && <p className="mt-1 text-xs text-gray-500">{t('Representative')}: {tenant.contact_person}</p>}
                                         </td>
                                         <td className="px-5 py-4 text-gray-700">
@@ -138,17 +140,16 @@ export default function TenantsIndex({ tenants, filters }) {
                                 <label className="text-sm font-medium text-gray-700">{t('Last name')}<input required value={form.data.last_name} onChange={event => form.setData('last_name', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                             </> : <>
                                 <label className="text-sm font-medium text-gray-700">{t('Company name')}<input required value={form.data.company_name} onChange={event => form.setData('company_name', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                <label className="text-sm font-medium text-gray-700">{t('Company registration number')}<input required value={form.data.registration_number} onChange={event => form.setData('registration_number', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                                 <label className="text-sm font-medium text-gray-700">{t('Company TIN')}<input required value={form.data.tax_identification_number} onChange={event => form.setData('tax_identification_number', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                                 <label className="text-sm font-medium text-gray-700">{t('Representative full name')}<input required value={form.data.contact_person} onChange={event => form.setData('contact_person', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                             </>}
                             <label className="text-sm font-medium text-gray-700">{t('Identity type')}
                                 <select value={form.data.identity_type} onChange={event => form.setData('identity_type', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="national_id">{t('National ID')}</option><option value="passport">{t('Passport')}</option></select>
                             </label>
-                            <label className="text-sm font-medium text-gray-700">{t('Identity number')}<input required value={form.data.identity_number} onChange={event => form.setData('identity_number', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                            <label className="text-sm font-medium text-gray-700">{t(form.data.identity_type === 'national_id' ? 'National ID number' : 'Passport number')}<input required value={form.data.identity_number} maxLength={form.data.identity_type === 'national_id' ? 16 : 100} inputMode={form.data.identity_type === 'national_id' ? 'numeric' : 'text'} pattern={form.data.identity_type === 'national_id' ? '[0-9]{16}' : undefined} onChange={event => form.setData('identity_number', form.data.identity_type === 'national_id' ? event.target.value.replace(/\D/g, '').slice(0, 16) : event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                             <label className="text-sm font-medium text-gray-700">{t('Email')}<input required type="email" value={form.data.email} onChange={event => form.setData('email', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                            <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required value={form.data.phone} onChange={event => form.setData('phone', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                            <label className="text-sm font-medium text-gray-700 sm:col-span-2">{t('Address')}<textarea required value={form.data.address} onChange={event => form.setData('address', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                            <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required type="tel" value={form.data.phone} maxLength={10} inputMode="numeric" pattern="(078|072|073)[0-9]{7}" onChange={event => form.setData('phone', event.target.value.replace(/\D/g, '').slice(0, 10))} className="mt-1 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Enter 10 digits starting with 078, 072, or 073.')}</span></label>
+                            <TenantLocationFields data={form.data} setData={form.setData} errors={form.errors} t={t} />
                         </div>
                         {Object.values(form.errors).length > 0 && <p className="mt-4 text-sm text-red-700">{Object.values(form.errors)[0]}</p>}
                         <div className="mt-6 flex justify-end gap-2">

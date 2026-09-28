@@ -3,13 +3,15 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Building2, CalendarDays, Edit2, FileText, Mail, MapPin, Phone, UserRound, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from '@/localization';
+import TenantLocationFields from '@/Components/TenantLocationFields';
+import { countRentPeriods } from '@/utils/rentPeriodCalculator';
 
 const today = () => {
     const now = new Date();
     return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 };
 
-const formatDate = (value) => {
+const formatDate = (value, language) => {
     if (!value) return 'Ongoing';
     const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
 
@@ -27,14 +29,15 @@ export default function TenantShow({ tenant, availableUnits }) {
         first_name: tenant.first_name || (tenant.type === 'individual' ? nameParts[0] || '' : ''),
         last_name: tenant.last_name || (tenant.type === 'individual' ? nameParts.slice(1).join(' ') : ''),
         company_name: tenant.company_name || (tenant.type === 'company' ? tenant.name : ''),
-        registration_number: tenant.registration_number || '',
         tax_identification_number: tenant.tax_identification_number || '',
         contact_person: tenant.contact_person || '',
         identity_type: tenant.identity_type || 'national_id',
         identity_number: tenant.identity_number || tenant.national_id || '',
         email: tenant.email || '',
         phone: tenant.phone || '',
-        address: tenant.address || '',
+        province_id: tenant.province_id || '',
+        district_id: tenant.district_id || '',
+        sector_id: tenant.sector_id || '',
     });
     const assignment = useForm({
         tenant_id: tenant.id,
@@ -43,13 +46,16 @@ export default function TenantShow({ tenant, availableUnits }) {
         end_date: '',
         monthly_rent: '',
         rent_frequency: 'monthly',
-        due_day: '1',
         deposit_amount: '0',
         lease: null,
         notes: '',
     });
 
     const selectedUnit = availableUnits.find(unit => String(unit.id) === String(assignment.data.unit_id));
+    const rentPeriods = countRentPeriods(assignment.data.start_date, assignment.data.end_date, assignment.data.rent_frequency);
+    const totalRent = rentPeriods > 0 && Number(assignment.data.monthly_rent) > 0
+        ? rentPeriods * Number(assignment.data.monthly_rent)
+        : '';
 
     const assignUnit = (event) => {
         event.preventDefault();
@@ -122,17 +128,16 @@ export default function TenantShow({ tenant, availableUnits }) {
                                 <label className="text-sm font-medium text-gray-700">{t('Last name')}<input required value={profile.data.last_name} onChange={event => profile.setData('last_name', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                             </> : <>
                                 <label className="text-sm font-medium text-gray-700">{t('Company name')}<input required value={profile.data.company_name} onChange={event => profile.setData('company_name', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
-                                <label className="text-sm font-medium text-gray-700">{t('Registration number')}<input required value={profile.data.registration_number} onChange={event => profile.setData('registration_number', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                                 <label className="text-sm font-medium text-gray-700">{t('Company TIN')}<input required value={profile.data.tax_identification_number} onChange={event => profile.setData('tax_identification_number', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                                 <label className="text-sm font-medium text-gray-700">{t('Representative full name')}<input required value={profile.data.contact_person} onChange={event => profile.setData('contact_person', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                             </>}
                             <label className="text-sm font-medium text-gray-700">{t('Identity type')}
                                 <select value={profile.data.identity_type} onChange={event => profile.setData('identity_type', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200"><option value="national_id">{t('National ID')}</option><option value="passport">{t('Passport')}</option></select>
                             </label>
-                            <label className="text-sm font-medium text-gray-700">{t('Identity number')}<input required value={profile.data.identity_number} onChange={event => profile.setData('identity_number', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
+                            <label className="text-sm font-medium text-gray-700">{t(profile.data.identity_type === 'national_id' ? 'National ID number' : 'Passport number')}<input required value={profile.data.identity_number} maxLength={profile.data.identity_type === 'national_id' ? 16 : 100} inputMode={profile.data.identity_type === 'national_id' ? 'numeric' : 'text'} pattern={profile.data.identity_type === 'national_id' ? '[0-9]{16}' : undefined} onChange={event => profile.setData('identity_number', profile.data.identity_type === 'national_id' ? event.target.value.replace(/\D/g, '').slice(0, 16) : event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                             <label className="text-sm font-medium text-gray-700">{t('Email')}<input type="email" required value={profile.data.email} onChange={event => profile.setData('email', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
-                            <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required value={profile.data.phone} onChange={event => profile.setData('phone', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
-                            <label className="text-sm font-medium text-gray-700 sm:col-span-2 lg:col-span-3">{t('Address')}<textarea required value={profile.data.address} onChange={event => profile.setData('address', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
+                            <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required type="tel" value={profile.data.phone} maxLength={10} inputMode="numeric" pattern="(078|072|073)[0-9]{7}" onChange={event => profile.setData('phone', event.target.value.replace(/\D/g, '').slice(0, 10))} className="mt-1.5 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Enter 10 digits starting with 078, 072, or 073.')}</span></label>
+                            <TenantLocationFields data={profile.data} setData={profile.setData} errors={profile.errors} t={t} />
                             {Object.values(profile.errors).length > 0 && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 sm:col-span-2 lg:col-span-3">{Object.values(profile.errors)[0]}</p>}
                             <div className="flex justify-end gap-2 sm:col-span-2 lg:col-span-3">
                                 <button type="button" onClick={() => setEditing(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700">{t('Cancel')}</button>
@@ -146,7 +151,6 @@ export default function TenantShow({ tenant, availableUnits }) {
                             ) : (
                                 <>
                                     <Detail label={t('Company name')} value={tenant.company_name || tenant.name} />
-                                    <Detail label={t('Registration number')} value={tenant.registration_number} />
                                     <Detail label={t('Company TIN')} value={tenant.tax_identification_number} />
                                     <Detail label={t('Representative')} value={tenant.contact_person} />
                                 </>
@@ -194,12 +198,15 @@ export default function TenantShow({ tenant, availableUnits }) {
                                 {t('Rent per period (RWF)')}
                                 <input type="number" required min="0.01" step="0.01" value={assignment.data.monthly_rent} onChange={event => assignment.setData('monthly_rent', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
                             </label>
-                            {assignment.data.rent_frequency === 'monthly' && (
-                                <label className="text-sm font-medium text-gray-700">
-                                    {t('Monthly due day')}
-                                    <input type="number" required min="1" max="31" value={assignment.data.due_day} onChange={event => assignment.setData('due_day', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
-                                </label>
-                            )}
+                            <label className="text-sm font-medium text-gray-700">
+                                {t('Number of rent periods')}
+                                <input type="number" disabled value={rentPeriods || ''} className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" />
+                            </label>
+                            <label className="text-sm font-medium text-gray-700">
+                                {t('Total rent for lease (RWF)')}
+                                <input type="text" disabled value={totalRent === '' ? '' : Number(totalRent).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" />
+                                <span className="mt-1 block text-xs font-normal text-gray-500">{t('Each started rent period is charged in full. The security deposit is separate.')}</span>
+                            </label>
                             <label className="text-sm font-medium text-gray-700">
                                 {t('Security deposit (RWF)')}
                                 <input type="number" min="0" step="0.01" value={assignment.data.deposit_amount} onChange={event => assignment.setData('deposit_amount', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
@@ -250,7 +257,7 @@ export default function TenantShow({ tenant, availableUnits }) {
                                             <div>
                                                 <p className="font-semibold text-gray-900">{tenancy.unit?.property?.name} · {t('Unit')} {tenancy.unit?.unit_number}</p>
                                                 <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                                                    <span className="inline-flex items-center gap-1"><CalendarDays size={13} />{formatDate(tenancy.start_date)} – {formatDate(tenancy.actual_end_date || tenancy.end_date)}</span>
+                                                    <span className="inline-flex items-center gap-1"><CalendarDays size={13} />{formatDate(tenancy.start_date, language)} – {formatDate(tenancy.actual_end_date || tenancy.end_date, language)}</span>
                                                     <span>{Number(tenancy.monthly_rent).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} RWF / {t((tenancy.rent_frequency || 'monthly').replace(/^./, (letter) => letter.toUpperCase()))}</span>
                                                 </p>
                                                 {tenancy.move_out_inspection && <p className="mt-1 text-xs text-gray-500">{t('Move-out deposit')}: {Number(tenancy.move_out_inspection.deposit_refunded).toLocaleString()} {t('refunded')} · {Number(tenancy.move_out_inspection.deposit_deducted).toLocaleString()} {t('deducted')}</p>}

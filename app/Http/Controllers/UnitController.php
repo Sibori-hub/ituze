@@ -57,7 +57,7 @@ class UnitController extends Controller
             })
             ->orderBy('name')
             ->limit(100)
-            ->get(['id', 'type', 'name', 'email', 'phone', 'registration_number']);
+            ->get(['id', 'type', 'name', 'email', 'phone']);
 
         return Inertia::render('Units/Index', [
             'property' => $property->load('cell.sector.district.province'),
