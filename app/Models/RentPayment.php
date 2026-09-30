@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class RentPayment extends Model
 {
     protected $fillable = [
         'rent_charge_id',
+        'transaction_id',
         'recorded_by',
         'amount',
         'taxable_amount',
@@ -27,6 +29,13 @@ class RentPayment extends Model
         'vat_amount' => 'decimal:2',
         'paid_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (RentPayment $payment) {
+            $payment->transaction_id ??= (string) Str::uuid();
+        });
+    }
 
     public function charge()
     {

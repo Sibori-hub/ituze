@@ -74,7 +74,7 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     return (
-        <div className="flex h-screen flex-col overflow-hidden bg-[#F4F6F5] font-[Inter]">
+        <div className="flex min-h-screen min-h-[100dvh] flex-col bg-[#F4F6F5] font-[Inter]">
             {toasts.length > 0 && (
                 <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
                     {toasts.map(t => (
@@ -106,7 +106,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             )}
 
-            <div className="flex min-h-0 flex-1 overflow-hidden">
+            <div className="flex flex-1">
                 {sidebarOpen && (
                     <div
                         className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -116,7 +116,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* Sidebar */}
                 <aside
-                    className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto transform bg-[#0E3B2E] transition-transform duration-200 ease-in-out lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${
+                    className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto transform bg-[#0E3B2E] transition-transform duration-200 ease-in-out lg:static lg:shrink-0 lg:translate-x-0 ${
                         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
                 >
@@ -184,7 +184,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 </aside>
 
                 {/* Main content area */}
-                <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <div className="flex min-w-0 flex-1 flex-col">
                     {/* Top bar */}
                     <header className="z-30 flex h-16 shrink-0 items-center justify-between bg-[#0E3B2E] px-4 sm:px-6">
                         <div className="flex items-center gap-4">
@@ -241,7 +241,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     </header>
 
                     {/* Page content */}
-                    <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
+                    <main className="min-w-0 flex-1 p-4 sm:p-6">
                         {flash.error && (
                             <div className="mb-4 max-w-7xl mx-auto">
                                 <InlineAlert message={flash.error} type="error" />

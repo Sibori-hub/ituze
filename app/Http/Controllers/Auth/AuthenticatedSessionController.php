@@ -31,6 +31,10 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        if (! config('auth.email_otp_enabled') && ! $request->user()->hasVerifiedEmail()) {
+            $request->user()->markEmailAsVerified();
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

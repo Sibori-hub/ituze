@@ -53,7 +53,11 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        event(new Registered($user));
+        if (config('auth.email_otp_enabled')) {
+            event(new Registered($user));
+        } else {
+            $user->markEmailAsVerified();
+        }
 
         // TODO: Re-enable admin notification after queue worker is set up
         // $admins = User::where('role', 'admin')->get();
@@ -63,6 +67,8 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('verification.notice');
+        return config('auth.email_otp_enabled')
+            ? redirect()->route('verification.notice')
+            : redirect()->route('profile.complete');
     }
 }

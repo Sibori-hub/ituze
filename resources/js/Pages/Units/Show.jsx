@@ -98,7 +98,7 @@ function ChargeRow({ charge, property, unit, tenancy }) {
                     {charge.payments.map(payment => <PaymentRecordDetails key={payment.id} payment={{ ...payment, charge_type: charge.charge_type }} />)}
                 </div>
             )}
-            {balance > 0 && !charge.voided_at && (
+            {balance > 0 && !charge.voided_at && charge.charge_type !== 'rent' && (
                 <form onSubmit={recordPayment} className="grid gap-2 rounded-xl border border-gray-100 bg-white p-3 sm:grid-cols-2">
                     <label className="text-xs font-medium text-gray-600">{t('Payment amount')}
                         <input type="number" min="0.01" max={balance.toFixed(2)} step="0.01" required value={form.data.amount} onChange={e => form.setData('amount', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" />
@@ -145,6 +145,26 @@ function TenancyManager({ tenancy, property, unit }) {
         payment_reference: '',
     });
     const depositReceived = Number(tenancy.deposit_received_amount || 0);
+    const outstandingRentCharges = (tenancy.rent_charges || [])
+        .filter(charge => charge.charge_type === 'rent' && !charge.voided_at)
+        .map(charge => {
+            const paid = (charge.payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+            return { ...charge, balance: Math.max(0, Number(charge.amount) - paid) };
+        })
+        .filter(charge => charge.balance > 0)
+        .sort((first, second) => first.due_date.localeCompare(second.due_date));
+    const outstandingRentCents = outstandingRentCharges.reduce(
+        (sum, charge) => sum + Math.round(charge.balance * 100),
+        0,
+    );
+    const rentPaymentForm = useForm({
+        amount: (outstandingRentCents / 100).toFixed(2),
+        method: 'cash',
+        paid_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+        reference: '',
+        notes: '',
+    });
     const moveOutForm = useForm({
         move_out_date: todayDate,
         condition_notes: '',
@@ -178,6 +198,16 @@ function TenancyManager({ tenancy, property, unit }) {
             preserveScroll: true,
         });
     };
+    const submitRentPayment = (event) => {
+        event.preventDefault();
+        rentPaymentForm.post(route('properties.units.tenancy.rent-payments.store', [property, unit, tenancy.id]), {
+            preserveScroll: true,
+            onSuccess: () => {
+                rentPaymentForm.reset('reference', 'notes');
+                rentPaymentForm.setData('amount', '');
+            },
+        });
+    };
 
     const activeCharges = (tenancy.rent_charges || []).filter(charge => !charge.voided_at);
     const totalCharges = activeCharges.reduce((sum, charge) => sum + Number(charge.amount), 0);
@@ -204,7 +234,7 @@ function TenancyManager({ tenancy, property, unit }) {
             },
         })));
     const combinedPaymentGroups = Object.values(rentPayments.reduce((groups, payment) => {
-        const key = `${payment.method || ''}|${payment.reference || ''}|${String(payment.paid_at || '').slice(0, 10)}`;
+        const key = payment.transaction_id || `legacy-${payment.id}`;
         groups[key] = [...(groups[key] || []), payment];
         return groups;
     }, {}));
@@ -227,9 +257,43 @@ function TenancyManager({ tenancy, property, unit }) {
                         <div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('Collected')}</p><p className="mt-1 font-semibold text-gray-900">{totalPaid.toLocaleString()} RWF</p></div>
                         <div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('Due / overdue balance')}</p><p className={`mt-1 font-semibold ${dueBalance > 0 ? 'text-red-700' : 'text-green-700'}`}>{dueBalance.toLocaleString()} RWF</p></div>
                     </div>
+                    {tenancy.status === 'active' && outstandingRentCents > 0 && (
+                        <form onSubmit={submitRentPayment} className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                            <div className="mb-3">
+                                <h4 className="font-semibold text-gray-900">{t('Record rent payment')}</h4>
+                                <p className="mt-1 text-xs text-gray-600">
+                                    {t('Outstanding rent across :count periods. One payment can cover several periods; it is applied to the oldest balance first and creates one receipt.', { count: outstandingRentCharges.length })}
+                                </p>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <label className="text-xs font-medium text-gray-600">{t('Payment amount')}
+                                    <input type="number" min="0.01" max={(outstandingRentCents / 100).toFixed(2)} step="0.01" required value={rentPaymentForm.data.amount} onChange={event => rentPaymentForm.setData('amount', event.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" />
+                                    {rentPaymentForm.errors.amount && <span className="mt-1 block text-red-600">{rentPaymentForm.errors.amount}</span>}
+                                </label>
+                                <label className="text-xs font-medium text-gray-600">{t('Method')}
+                                    <select value={rentPaymentForm.data.method} onChange={event => rentPaymentForm.setData('method', event.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm">
+                                        <option value="cash">{t('Cash')}</option>
+                                        <option value="bank_transfer">{t('Bank transfer')}</option>
+                                        <option value="mobile_money">{t('Mobile money')}</option>
+                                        <option value="other">{t('Other')}</option>
+                                    </select>
+                                </label>
+                                <label className="text-xs font-medium text-gray-600">{t('Paid at')}
+                                    <input type="datetime-local" required value={rentPaymentForm.data.paid_at} onChange={event => rentPaymentForm.setData('paid_at', event.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" />
+                                </label>
+                                <label className="text-xs font-medium text-gray-600">{t(['bank_transfer', 'mobile_money'].includes(rentPaymentForm.data.method) ? 'Bank / Mobile Money transaction ID' : 'Reference (optional)')}
+                                    <input required={['bank_transfer', 'mobile_money'].includes(rentPaymentForm.data.method)} value={rentPaymentForm.data.reference} onChange={event => rentPaymentForm.setData('reference', event.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" />
+                                    {rentPaymentForm.errors.reference && <span className="mt-1 block text-red-600">{rentPaymentForm.errors.reference}</span>}
+                                </label>
+                            </div>
+                            <button disabled={rentPaymentForm.processing} className="mt-3 w-full rounded-lg bg-[#0E3B2E] px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                                {rentPaymentForm.processing ? t('Saving payment…') : t('Record one payment')}
+                            </button>
+                        </form>
+                    )}
                     {combinedPaymentGroups.filter(group => group.length > 1).map(group => (
                         <div key={group[0].id} className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
-                            <p className="text-sm text-emerald-900">{t('One combined bill covers :count rent periods', { count: group.length })}</p>
+                            <p className="text-sm text-emerald-900">{t('One payment covers :count rent periods', { count: group.length })}</p>
                             <PaymentReceiptButton
                                 payment={group[0]}
                                 payments={group}

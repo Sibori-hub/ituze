@@ -125,14 +125,10 @@ class ManagementController extends Controller
             'vat_unrecorded_payments' => $totals['vat_unrecorded_payments'] + (int) $agreement['vat_unrecorded_payments'],
             'deposit_credit' => $totals['deposit_credit'] + (float) $agreement['deposit_credit'],
         ], ['paid' => 0, 'taxable_rent' => 0, 'vat_collected' => 0, 'vat_unrecorded_payments' => 0, 'deposit_credit' => 0]);
-        $payments = RentPayment::query()
-            ->with([
-                'charge.tenancy.tenant',
-                'charge.tenancy.unit.property',
-                'charge.tenancy.leases' => fn ($query) => $query->oldest('id'),
-            ])
+        $matchingPayments = RentPayment::query()
             ->whereHas('charge.tenancy.unit.property', fn ($query) => $query
                 ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id)))
+            ->whereHas('charge', fn ($query) => $query->where('charge_type', '!=', 'deposit'))
             ->when($search !== '', function ($query) use ($search) {
                 $term = '%'.$search.'%';
                 $query->where(function ($query) use ($term) {
@@ -144,46 +140,97 @@ class ManagementController extends Controller
                         ->orWhereHas('charge.tenancy.unit.property', fn ($query) => $query->where('name', 'like', $term))
                         ->orWhereHas('charge.tenancy.leases', fn ($query) => $query->where('reference_number', 'like', $term));
                 });
-            })
-            ->latest('paid_at')
+            });
+        $payments = (clone $matchingPayments)
+            ->select('transaction_id')
+            ->selectRaw('MAX(paid_at) as latest_paid_at')
+            ->groupBy('transaction_id')
+            ->orderByDesc('latest_paid_at')
             ->paginate(20)
-            ->withQueryString()
-            ->through(function (RentPayment $payment) use ($agreementsByTenancy) {
-                $charge = $payment->charge;
-                $tenancy = $charge->tenancy;
-                $unit = $tenancy->unit;
-                $agreement = $agreementsByTenancy->get($tenancy->id, []);
+            ->withQueryString();
+        $transactionIds = collect($payments->items())->pluck('transaction_id');
+        $allocationsByTransaction = RentPayment::query()
+            ->with([
+                'charge.tenancy.tenant',
+                'charge.tenancy.unit.property',
+                'charge.tenancy.leases' => fn ($query) => $query->oldest('id'),
+            ])
+            ->whereIn('transaction_id', $transactionIds)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('transaction_id');
+        $payments->setCollection($transactionIds->map(function (string $transactionId) use ($allocationsByTransaction, $agreementsByTenancy) {
+            $allocations = $allocationsByTransaction->get($transactionId, collect());
+            $payment = $allocations->first();
+            $charge = $payment->charge;
+            $tenancy = $charge->tenancy;
+            $unit = $tenancy->unit;
+            $agreement = $agreementsByTenancy->get($tenancy->id, []);
+            $vatIsRecorded = $allocations->every(fn ($allocation) => $allocation->vat_amount !== null);
+            $periods = $allocations->map(function ($allocation) {
+                $charge = $allocation->charge;
 
                 return [
-                    'id' => $payment->id,
-                    'amount' => $payment->amount,
-                    'taxable_amount' => $payment->taxable_amount,
-                    'vat_rate' => $payment->vat_rate,
-                    'vat_amount' => $payment->vat_amount,
-                    'method' => $payment->method,
-                    'receipt_number' => $payment->receipt_number,
-                    'reference' => $payment->reference,
-                    'notes' => $payment->notes,
-                    'paid_at' => $payment->paid_at,
-                    'charge' => [
-                        'charge_type' => $charge->charge_type,
-                        'period_start' => $charge->period_start?->toDateString(),
-                        'period_end' => $charge->period_end?->toDateString(),
-                        'period_label' => $charge->period_start && $charge->period_end
-                            ? $charge->period_start->format('d M Y').' – '.$charge->period_end->format('d M Y')
-                            : null,
-                    ],
-                    'tenant' => ['name' => $tenancy->tenant?->name],
-                    'property' => ['name' => $unit->property?->name],
-                    'unit' => ['unit_number' => $unit->unit_number],
-                    'agreement' => [
-                        'reference' => $tenancy->leases->first()?->reference_number,
-                        'total_paid' => $agreement['total_paid'] ?? '0.00',
-                        'deposit_credit' => $agreement['deposit_credit'] ?? '0.00',
-                        'days_remaining' => $agreement['days_remaining'] ?? null,
-                    ],
+                    'charge_type' => $charge->charge_type,
+                    'period_label' => $charge->period_start && $charge->period_end
+                        ? $charge->period_start->format('d M Y').' – '.$charge->period_end->format('d M Y')
+                        : null,
                 ];
             });
+
+            return [
+                'id' => $payment->id,
+                'amount' => number_format($allocations->sum(fn ($allocation) => (float) $allocation->amount), 2, '.', ''),
+                'taxable_amount' => $vatIsRecorded
+                    ? number_format($allocations->sum(fn ($allocation) => (float) $allocation->taxable_amount), 2, '.', '')
+                    : null,
+                'vat_rate' => $payment->vat_rate,
+                'vat_amount' => $vatIsRecorded
+                    ? number_format($allocations->sum(fn ($allocation) => (float) $allocation->vat_amount), 2, '.', '')
+                    : null,
+                'method' => $payment->method,
+                'receipt_number' => $allocations->first(fn ($allocation) => $allocation->receipt_number)?->receipt_number,
+                'reference' => $payment->reference,
+                'notes' => $payment->notes,
+                'paid_at' => $payment->paid_at,
+                'allocations' => $allocations->map(function ($allocation) {
+                    $charge = $allocation->charge;
+
+                    return [
+                        'id' => $allocation->id,
+                        'amount' => $allocation->amount,
+                        'taxable_amount' => $allocation->taxable_amount,
+                        'vat_rate' => $allocation->vat_rate,
+                        'vat_amount' => $allocation->vat_amount,
+                        'receipt_number' => $allocation->receipt_number,
+                        'reference' => $allocation->reference,
+                        'paid_at' => $allocation->paid_at,
+                        'notes' => $allocation->notes,
+                        'charge' => [
+                            'charge_type' => $charge->charge_type,
+                            'period_label' => $charge->period_start && $charge->period_end
+                                ? $charge->period_start->format('d M Y').' – '.$charge->period_end->format('d M Y')
+                                : null,
+                        ],
+                    ];
+                })->values(),
+                'period_labels' => $periods->pluck('period_label')->filter()->unique()->values(),
+                'charge' => [
+                    'charge_type' => $periods->pluck('charge_type')->unique()->count() > 1
+                        ? 'combined'
+                        : $charge->charge_type,
+                    'period_label' => $periods->pluck('period_label')->filter()->unique()->implode(', '),
+                ],
+                'tenant' => ['name' => $tenancy->tenant?->name],
+                'property' => ['name' => $unit->property?->name],
+                'unit' => ['unit_number' => $unit->unit_number],
+                'agreement' => [
+                    'reference' => $tenancy->leases->first()?->reference_number,
+                    'total_paid' => $agreement['total_paid'] ?? '0.00',
+                    'deposit_credit' => $agreement['deposit_credit'] ?? '0.00',
+                ],
+            ];
+        }));
 
         return Inertia::render('Payments/Index', [
             'payments' => $payments,

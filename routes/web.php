@@ -228,6 +228,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{unit}/tenancy/{tenancy}/renewals', [TenancyController::class, 'renew'])->name('tenancy.renewals.store');
             Route::post('/{unit}/tenancy/{tenancy}/move-out', [TenancyController::class, 'moveOut'])->name('tenancy.move-out');
             Route::post('/{unit}/tenancy/{tenancy}/charges/{charge}/payments', [TenancyController::class, 'storePayment'])->name('tenancy.payments.store');
+            Route::post('/{unit}/tenancy/{tenancy}/rent-payments', [TenancyController::class, 'storeRentPayment'])->name('tenancy.rent-payments.store');
             Route::post('/{unit}/tenancy/{tenancy}/leases', [TenancyController::class, 'uploadLease'])->name('tenancy.leases.store');
             Route::get('/{unit}/tenancy/{tenancy}/leases/{lease}', [TenancyController::class, 'downloadLease'])->name('tenancy.leases.download');
             Route::delete('/{unit}/tenancy/{tenancy}/leases/{lease}', [TenancyController::class, 'deleteLease'])->name('tenancy.leases.destroy');

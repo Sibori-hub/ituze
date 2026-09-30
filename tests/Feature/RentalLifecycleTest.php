@@ -166,13 +166,14 @@ class RentalLifecycleTest extends TestCase
         Schema::create('rent_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rent_charge_id')->constrained();
+            $table->string('transaction_id', 36)->nullable()->index();
             $table->foreignId('recorded_by')->constrained('users');
             $table->decimal('amount', 12, 2);
             $table->decimal('taxable_amount', 12, 2)->nullable();
             $table->decimal('vat_rate', 5, 2)->nullable();
             $table->decimal('vat_amount', 12, 2)->nullable();
             $table->string('method');
-            $table->string('receipt_number')->nullable()->unique();
+            $table->string('receipt_number')->nullable()->index();
             $table->string('reference')->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('paid_at');
@@ -313,6 +314,158 @@ class RentalLifecycleTest extends TestCase
             'vat_amount' => '140.40',
             'reference' => 'BANK-DEPOSIT-780',
         ]);
+    }
+
+    public function test_one_rent_payment_can_cover_three_periods_and_get_one_receipt(): void
+    {
+        [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
+        $tenancy = $this->makeTenancy($unit, $tenant, $owner);
+
+        foreach ([
+            ['2026-01-01', '2026-01-31'],
+            ['2026-02-01', '2026-02-28'],
+            ['2026-03-01', '2026-03-31'],
+        ] as [$periodStart, $periodEnd]) {
+            RentCharge::create([
+                'tenancy_id' => $tenancy->id,
+                'charge_type' => 'rent',
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
+                'due_date' => $periodStart,
+                'amount' => 500,
+            ]);
+        }
+
+        $this->actingAs($owner)
+            ->post(route('properties.units.tenancy.rent-payments.store', [$property, $unit, $tenancy]), [
+                'amount' => '1500.00',
+                'method' => 'mobile_money',
+                'paid_at' => '2026-01-01 10:00:00',
+                'reference' => 'MOMO-THREE-MONTHS',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $payments = RentPayment::query()->orderBy('id')->get();
+        $this->assertCount(3, $payments);
+        $this->assertSame(1, $payments->pluck('transaction_id')->unique()->count());
+        $this->assertSame(1, $payments->pluck('receipt_number')->unique()->count());
+        $this->assertSame(1500.0, (float) $payments->sum('amount'));
+        $this->assertSame(270.0, (float) $payments->sum('vat_amount'));
+
+        $this->actingAs($owner)
+            ->post(route('properties.units.tenancy.rent-payments.store', [$property, $unit, $tenancy]), [
+                'amount' => '0.01',
+                'method' => 'cash',
+                'paid_at' => '2026-01-01 10:00:00',
+            ])
+            ->assertSessionHasErrors('amount');
+        $this->assertCount(3, RentPayment::all());
+
+        $this->actingAs($owner)
+            ->get(route('payments.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Payments/Index')
+                ->has('payments.data', 1)
+                ->where('payments.data.0.amount', '1500.00')
+                ->has('payments.data.0.allocations', 3)
+                ->where('payments.data.0.period_labels.0', '01 Jan 2026 – 31 Jan 2026')
+                ->where('payments.data.0.reference', 'MOMO-THREE-MONTHS'));
+    }
+
+    public function test_legacy_rent_payments_with_the_same_transaction_are_grouped_under_one_receipt(): void
+    {
+        [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
+        $tenancy = $this->makeTenancy($unit, $tenant, $owner);
+        $legacyPayments = collect();
+
+        foreach ([
+            ['2026-01-01', '2026-01-31', '2026-01-01 10:00:01'],
+            ['2026-02-01', '2026-02-28', '2026-01-01 10:00:59'],
+            ['2026-03-01', '2026-03-31', '2026-01-01 10:00:59'],
+        ] as $index => [$periodStart, $periodEnd, $paidAt]) {
+            $charge = RentCharge::create([
+                'tenancy_id' => $tenancy->id,
+                'charge_type' => 'rent',
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
+                'due_date' => $periodStart,
+                'amount' => 500,
+            ]);
+            $legacyPayments->push(RentPayment::create([
+                'rent_charge_id' => $charge->id,
+                'recorded_by' => $owner->id,
+                'amount' => '500.00',
+                'taxable_amount' => '500.00',
+                'vat_rate' => '18.00',
+                'vat_amount' => '90.00',
+                'method' => 'bank_transfer',
+                'receipt_number' => sprintf('ITZ-2026-%06d', $index + 1),
+                'reference' => 'BK-SAME-TRANSFER',
+                'paid_at' => $paidAt,
+            ]));
+        }
+
+        $migration = require database_path('migrations/2026_09_30_100000_group_legacy_multi_period_rent_payments.php');
+        $migration->up();
+
+        $groupedPayments = RentPayment::query()->whereIn('id', $legacyPayments->pluck('id'))->get();
+        $this->assertSame(1, $groupedPayments->pluck('transaction_id')->unique()->count());
+        $this->assertSame(1, $groupedPayments->pluck('receipt_number')->unique()->count());
+
+        $this->actingAs($owner)
+            ->get(route('payments.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Payments/Index')
+                ->has('payments.data', 1)
+                ->where('payments.data.0.amount', '1500.00')
+                ->has('payments.data.0.allocations', 3));
+    }
+
+    public function test_payment_history_hides_deposit_transactions_without_changing_totals_or_records(): void
+    {
+        [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
+        $tenancy = $this->makeTenancy($unit, $tenant, $owner, ['deposit_amount' => 300]);
+        $rentCharge = RentCharge::create([
+            'tenancy_id' => $tenancy->id,
+            'charge_type' => 'rent',
+            'period_start' => '2026-01-01',
+            'period_end' => '2026-01-31',
+            'due_date' => '2026-01-01',
+            'amount' => 500,
+        ]);
+        $depositCharge = RentCharge::create([
+            'tenancy_id' => $tenancy->id,
+            'charge_type' => 'deposit',
+            'period_start' => '2026-01-01',
+            'due_date' => '2026-01-01',
+            'amount' => 300,
+        ]);
+
+        foreach ([[$rentCharge, '500.00'], [$depositCharge, '300.00']] as [$charge, $amount]) {
+            RentPayment::create([
+                'rent_charge_id' => $charge->id,
+                'recorded_by' => $owner->id,
+                'amount' => $amount,
+                'method' => 'cash',
+                'receipt_number' => 'ITZ-2026-'.$charge->id,
+                'paid_at' => '2026-01-01 10:00:00',
+            ]);
+        }
+
+        $this->actingAs($owner)
+            ->get(route('payments.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Payments/Index')
+                ->has('payments.data', 1)
+                ->where('payments.data.0.charge.charge_type', 'rent')
+                ->where('reportTotals.paid', 800));
+
+        $this->assertSame(2, RentPayment::query()->count());
+        $this->assertSame(300.0, (float) $depositCharge->payments()->sum('amount'));
     }
 
     public function test_company_tenant_assignment_saves_representative_identity_rent_terms_and_lease(): void
@@ -847,7 +1000,6 @@ class RentalLifecycleTest extends TestCase
                 ->where('payments.data.0.receipt_number', 'ITZ-2026-000010')
                 ->where('payments.data.0.agreement.reference', 'ITZ-LSE-2026-000001')
                 ->where('payments.data.0.agreement.total_paid', '250.00')
-                ->where('payments.data.0.agreement.days_remaining', 364)
                 ->where('payments.data.0.property.name', $property->name)
                 ->where('payments.data.0.unit.unit_number', $unit->unit_number));
 

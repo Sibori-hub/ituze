@@ -54,7 +54,7 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
                 {t('Print receipt')}
             </button>
             <section ref={receiptRef} data-payment-receipt className="hidden">
-                <div className="mx-auto max-w-2xl bg-white p-8 font-sans text-gray-900">
+                <div className="payment-receipt-content mx-auto max-w-2xl bg-white p-8 font-sans text-gray-900">
                     <header className="flex items-center gap-4 border-b-2 border-[#0E3B2E] pb-5">
                         <img src="/images/logo.png" alt="Ituze-Qra Ltd" className="h-16 w-16 object-contain" />
                         <div>

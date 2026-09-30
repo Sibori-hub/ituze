@@ -19,6 +19,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -208,6 +209,7 @@ class TenancyController extends Controller
                 $depositCents = (int) round((float) $depositCharge->amount * 100);
                 $depositPayment = RentPayment::create([
                     'rent_charge_id' => $depositCharge->id,
+                    'transaction_id' => (string) Str::uuid(),
                     'recorded_by' => $request->user()->id,
                     'amount' => number_format($depositCents / 100, 2, '.', ''),
                     'method' => $data['payment_method'],
@@ -233,6 +235,7 @@ class TenancyController extends Controller
                     $vatCents = (int) round($rentCents * $vatRate / 10000);
                     $rentPayment = RentPayment::create([
                         'rent_charge_id' => $rentCharge->id,
+                        'transaction_id' => (string) Str::uuid(),
                         'recorded_by' => $request->user()->id,
                         'amount' => number_format($rentCents / 100, 2, '.', ''),
                         'taxable_amount' => number_format($rentCents / 100, 2, '.', ''),
@@ -309,9 +312,11 @@ class TenancyController extends Controller
 
             $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
             $vatCents = (int) round($paymentCents * $vatRate / 10000);
+            $transactionId = (string) Str::uuid();
 
             $payment = RentPayment::create([
                 'rent_charge_id' => $lockedCharge->id,
+                'transaction_id' => $transactionId,
                 'recorded_by' => $request->user()->id,
                 'amount' => number_format($paymentCents / 100, 2, '.', ''),
                 'taxable_amount' => $vatCents === null ? null : number_format($paymentCents / 100, 2, '.', ''),
@@ -325,6 +330,100 @@ class TenancyController extends Controller
             $payment->update([
                 'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $payment->id),
             ]);
+        });
+
+        return back()->with('success', 'Payment recorded and receipt number generated.');
+    }
+
+    public function storeRentPayment(
+        Request $request,
+        Property $property,
+        Unit $unit,
+        Tenancy $tenancy,
+    ): RedirectResponse {
+        $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
+            'method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
+            'paid_at' => ['required', 'date', 'before_or_equal:now'],
+            'reference' => [
+                'required_if:method,bank_transfer,mobile_money',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        DB::transaction(function () use ($data, $request, $unit, $tenancy) {
+            Unit::query()->whereKey($unit->id)->lockForUpdate()->firstOrFail();
+            $lockedTenancy = Tenancy::query()->whereKey($tenancy->id)->lockForUpdate()->firstOrFail();
+            if ($lockedTenancy->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'amount' => 'Rent payments can only be recorded for an active tenancy.',
+                ]);
+            }
+
+            $charges = RentCharge::query()
+                ->where('tenancy_id', $lockedTenancy->id)
+                ->where('charge_type', 'rent')
+                ->whereNull('voided_at')
+                ->orderBy('due_date')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            $paymentCents = (int) round((float) $data['amount'] * 100);
+            $remainingCents = $paymentCents;
+            $allocationPlan = [];
+
+            foreach ($charges as $rentCharge) {
+                $paidCents = (int) round((float) $rentCharge->payments()->sum('amount') * 100);
+                $balanceCents = max(0, (int) round((float) $rentCharge->amount * 100) - $paidCents);
+                $allocationCents = min($remainingCents, $balanceCents);
+
+                if ($allocationCents > 0) {
+                    $allocationPlan[] = [$rentCharge, $allocationCents];
+                    $remainingCents -= $allocationCents;
+                }
+
+                if ($remainingCents === 0) {
+                    break;
+                }
+            }
+
+            if ($remainingCents > 0) {
+                throw ValidationException::withMessages([
+                    'amount' => 'The payment cannot exceed the outstanding rent balance.',
+                ]);
+            }
+
+            $transactionId = (string) Str::uuid();
+            $paymentIds = [];
+            $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
+
+            foreach ($allocationPlan as [$rentCharge, $allocationCents]) {
+                $vatCents = (int) round($allocationCents * $vatRate / 10000);
+                $payment = RentPayment::create([
+                    'rent_charge_id' => $rentCharge->id,
+                    'transaction_id' => $transactionId,
+                    'recorded_by' => $request->user()->id,
+                    'amount' => number_format($allocationCents / 100, 2, '.', ''),
+                    'taxable_amount' => number_format($allocationCents / 100, 2, '.', ''),
+                    'vat_rate' => number_format($vatRate / 100, 2, '.', ''),
+                    'vat_amount' => number_format($vatCents / 100, 2, '.', ''),
+                    'method' => $data['method'],
+                    'reference' => $data['reference'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'paid_at' => $data['paid_at'],
+                ]);
+                $paymentIds[] = $payment->id;
+            }
+
+            $receiptNumber = sprintf('ITZ-%s-%06d', now()->format('Y'), min($paymentIds));
+            RentPayment::query()
+                ->where('transaction_id', $transactionId)
+                ->update(['receipt_number' => $receiptNumber]);
         });
 
         return back()->with('success', 'Payment recorded and receipt number generated.');

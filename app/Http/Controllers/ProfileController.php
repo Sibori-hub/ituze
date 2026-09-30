@@ -45,7 +45,7 @@ class ProfileController extends Controller
         $user->name = $validated['name'] ?? trim($validated['first_name'] . ' ' . $validated['last_name']);
 
         if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+            $user->email_verified_at = config('auth.email_otp_enabled') ? null : now();
         }
 
         if ($profilePhoto) {
