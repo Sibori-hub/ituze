@@ -4,6 +4,8 @@ import { Search, Plus, DoorOpen, Edit, Trash2, ArrowLeft, DollarSign, Home } fro
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 import TenantLocationFields from '@/Components/TenantLocationFields';
+import LeaseNoteField from '@/Components/LeaseNoteField';
+import LeaseRecordFields from '@/Components/LeaseRecordFields';
 import { countRentPeriods } from '@/utils/rentPeriodCalculator';
 
 const statusStyles = {
@@ -21,7 +23,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
     const [unitToDelete, setUnitToDelete] = useState(null);
     const [unitToAssign, setUnitToAssign] = useState(null);
     const [showTenantForm, setShowTenantForm] = useState(false);
-    const assignmentForm = useForm({ tenant_type: 'individual', first_name: '', last_name: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', monthly_rent: '', rent_frequency: 'monthly', deposit_amount: '', lease: null, notes: '' });
+    const assignmentForm = useForm({ tenant_type: 'individual', first_name: '', last_name: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', monthly_rent: '', rent_frequency: 'monthly', deposit_amount: '', lease: null, lease_notes: '', payment_method: '', payment_reference: '' });
     const tenantForm = useForm({ type: 'individual', first_name: '', last_name: '', identity_type: 'national_id', identity_number: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '' });
     const isFirstRender = useRef(true);
     const rentPeriods = countRentPeriods(assignmentForm.data.start_date, assignmentForm.data.end_date, assignmentForm.data.rent_frequency);
@@ -276,8 +278,29 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                                 <label className="text-sm font-medium text-gray-700">{t('Number of rent periods')}<input type="number" disabled value={rentPeriods || ''} className="mt-1 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" /></label>
                                                                 <label className="text-sm font-medium text-gray-700">{t('Total rent for lease (RWF)')}<input type="text" disabled value={totalRent === '' ? '' : Number(totalRent).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} className="mt-1 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Each started rent period is charged in full. The security deposit is separate.')}</span></label>
                                                                 <label className="text-sm font-medium text-gray-700">{t('Security deposit (RWF)')}<input type="number" min="0" step="0.01" value={assignmentForm.data.deposit_amount} onChange={e => assignmentForm.setData('deposit_amount', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">{t('Signed lease (PDF, DOC, DOCX, JPG or PNG)')}<input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => assignmentForm.setData('lease', e.target.files[0])} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">{t('Notes')}<textarea value={assignmentForm.data.notes} onChange={e => assignmentForm.setData('notes', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <LeaseRecordFields
+                                                                    paymentMethod={assignmentForm.data.payment_method}
+                                                                    onPaymentMethodChange={value => assignmentForm.setData('payment_method', value)}
+                                                                    paymentReference={assignmentForm.data.payment_reference}
+                                                                    onPaymentReferenceChange={value => assignmentForm.setData('payment_reference', value)}
+                                                                    errors={assignmentForm.errors}
+                                                                    isDepositPayment
+                                                                />
+                                                                <LeaseNoteField
+                                                                    value={assignmentForm.data.lease_notes}
+                                                                    onChange={value => assignmentForm.setData('lease_notes', value)}
+                                                                    routeName="properties.units.tenancy.lease-notes.generate"
+                                                                    routeParams={[property.id, unitToAssign.id]}
+                                                                    payload={{
+                                                                        start_date: assignmentForm.data.start_date,
+                                                                        end_date: assignmentForm.data.end_date,
+                                                                        monthly_rent: assignmentForm.data.monthly_rent,
+                                                                        rent_frequency: assignmentForm.data.rent_frequency,
+                                                                        deposit_amount: assignmentForm.data.deposit_amount,
+                                                                    }}
+                                                                    disabled={!assignmentForm.data.start_date || !assignmentForm.data.end_date || !assignmentForm.data.monthly_rent}
+                                                                />
+                                                                <label className="sm:col-span-2 text-sm font-medium text-gray-700">{t('Signed lease (PDF, DOC, DOCX, JPG or PNG)')}<input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => assignmentForm.setData('lease', e.target.files[0])} className="mt-1 w-full rounded-xl border-gray-200" />{assignmentForm.errors.lease && <span className="mt-1 block text-xs text-red-600">{assignmentForm.errors.lease}</span>}</label>
                                                             </div>
                                                             {Object.values(assignmentForm.errors).length > 0 && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{Object.values(assignmentForm.errors)[0]}</p>}
                                                             <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setUnitToAssign(null)} className="rounded-xl px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">{t('Cancel')}</button><button disabled={assignmentForm.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{assignmentForm.processing ? t('Saving…') : t('Create tenancy')}</button></div>

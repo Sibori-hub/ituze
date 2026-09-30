@@ -12,6 +12,9 @@ class Lease extends Model
     protected $fillable = [
         'tenancy_id',
         'uploaded_by',
+        'reference_number',
+        'payment_method',
+        'payment_reference',
         'original_name',
         'path',
         'mime_type',

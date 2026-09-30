@@ -60,7 +60,9 @@ export default function LeasesIndex({ leases }) {
                                         <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0E3B2E]/5"><FileText size={18} className="text-[#0E3B2E]" /></div>
                                         <div className="min-w-0">
                                             <p className="break-words font-semibold text-gray-900">{lease.original_name}</p>
-                                            {lease.notes && <p className="mt-1 break-words text-xs text-gray-500">{lease.notes}</p>}
+                                            <p className="mt-1 break-words text-xs text-gray-500">{t('Reference')}: {lease.reference_number || '—'} · {t('Payment method')}: {t(({ cash: 'Cash', mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', other: 'Other' })[lease.payment_method] || 'Unknown')}</p>
+                                            {lease.payment_reference && <p className="mt-1 break-words text-xs text-gray-500">{t('Payment reference')}: {lease.payment_reference}</p>}
+                                            {lease.notes && <p className="mt-1 whitespace-pre-line break-words text-xs text-gray-500">{lease.notes}</p>}
                                             <p className="mt-1 text-xs text-gray-400">{t('Uploaded')} {formatDate(lease.created_at, false, language)}</p>
                                         </div>
                                     </div>
@@ -81,6 +83,13 @@ export default function LeasesIndex({ leases }) {
                                             {t(lease.payment_status || 'Unknown')}
                                         </span>
                                         {Number(lease.payment_balance) > 0 && <p className="mt-1 text-xs font-medium text-gray-600">{Number(lease.payment_balance).toLocaleString()} RWF outstanding</p>}
+                                        {Number(lease.payment_balance) > 0 && (
+                                            <div className="mt-1 space-y-0.5 text-[11px] text-gray-500">
+                                                {Number(lease.rent_due_balance) > 0 && <p>{t('Rent due')}: {Number(lease.rent_due_balance).toLocaleString()} RWF</p>}
+                                                {Number(lease.deposit_due_balance) > 0 && <p>{t('Deposit due')}: {Number(lease.deposit_due_balance).toLocaleString()} RWF</p>}
+                                                {Number(lease.damage_due_balance) > 0 && <p>{t('Damage charge due')}: {Number(lease.damage_due_balance).toLocaleString()} RWF</p>}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3 xl:border-0 xl:pt-0">
                                         {downloadUrl ? <a href={downloadUrl} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0E3B2E]/5 px-3 py-2.5 text-xs font-semibold text-[#0E3B2E] hover:bg-[#0E3B2E]/10"><ArrowDownToLine size={14} />{t('Download')}</a> : <span className="text-xs text-gray-400">{t('Unavailable')}</span>}

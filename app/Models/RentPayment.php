@@ -10,6 +10,9 @@ class RentPayment extends Model
         'rent_charge_id',
         'recorded_by',
         'amount',
+        'taxable_amount',
+        'vat_rate',
+        'vat_amount',
         'method',
         'receipt_number',
         'reference',
@@ -19,6 +22,9 @@ class RentPayment extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'taxable_amount' => 'decimal:2',
+        'vat_rate' => 'decimal:2',
+        'vat_amount' => 'decimal:2',
         'paid_at' => 'datetime',
     ];
 

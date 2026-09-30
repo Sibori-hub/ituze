@@ -14,6 +14,7 @@ class MoveOutInspection extends Model
         'deposit_received',
         'deposit_refunded',
         'deposit_deducted',
+        'damage_cost',
         'deduction_notes',
         'unit_outcome',
     ];
@@ -23,6 +24,7 @@ class MoveOutInspection extends Model
         'deposit_received' => 'decimal:2',
         'deposit_refunded' => 'decimal:2',
         'deposit_deducted' => 'decimal:2',
+        'damage_cost' => 'decimal:2',
     ];
 
     public function tenancy()

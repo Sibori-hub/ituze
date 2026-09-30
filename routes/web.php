@@ -223,6 +223,8 @@ Route::middleware('auth')->group(function () {
             Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
             Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
             Route::post('/{unit}/tenancy', [TenancyController::class, 'store'])->name('tenancy.store');
+            Route::post('/{unit}/tenancy/lease-note', [\App\Http\Controllers\LeaseNoteGenerationController::class, 'forAssignment'])->name('tenancy.lease-notes.generate');
+            Route::post('/{unit}/tenancy/{tenancy}/lease-note', [\App\Http\Controllers\LeaseNoteGenerationController::class, 'forTenancy'])->name('tenancy.lease-notes.generate-for-tenancy');
             Route::post('/{unit}/tenancy/{tenancy}/renewals', [TenancyController::class, 'renew'])->name('tenancy.renewals.store');
             Route::post('/{unit}/tenancy/{tenancy}/move-out', [TenancyController::class, 'moveOut'])->name('tenancy.move-out');
             Route::post('/{unit}/tenancy/{tenancy}/charges/{charge}/payments', [TenancyController::class, 'storePayment'])->name('tenancy.payments.store');

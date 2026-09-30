@@ -1,5 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
+import LeaseNoteField from '@/Components/LeaseNoteField';
+import LeaseRecordFields from '@/Components/LeaseRecordFields';
+import PaymentRecordDetails from '@/Components/PaymentRecordDetails';
+import PaymentReceiptButton from '@/Components/PaymentReceiptButton';
 import { ArrowLeft, Home, DollarSign, Edit, MapPin, Upload, Download, Trash2, FileText, CalendarClock, Receipt, ClipboardCheck } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
@@ -91,12 +95,7 @@ function ChargeRow({ charge, property, unit, tenancy }) {
             </div>
             {charge.payments?.length > 0 && (
                 <div className="space-y-1 rounded-xl bg-gray-50 p-3">
-                    {charge.payments.map(payment => (
-                        <p key={payment.id} className="flex flex-wrap justify-between gap-2 text-xs text-gray-600">
-                            <span>{Number(payment.amount).toLocaleString()} RWF · {t(payment.method.replace('_', ' ').replace(/^\w/, character => character.toUpperCase()))} · {formatDateTime(payment.paid_at, locale)}</span>
-                            <span className="font-medium text-[#0E3B2E]">{payment.receipt_number}</span>
-                        </p>
-                    ))}
+                    {charge.payments.map(payment => <PaymentRecordDetails key={payment.id} payment={{ ...payment, charge_type: charge.charge_type }} />)}
                 </div>
             )}
             {balance > 0 && !charge.voided_at && (
@@ -112,8 +111,9 @@ function ChargeRow({ charge, property, unit, tenancy }) {
                     <label className="text-xs font-medium text-gray-600">{t('Paid at')}
                         <input type="datetime-local" required value={form.data.paid_at} onChange={e => form.setData('paid_at', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" />
                     </label>
-                    <label className="text-xs font-medium text-gray-600">{t('Reference (optional)')}
-                        <input value={form.data.reference} onChange={e => form.setData('reference', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" />
+                    <label className="text-xs font-medium text-gray-600">{t(['bank_transfer', 'mobile_money'].includes(form.data.method) ? 'Bank / Mobile Money transaction ID' : 'Reference (optional)')}
+                        <input required={['bank_transfer', 'mobile_money'].includes(form.data.method)} value={form.data.reference} onChange={e => form.setData('reference', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" />
+                        {form.errors.reference && <span className="mt-1 block text-red-600">{form.errors.reference}</span>}
                     </label>
                     {form.errors.amount && <p className="text-xs text-red-600 sm:col-span-2">{form.errors.amount}</p>}
                     <button disabled={form.processing} className="rounded-lg bg-[#0E3B2E] px-3 py-2 text-sm font-medium text-white disabled:opacity-50 sm:col-span-2">
@@ -140,18 +140,22 @@ function TenancyManager({ tenancy, property, unit }) {
         rent_frequency: tenancy.rent_frequency || 'monthly',
         due_day: tenancy.due_day || '1',
         lease: null,
-        notes: '',
+        lease_notes: '',
+        payment_method: '',
+        payment_reference: '',
     });
     const depositReceived = Number(tenancy.deposit_received_amount || 0);
     const moveOutForm = useForm({
         move_out_date: todayDate,
         condition_notes: '',
-        deposit_refunded: depositReceived.toFixed(2),
-        deposit_deducted: '0.00',
+        damage_cost: '0.00',
         deduction_notes: '',
         unit_outcome: 'available',
     });
-    const leaseForm = useForm({ lease: null, notes: '' });
+    const damageCost = Math.max(0, Number(moveOutForm.data.damage_cost) || 0);
+    const depositRefund = Math.max(0, depositReceived - damageCost);
+    const damageDue = Math.max(0, damageCost - depositReceived);
+    const leaseForm = useForm({ lease: null, notes: '', payment_method: '', payment_reference: '' });
 
     const submitLease = (event) => {
         event.preventDefault();
@@ -188,6 +192,22 @@ function TenancyManager({ tenancy, property, unit }) {
             return sum + Math.max(0, Number(charge.amount) - chargePaid);
         }, 0);
     const scheduledRenewal = tenancy.renewals?.find(renewal => renewal.status === 'scheduled');
+    const rentPayments = activeCharges.flatMap(charge => (charge.payments || [])
+        .filter(payment => charge.charge_type === 'rent')
+        .map(payment => ({
+            ...payment,
+            charge: {
+                ...charge,
+                period_label: charge.period_start && charge.period_end
+                    ? `${formatDate(charge.period_start, locale)} – ${formatDate(charge.period_end, locale)}`
+                    : null,
+            },
+        })));
+    const combinedPaymentGroups = Object.values(rentPayments.reduce((groups, payment) => {
+        const key = `${payment.method || ''}|${payment.reference || ''}|${String(payment.paid_at || '').slice(0, 10)}`;
+        groups[key] = [...(groups[key] || []), payment];
+        return groups;
+    }, {}));
 
     return (
         <div className="space-y-6">
@@ -207,6 +227,20 @@ function TenancyManager({ tenancy, property, unit }) {
                         <div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('Collected')}</p><p className="mt-1 font-semibold text-gray-900">{totalPaid.toLocaleString()} RWF</p></div>
                         <div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('Due / overdue balance')}</p><p className={`mt-1 font-semibold ${dueBalance > 0 ? 'text-red-700' : 'text-green-700'}`}>{dueBalance.toLocaleString()} RWF</p></div>
                     </div>
+                    {combinedPaymentGroups.filter(group => group.length > 1).map(group => (
+                        <div key={group[0].id} className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+                            <p className="text-sm text-emerald-900">{t('One combined bill covers :count rent periods', { count: group.length })}</p>
+                            <PaymentReceiptButton
+                                payment={group[0]}
+                                payments={group}
+                                charge={group[0].charge}
+                                tenant={tenancy.tenant}
+                                property={property}
+                                unit={unit}
+                                agreement={{ reference: tenancy.leases?.[0]?.reference_number }}
+                            />
+                        </div>
+                    ))}
                 </div>
 
                 <div className="border-b border-gray-100 p-6">
@@ -220,10 +254,26 @@ function TenancyManager({ tenancy, property, unit }) {
 
                 <form onSubmit={submitLease} className="space-y-3 border-b border-gray-100 p-6">
                     <label className="block text-sm font-medium text-gray-700">{t('Upload another signed lease or amendment')}</label>
-                    <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => leaseForm.setData('lease', e.target.files[0])} className="block w-full text-sm text-gray-600" required />
-                    <p className="text-xs text-gray-500">{t('PDF, DOC, DOCX, JPG, JPEG or PNG. Maximum 10 MB.')}</p>
-                    <input type="text" value={leaseForm.data.notes} onChange={e => leaseForm.setData('notes', e.target.value)} placeholder={t('Optional note')} className="w-full rounded-lg border-gray-300 text-sm" />
-                    {leaseForm.errors.lease && <p className="text-sm text-red-600">{leaseForm.errors.lease}</p>}
+                    <LeaseRecordFields
+                        paymentMethod={leaseForm.data.payment_method}
+                        onPaymentMethodChange={value => leaseForm.setData('payment_method', value)}
+                        paymentReference={leaseForm.data.payment_reference}
+                        onPaymentReferenceChange={value => leaseForm.setData('payment_reference', value)}
+                        errors={leaseForm.errors}
+                    />
+                    <LeaseNoteField
+                        value={leaseForm.data.notes}
+                        onChange={value => leaseForm.setData('notes', value)}
+                        routeName="properties.units.tenancy.lease-notes.generate-for-tenancy"
+                        routeParams={[property.id, unit.id, tenancy.id]}
+                        payload={{ purpose: 'attachment' }}
+                    />
+                    <label className="block text-sm font-medium text-gray-700">
+                        {t('Signed lease document (required)')}
+                        <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => leaseForm.setData('lease', e.target.files[0])} className="mt-1 block w-full text-sm text-gray-600" required />
+                        <span className="mt-1 block text-xs font-normal text-gray-500">{t('PDF, DOC, DOCX, JPG, JPEG or PNG. Maximum 10 MB.')}</span>
+                        {leaseForm.errors.lease && <span className="mt-1 block text-xs text-red-600">{leaseForm.errors.lease}</span>}
+                    </label>
                     <button disabled={leaseForm.processing} className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                         <Upload size={15} /> {leaseForm.processing ? t('Uploading…') : t('Upload lease')}
                     </button>
@@ -231,7 +281,7 @@ function TenancyManager({ tenancy, property, unit }) {
                 <div className="divide-y divide-gray-100">
                     {tenancy.leases?.length ? tenancy.leases.map(lease => (
                         <div key={lease.id} className="flex items-center justify-between gap-3 p-4">
-                            <div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-gray-400" /><div className="min-w-0"><p className="truncate text-sm font-medium text-gray-900">{lease.original_name}</p><p className="text-xs text-gray-500">{(lease.size / 1024 / 1024).toFixed(2)} MB</p></div></div>
+                            <div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-gray-400" /><div className="min-w-0"><p className="truncate text-sm font-medium text-gray-900">{lease.original_name}</p><p className="mt-1 break-words text-xs text-gray-500">{t('Reference')}: {lease.reference_number || '—'} · {t('Payment method')}: {t(({ cash: 'Cash', mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', other: 'Other' })[lease.payment_method] || 'Unknown')}</p>{lease.payment_reference && <p className="mt-1 break-words text-xs text-gray-500">{t('Payment reference')}: {lease.payment_reference}</p>}{lease.notes && <p className="mt-1 whitespace-pre-line break-words text-xs text-gray-500">{lease.notes}</p>}<p className="text-xs text-gray-500">{(lease.size / 1024 / 1024).toFixed(2)} MB</p></div></div>
                             <div className="flex shrink-0 items-center gap-2"><a href={route('properties.units.tenancy.leases.download', [property, unit, tenancy.id, lease.id])} className="rounded-lg p-2 text-[#0E3B2E] hover:bg-gray-100" aria-label={`Download ${lease.original_name}`}><Download size={16} /></a><Link as="button" method="delete" href={route('properties.units.tenancy.leases.destroy', [property, unit, tenancy.id, lease.id])} className="rounded-lg p-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${lease.original_name}`}><Trash2 size={16} /></Link></div>
                         </div>
                     )) : <p className="p-6 text-sm text-gray-500">{t('No leases uploaded yet.')}</p>}
@@ -251,7 +301,28 @@ function TenancyManager({ tenancy, property, unit }) {
                             <label className="text-xs font-medium text-gray-600">{t('Rent frequency')}<select value={renewalForm.data.rent_frequency} onChange={e => renewalForm.setData('rent_frequency', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm"><option value="daily">{t('Daily')}</option><option value="weekly">{t('Weekly')}</option><option value="monthly">{t('Monthly')}</option><option value="quarterly">{t('Quarterly')}</option><option value="yearly">{t('Yearly')}</option></select></label>
                             {renewalForm.data.rent_frequency === 'monthly' && <label className="text-xs font-medium text-gray-600">{t('Due day')}<input type="number" min="1" max="31" required value={renewalForm.data.due_day} onChange={e => renewalForm.setData('due_day', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>}
                             <label className="text-xs font-medium text-gray-600">{t('Rent per period (RWF)')}<input type="number" min="0.01" step="0.01" required value={renewalForm.data.monthly_rent} onChange={e => renewalForm.setData('monthly_rent', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
-                            <label className="text-xs font-medium text-gray-600 sm:col-span-2">{t('Signed renewal lease')}<input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => renewalForm.setData('lease', e.target.files[0])} className="mt-1 w-full text-sm" /></label>
+                            <LeaseRecordFields
+                                paymentMethod={renewalForm.data.payment_method}
+                                onPaymentMethodChange={value => renewalForm.setData('payment_method', value)}
+                                paymentReference={renewalForm.data.payment_reference}
+                                onPaymentReferenceChange={value => renewalForm.setData('payment_reference', value)}
+                                errors={renewalForm.errors}
+                            />
+                            <LeaseNoteField
+                                value={renewalForm.data.lease_notes}
+                                onChange={value => renewalForm.setData('lease_notes', value)}
+                                routeName="properties.units.tenancy.lease-notes.generate-for-tenancy"
+                                routeParams={[property.id, unit.id, tenancy.id]}
+                                payload={{
+                                    purpose: 'renewal',
+                                    start_date: renewalForm.data.start_date,
+                                    end_date: renewalForm.data.end_date,
+                                    monthly_rent: renewalForm.data.monthly_rent,
+                                    rent_frequency: renewalForm.data.rent_frequency,
+                                }}
+                                disabled={!renewalForm.data.start_date || !renewalForm.data.end_date || !renewalForm.data.monthly_rent}
+                            />
+                            <label className="text-xs font-medium text-gray-600 sm:col-span-2">{t('Signed renewal lease')}<input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => renewalForm.setData('lease', e.target.files[0])} className="mt-1 w-full text-sm" />{renewalForm.errors.lease && <span className="mt-1 block text-xs text-red-600">{renewalForm.errors.lease}</span>}</label>
                             {renewalForm.errors.start_date && <p className="text-xs text-red-600 sm:col-span-2">{renewalForm.errors.start_date}</p>}
                             <button disabled={renewalForm.processing} className="rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white disabled:opacity-50 sm:col-span-2">{renewalForm.processing ? t('Saving…') : t('Save renewal')}</button>
                         </form>
@@ -266,8 +337,12 @@ function TenancyManager({ tenancy, property, unit }) {
                     <form onSubmit={submitMoveOut} className="grid gap-3 p-5 sm:grid-cols-2">
                         <label className="text-xs font-medium text-gray-600">{t('Move-out date')}<input type="date" max={todayDate} required value={moveOutForm.data.move_out_date} onChange={e => moveOutForm.setData('move_out_date', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
                         <label className="text-xs font-medium text-gray-600">{t('Deposit received')}<input readOnly value={`${depositReceived.toLocaleString()} RWF`} className="mt-1 w-full rounded-lg border-gray-200 bg-gray-50 text-sm" /></label>
-                        <label className="text-xs font-medium text-gray-600">{t('Refund (RWF)')}<input type="number" min="0" step="0.01" required value={moveOutForm.data.deposit_refunded} onChange={e => moveOutForm.setData('deposit_refunded', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
-                        <label className="text-xs font-medium text-gray-600">{t('Deductions (RWF)')}<input type="number" min="0" step="0.01" required value={moveOutForm.data.deposit_deducted} onChange={e => moveOutForm.setData('deposit_deducted', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
+                        <label className="text-xs font-medium text-gray-600 sm:col-span-2">{t('Damage cost (RWF)')}<input type="number" min="0" step="0.01" required value={moveOutForm.data.damage_cost} onChange={e => moveOutForm.setData('damage_cost', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
+                        <div className="rounded-xl bg-emerald-50 p-3 text-sm sm:col-span-2">
+                            <p className="font-semibold text-emerald-900">{t('Deposit refund')}: {depositRefund.toLocaleString()} RWF</p>
+                            {damageDue > 0 && <p className="mt-1 font-semibold text-amber-800">{t('Additional damage amount due')}: {damageDue.toLocaleString()} RWF</p>}
+                            {damageCost > 0 && damageCost <= depositReceived && <p className="mt-1 text-xs text-emerald-800">{t('Damage costs will be deducted from the deposit.')}</p>}
+                        </div>
                         <label className="text-xs font-medium text-gray-600 sm:col-span-2">{t('Deduction explanation')}<textarea value={moveOutForm.data.deduction_notes} onChange={e => moveOutForm.setData('deduction_notes', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
                         <label className="text-xs font-medium text-gray-600 sm:col-span-2">{t('Condition / inspection notes')}<textarea required value={moveOutForm.data.condition_notes} onChange={e => moveOutForm.setData('condition_notes', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
                         <label className="text-xs font-medium text-gray-600 sm:col-span-2">{t('Unit after move-out')}<select value={moveOutForm.data.unit_outcome} onChange={e => moveOutForm.setData('unit_outcome', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm"><option value="available">{t('Available for rent')}</option><option value="maintenance">{t('Needs maintenance')}</option></select></label>
@@ -415,6 +490,15 @@ export default function UnitShow({ property, unit }) {
                                             <p className="text-xs text-gray-500">{formatDate(record.start_date, locale)} – {formatDate(record.actual_end_date || record.end_date, locale)}</p>
                                             {record.move_out_inspection && <p className="mt-1 text-xs text-gray-500">{t('Deposit')}: {Number(record.move_out_inspection.deposit_received).toLocaleString()} {t('received')} · {Number(record.move_out_inspection.deposit_refunded).toLocaleString()} {t('refunded')} · {Number(record.move_out_inspection.deposit_deducted).toLocaleString()} {t('deducted')}</p>}
                                             {record.rent_charges?.length > 0 && <p className="mt-1 text-xs text-gray-500">{t('Rent/deposit payments recorded')}: {record.rent_charges.reduce((total, charge) => total + (charge.payments || []).reduce((paid, payment) => paid + Number(payment.amount), 0), 0).toLocaleString()} RWF</p>}
+                                            <p className="mt-1 text-xs font-semibold text-[#0E3B2E]">{record.leases?.[0]?.reference_number || t('Agreement reference not available')}</p>
+                                            {record.rent_charges?.some(charge => charge.payments?.length) && (
+                                                <details className="mt-2">
+                                                    <summary className="cursor-pointer text-xs font-medium text-gray-600">{t('Payment history')}</summary>
+                                                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                                        {record.rent_charges.flatMap(charge => (charge.payments || []).map(payment => ({ ...payment, charge_type: charge.charge_type }))).map(payment => <PaymentRecordDetails key={payment.id} payment={payment} />)}
+                                                    </div>
+                                                </details>
+                                            )}
                                         </div>
                                         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold capitalize text-gray-600">{t(record.status)}</span>
                                     </div>

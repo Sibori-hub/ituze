@@ -4,6 +4,9 @@ import { ArrowLeft, Building2, CalendarDays, Edit2, FileText, Mail, MapPin, Phon
 import { useState } from 'react';
 import { useTranslation } from '@/localization';
 import TenantLocationFields from '@/Components/TenantLocationFields';
+import LeaseNoteField from '@/Components/LeaseNoteField';
+import LeaseRecordFields from '@/Components/LeaseRecordFields';
+import PaymentRecordDetails from '@/Components/PaymentRecordDetails';
 import { countRentPeriods } from '@/utils/rentPeriodCalculator';
 
 const today = () => {
@@ -48,7 +51,9 @@ export default function TenantShow({ tenant, availableUnits }) {
         rent_frequency: 'monthly',
         deposit_amount: '0',
         lease: null,
-        notes: '',
+        lease_notes: '',
+        payment_method: '',
+        payment_reference: '',
     });
 
     const selectedUnit = availableUnits.find(unit => String(unit.id) === String(assignment.data.unit_id));
@@ -211,14 +216,32 @@ export default function TenantShow({ tenant, availableUnits }) {
                                 {t('Security deposit (RWF)')}
                                 <input type="number" min="0" step="0.01" value={assignment.data.deposit_amount} onChange={event => assignment.setData('deposit_amount', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
                             </label>
+                            <LeaseRecordFields
+                                paymentMethod={assignment.data.payment_method}
+                                onPaymentMethodChange={value => assignment.setData('payment_method', value)}
+                                paymentReference={assignment.data.payment_reference}
+                                onPaymentReferenceChange={value => assignment.setData('payment_reference', value)}
+                                errors={assignment.errors}
+                                isDepositPayment
+                            />
+                            <LeaseNoteField
+                                value={assignment.data.lease_notes}
+                                onChange={value => assignment.setData('lease_notes', value)}
+                                routeName="properties.units.tenancy.lease-notes.generate"
+                                routeParams={selectedUnit ? [selectedUnit.property_id, selectedUnit.id] : []}
+                                payload={{
+                                    start_date: assignment.data.start_date,
+                                    end_date: assignment.data.end_date,
+                                    monthly_rent: assignment.data.monthly_rent,
+                                    rent_frequency: assignment.data.rent_frequency,
+                                    deposit_amount: assignment.data.deposit_amount,
+                                }}
+                                disabled={!selectedUnit || !assignment.data.start_date || !assignment.data.end_date || !assignment.data.monthly_rent}
+                            />
                             <label className="text-sm font-medium text-gray-700 sm:col-span-2 lg:col-span-3">
                                 {t('Signed lease document (required)')}
                                 <input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={event => assignment.setData('lease', event.target.files[0])} className="mt-1.5 block w-full rounded-xl border border-gray-200 p-2 text-sm" />
                                 {assignment.errors.lease && <span className="mt-1 block text-xs text-red-600">{assignment.errors.lease}</span>}
-                            </label>
-                            <label className="text-sm font-medium text-gray-700 sm:col-span-2 lg:col-span-3">
-                                {t('Notes (optional)')}
-                                <textarea value={assignment.data.notes} onChange={event => assignment.setData('notes', event.target.value)} rows="3" className="mt-1.5 w-full rounded-xl border-gray-200" />
                             </label>
                             {Object.values(assignment.errors).length > 0 && (
                                 <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 sm:col-span-2 lg:col-span-3">{Object.values(assignment.errors)[0]}</p>
@@ -250,12 +273,15 @@ export default function TenantShow({ tenant, availableUnits }) {
                             {tenant.tenancies.map(tenancy => {
                                 const charged = (tenancy.rent_charges || []).filter(charge => !charge.voided_at).reduce((sum, charge) => sum + Number(charge.amount), 0);
                                 const paid = (tenancy.rent_charges || []).reduce((sum, charge) => sum + (charge.payments || []).reduce((total, payment) => total + Number(payment.amount), 0), 0);
+                                const payments = (tenancy.rent_charges || []).flatMap(charge => (charge.payments || []).map(payment => ({ ...payment, charge_type: charge.charge_type })));
                                 return (
-                                    <div key={tenancy.id} className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                                    <div key={tenancy.id} className="flex flex-col gap-4 p-5">
+                                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                         <div className="flex items-start gap-3">
                                             <div className="rounded-xl bg-emerald-50 p-2.5 text-[#0E3B2E]"><Building2 size={18} /></div>
                                             <div>
                                                 <p className="font-semibold text-gray-900">{tenancy.unit?.property?.name} · {t('Unit')} {tenancy.unit?.unit_number}</p>
+                                                <p className="mt-1 text-xs font-semibold text-[#0E3B2E]">{tenancy.leases?.[0]?.reference_number || t('Agreement reference not available')}</p>
                                                 <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                                                     <span className="inline-flex items-center gap-1"><CalendarDays size={13} />{formatDate(tenancy.start_date, language)} – {formatDate(tenancy.actual_end_date || tenancy.end_date, language)}</span>
                                                     <span>{Number(tenancy.monthly_rent).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} RWF / {t((tenancy.rent_frequency || 'monthly').replace(/^./, (letter) => letter.toUpperCase()))}</span>
@@ -268,6 +294,15 @@ export default function TenantShow({ tenant, availableUnits }) {
                                             <span className="inline-flex items-center gap-1 text-xs text-gray-600"><Wallet size={14} />{t('Collected')} {paid.toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} / {charged.toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} RWF</span>
                                             {tenancy.unit && <Link href={route('properties.units.show', [tenancy.unit.property_id, tenancy.unit.id])} className="inline-flex items-center gap-1 text-sm font-medium text-[#0E3B2E] hover:underline"><FileText size={14} />{t('Open unit')}</Link>}
                                         </div>
+                                      </div>
+                                      {payments.length > 0 && (
+                                        <details className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                                            <summary className="cursor-pointer text-sm font-semibold text-gray-700">{t('Payment history')} ({payments.length})</summary>
+                                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                                {payments.map(payment => <PaymentRecordDetails key={payment.id} payment={payment} />)}
+                                            </div>
+                                        </details>
+                                      )}
                                     </div>
                                 );
                             })}

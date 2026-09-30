@@ -13,3 +13,82 @@
         transform: translateY(0);
     }
 }
+
+@media print {
+    @page {
+        size: landscape;
+        margin: 14mm;
+    }
+
+    @page payment-receipt {
+        size: portrait;
+        margin: 14mm;
+    }
+
+    html,
+    body,
+    #app {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report,
+    body[data-print-target="payments-finance-report"] #payments-finance-report,
+    body[data-print-target="payments-finance-report"] #payments-finance-report *,
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report *,
+    body[data-print-target="payment-receipt"] [data-payment-receipt].print-active,
+    body[data-print-target="payment-receipt"] [data-payment-receipt].print-active * {
+        visibility: visible !important;
+    }
+
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report,
+    body[data-print-target="payments-finance-report"] #payments-finance-report,
+    body[data-print-target="payment-receipt"] [data-payment-receipt].print-active {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        margin: 0;
+        border: 0;
+        box-shadow: none;
+    }
+
+    body[data-print-target="payment-receipt"] [data-payment-receipt].print-active {
+        display: block !important;
+        page: payment-receipt;
+    }
+
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report thead {
+        display: table-header-group;
+    }
+
+    body[data-print-target="payments-finance-report"] #payments-finance-report thead,
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report tr,
+    body[data-print-target="payments-finance-report"] #payments-finance-report tr {
+        break-inside: avoid;
+    }
+
+    body[data-print-target="payments-finance-report"] #payments-finance-report thead {
+        display: table-header-group;
+    }
+
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report .overflow-x-auto,
+    body[data-print-target="payments-finance-report"] #payments-finance-report .overflow-x-auto {
+        overflow: visible !important;
+    }
+
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report table,
+    body[data-print-target="payments-finance-report"] #payments-finance-report table {
+        min-width: 0 !important;
+        font-size: 8pt;
+    }
+
+    body[data-print-target="agreement-finance-report"] #agreement-finance-report .screen-only,
+    body[data-print-target="payments-finance-report"] #payments-finance-report .screen-only {
+        display: none !important;
+    }
+}

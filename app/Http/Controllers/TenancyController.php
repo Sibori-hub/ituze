@@ -15,11 +15,12 @@ use App\Services\TenantLocationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TenancyController extends Controller
@@ -105,6 +106,9 @@ class TenancyController extends Controller
             'rent_frequency' => ['required', 'in:daily,weekly,monthly,quarterly,yearly'],
             'deposit_amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'lease_notes' => ['nullable', 'string', 'max:1000'],
+            'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
+            'payment_reference' => ['required_if:payment_method,bank_transfer,mobile_money', 'nullable', 'string', 'max:255'],
             'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
             ...($hasExistingTenant ? [] : app(TenantLocationService::class)->validationRules($request)),
         ]);
@@ -191,19 +195,60 @@ class TenancyController extends Controller
                 'status' => CarbonImmutable::parse($data['start_date'])->isFuture() ? 'scheduled' : 'active',
             ]);
 
-            $file = $data['lease'];
-            $path = $file->store('leases/'.$tenancy->id, 'local');
-            $tenancy->leases()->create([
-                'uploaded_by' => $request->user()->id,
-                'original_name' => $file->getClientOriginalName(),
-                'path' => $path,
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-            ]);
+            $this->storeLeaseDocument($tenancy, $request, $data['lease'], $data['lease_notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
             $lockedUnit->update([
                 'status' => $tenancy->status === 'scheduled' ? 'reserved' : 'occupied',
             ]);
             app(RentScheduleService::class)->createCharges($tenancy);
+
+            if ((int) round((float) $tenancy->deposit_amount * 100) > 0) {
+                $depositCharge = $tenancy->rentCharges()
+                    ->where('charge_type', 'deposit')
+                    ->firstOrFail();
+                $depositCents = (int) round((float) $depositCharge->amount * 100);
+                $depositPayment = RentPayment::create([
+                    'rent_charge_id' => $depositCharge->id,
+                    'recorded_by' => $request->user()->id,
+                    'amount' => number_format($depositCents / 100, 2, '.', ''),
+                    'method' => $data['payment_method'],
+                    'reference' => $data['payment_reference'] ?? null,
+                    'notes' => 'Full security deposit received. Rent allocations and VAT are recorded separately against rent charges.',
+                    'paid_at' => now(),
+                ]);
+                $depositPayment->update([
+                    'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $depositPayment->id),
+                ]);
+
+                $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
+                $availableDepositCents = $depositCents;
+                $rentCharges = $tenancy->rentCharges()
+                    ->where('charge_type', 'rent')
+                    ->orderBy('due_date')
+                    ->get();
+                foreach ($rentCharges as $rentCharge) {
+                    if ($availableDepositCents <= 0) {
+                        break;
+                    }
+                    $rentCents = min($availableDepositCents, (int) round((float) $rentCharge->amount * 100));
+                    $vatCents = (int) round($rentCents * $vatRate / 10000);
+                    $rentPayment = RentPayment::create([
+                        'rent_charge_id' => $rentCharge->id,
+                        'recorded_by' => $request->user()->id,
+                        'amount' => number_format($rentCents / 100, 2, '.', ''),
+                        'taxable_amount' => number_format($rentCents / 100, 2, '.', ''),
+                        'vat_rate' => number_format($vatRate / 100, 2, '.', ''),
+                        'vat_amount' => number_format($vatCents / 100, 2, '.', ''),
+                        'method' => $data['payment_method'],
+                        'reference' => $data['payment_reference'] ?? null,
+                        'notes' => 'Rent paid from the received security deposit. Remaining deposit credit is calculated separately.',
+                        'paid_at' => now(),
+                    ]);
+                    $rentPayment->update([
+                        'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $rentPayment->id),
+                    ]);
+                    $availableDepositCents -= $rentCents;
+                }
+            }
         });
 
         $redirect = ! empty($data['tenant_id'])
@@ -229,7 +274,12 @@ class TenancyController extends Controller
             'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
             'method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
             'paid_at' => ['required', 'date', 'before_or_equal:now'],
-            'reference' => ['nullable', 'string', 'max:255'],
+            'reference' => [
+                'required_if:method,bank_transfer,mobile_money',
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -257,10 +307,16 @@ class TenancyController extends Controller
                 ]);
             }
 
+            $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
+            $vatCents = (int) round($paymentCents * $vatRate / 10000);
+
             $payment = RentPayment::create([
                 'rent_charge_id' => $lockedCharge->id,
                 'recorded_by' => $request->user()->id,
                 'amount' => number_format($paymentCents / 100, 2, '.', ''),
+                'taxable_amount' => $vatCents === null ? null : number_format($paymentCents / 100, 2, '.', ''),
+                'vat_rate' => $vatCents === null ? null : number_format($vatRate / 100, 2, '.', ''),
+                'vat_amount' => $vatCents === null ? null : number_format($vatCents / 100, 2, '.', ''),
                 'method' => $data['method'],
                 'reference' => $data['reference'] ?? null,
                 'notes' => $data['notes'] ?? null,
@@ -290,6 +346,9 @@ class TenancyController extends Controller
             'rent_frequency' => ['required', 'in:daily,weekly,monthly,quarterly,yearly'],
             'due_day' => ['nullable', 'required_if:rent_frequency,monthly', 'integer', 'between:1,31'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'lease_notes' => ['nullable', 'string', 'max:1000'],
+            'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
+            'payment_reference' => ['required_if:payment_method,bank_transfer,mobile_money', 'nullable', 'string', 'max:255'],
             'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
         ]);
         if ($tenancy->end_date && CarbonImmutable::parse($data['start_date'])->lessThanOrEqualTo($tenancy->end_date->startOfDay())) {
@@ -326,15 +385,7 @@ class TenancyController extends Controller
                 'status' => CarbonImmutable::parse($data['start_date'])->isFuture() ? 'scheduled' : 'active',
             ]);
 
-            $file = $data['lease'];
-            $path = $file->store('leases/'.$renewal->id, 'local');
-            $renewal->leases()->create([
-                'uploaded_by' => $request->user()->id,
-                'original_name' => $file->getClientOriginalName(),
-                'path' => $path,
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-            ]);
+            $this->storeLeaseDocument($renewal, $request, $data['lease'], $data['lease_notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
 
             app(RentScheduleService::class)->createCharges($renewal, false);
 
@@ -362,8 +413,7 @@ class TenancyController extends Controller
         $data = $request->validate([
             'move_out_date' => ['required', 'date', 'before_or_equal:today'],
             'condition_notes' => ['required', 'string', 'max:5000'],
-            'deposit_refunded' => ['required', 'numeric', 'decimal:0,2', 'min:0'],
-            'deposit_deducted' => ['required', 'numeric', 'decimal:0,2', 'min:0'],
+            'damage_cost' => ['required', 'numeric', 'decimal:0,2', 'min:0'],
             'deduction_notes' => ['nullable', 'string', 'max:5000'],
             'unit_outcome' => ['required', 'in:available,maintenance'],
         ]);
@@ -390,18 +440,15 @@ class TenancyController extends Controller
                         ->where('charge_type', 'deposit'))
                     ->sum('amount') * 100,
             );
-            $settledCents = (int) round(((float) $data['deposit_refunded'] + (float) $data['deposit_deducted']) * 100);
-
-            if ($settledCents !== $depositReceivedCents) {
-                throw ValidationException::withMessages([
-                    'deposit_refunded' => 'The refund and deductions must equal the deposit payments received: '.number_format($depositReceivedCents / 100, 2).'.',
-                ]);
-            }
-            if ((float) $data['deposit_deducted'] > 0 && empty($data['deduction_notes'])) {
+            $damageCents = (int) round((float) $data['damage_cost'] * 100);
+            if ($damageCents > 0 && empty($data['deduction_notes'])) {
                 throw ValidationException::withMessages([
                     'deduction_notes' => 'Explain any deductions from the deposit.',
                 ]);
             }
+            $depositDeductedCents = min($damageCents, $depositReceivedCents);
+            $depositRefundedCents = max(0, $depositReceivedCents - $damageCents);
+            $excessDamageCents = max(0, $damageCents - $depositReceivedCents);
 
             foreach ($chain as $linkedTenancy) {
                 $scheduledRenewals = $linkedTenancy->renewals()->where('status', 'scheduled')->get();
@@ -431,11 +478,28 @@ class TenancyController extends Controller
                 'move_out_date' => $data['move_out_date'],
                 'condition_notes' => $data['condition_notes'],
                 'deposit_received' => number_format($depositReceivedCents / 100, 2, '.', ''),
-                'deposit_refunded' => $data['deposit_refunded'],
-                'deposit_deducted' => $data['deposit_deducted'],
+                'deposit_refunded' => number_format($depositRefundedCents / 100, 2, '.', ''),
+                'deposit_deducted' => number_format($depositDeductedCents / 100, 2, '.', ''),
+                'damage_cost' => number_format($damageCents / 100, 2, '.', ''),
                 'deduction_notes' => $data['deduction_notes'] ?? null,
                 'unit_outcome' => $data['unit_outcome'],
             ]);
+
+            if ($excessDamageCents > 0) {
+                $moveOutDate = CarbonImmutable::parse($data['move_out_date'])->toDateString();
+                RentCharge::query()->firstOrCreate(
+                    [
+                        'tenancy_id' => $lockedTenancy->id,
+                        'charge_type' => 'damage',
+                        'period_start' => $moveOutDate,
+                    ],
+                    [
+                        'period_end' => null,
+                        'due_date' => $moveOutDate,
+                        'amount' => number_format($excessDamageCents / 100, 2, '.', ''),
+                    ],
+                );
+            }
 
             $lockedTenancy->update([
                 'status' => 'ended',
@@ -455,17 +519,10 @@ class TenancyController extends Controller
             $data = $request->validate([
                 'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
                 'notes' => ['nullable', 'string', 'max:1000'],
+                'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
+                'payment_reference' => ['required_if:payment_method,bank_transfer,mobile_money', 'nullable', 'string', 'max:255'],
             ]);
-            $file = $data['lease'];
-            $path = $file->store('leases/'.$tenancy->id, 'local');
-            $tenancy->leases()->create([
-                'uploaded_by' => $request->user()->id,
-                'original_name' => $file->getClientOriginalName(),
-                'path' => $path,
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-                'notes' => $data['notes'] ?? null,
-            ]);
+            $this->storeLeaseDocument($tenancy, $request, $data['lease'], $data['notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
 
             return back()->with('success', 'Lease uploaded successfully.');
         } catch (ValidationException $e) {
@@ -520,6 +577,32 @@ class TenancyController extends Controller
         if ($lease->tenancy_id !== $tenancy->id) {
             abort(404);
         }
+    }
+
+    private function storeLeaseDocument(
+        Tenancy $tenancy,
+        Request $request,
+        UploadedFile $file,
+        ?string $notes,
+        string $paymentMethod,
+        ?string $paymentReference,
+    ): Lease {
+        $path = $file->store('leases/'.$tenancy->id, 'local');
+        $lease = $tenancy->leases()->create([
+            'uploaded_by' => $request->user()->id,
+            'payment_method' => $paymentMethod,
+            'payment_reference' => $paymentReference,
+            'original_name' => $file->getClientOriginalName(),
+            'path' => $path,
+            'mime_type' => $file->getMimeType(),
+            'size' => $file->getSize(),
+            'notes' => $notes,
+        ]);
+        $lease->update([
+            'reference_number' => sprintf('ITZ-LSE-%s-%06d', now()->format('Y'), $lease->id),
+        ]);
+
+        return $lease;
     }
 
     private function authorizePropertyAccess($user, Property $property): void

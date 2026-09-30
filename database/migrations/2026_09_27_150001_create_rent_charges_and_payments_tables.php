@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('receipt_number')->nullable()->unique();
             $table->string('reference')->nullable();
             $table->text('notes')->nullable();
-            $table->timestamp('paid_at');
+            $table->timestamp('paid_at')->useCurrent();
             $table->timestamps();
             $table->index(['rent_charge_id', 'paid_at']);
         });
