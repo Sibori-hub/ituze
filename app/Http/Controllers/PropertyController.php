@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Property;
 use App\Models\PropertyImage;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,7 +23,16 @@ class PropertyController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        
+        $ownerId = null;
+        $owners = collect();
+        if ($user->isAdmin()) {
+            $filters = $request->validate([
+                'owner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))],
+            ]);
+            $ownerId = isset($filters['owner_id']) ? (int) $filters['owner_id'] : null;
+            $owners = User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name']);
+        }
+
         $query = Property::with(['owner', 'cell.sector.district.province', 'images'])
             ->withCount([
                 'units',
@@ -37,6 +48,7 @@ class PropertyController extends Controller
                 // Regular owners can only see their own properties
                 return $query->where('owner_id', $user->id);
             })
+            ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId))
             ->when($request->search, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -51,18 +63,36 @@ class PropertyController extends Controller
             'properties' => $properties,
             'filters' => [
                 'search' => $request->search,
+                'owner_id' => $ownerId,
             ],
             'isAdmin' => $user->isAdmin(),
             'currentUserId' => $user->id,
+            'owners' => $owners,
         ]);
     }
 
     /**
      * Show the form for creating a new property.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('Properties/Create');
+        $user = $request->user();
+        $ownerId = null;
+        $owners = collect();
+
+        if ($user->isAdmin()) {
+            $filters = $request->validate([
+                'owner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))],
+            ]);
+            $ownerId = $filters['owner_id'] ?? null;
+            $owners = User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name']);
+        }
+
+        return Inertia::render('Properties/Create', [
+            'isAdmin' => $user->isAdmin(),
+            'owners' => $owners,
+            'selectedOwnerId' => $ownerId,
+        ]);
     }
 
     /**
@@ -71,19 +101,25 @@ class PropertyController extends Controller
     public function store(Request $request): RedirectResponse
     {
         try {
-            $request->validate(
-                [
-                    'name' => 'required|string|max:255',
-                    'address' => 'required|string|max:255',
-                    'description' => 'nullable|string',
-                    'cell_id' => 'required|exists:cells,id',
-                    'amenities' => 'nullable|array',
-                    'amenities.*' => 'boolean',
-                    'proximity' => 'nullable|array',
-                    'proximity.*' => 'boolean',
-                    'images' => 'nullable|array',
-                    'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-                ],
+            $user = $request->user();
+            $rules = [
+                'name' => 'required|string|max:255',
+                'address' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'cell_id' => 'required|exists:cells,id',
+                'amenities' => 'nullable|array',
+                'amenities.*' => 'boolean',
+                'proximity' => 'nullable|array',
+                'proximity.*' => 'boolean',
+                'images' => 'nullable|array',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            ];
+            if ($user->isAdmin()) {
+                $rules['owner_id'] = ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))];
+            }
+
+            $data = $request->validate(
+                $rules,
                 [
                     'name.required' => '❌ Please enter a property name.',
                     'address.required' => '❌ Please enter the property address.',
@@ -96,11 +132,11 @@ class PropertyController extends Controller
             );
 
             $property = Property::create([
-                'owner_id' => $request->user()->id,
-                'cell_id' => $request->cell_id,
-                'name' => $request->name,
-                'address' => $request->address,
-                'description' => $request->description,
+                'owner_id' => $user->isAdmin() ? $data['owner_id'] : $user->id,
+                'cell_id' => $data['cell_id'],
+                'name' => $data['name'],
+                'address' => $data['address'],
+                'description' => $data['description'] ?? null,
                 'amenities' => $request->input('amenities'),
                 'proximity' => $request->input('proximity'),
             ]);

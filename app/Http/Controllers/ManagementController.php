@@ -7,9 +7,11 @@ use App\Models\Property;
 use App\Models\RentCharge;
 use App\Models\RentPayment;
 use App\Models\Tenancy;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,10 +20,12 @@ class ManagementController extends Controller
     public function leases(Request $request): Response
     {
         $user = $request->user();
+        $ownerId = $this->ownerFilter($request, $user);
         $leases = Lease::query()
             ->with(['tenancy.tenant', 'tenancy.unit.property', 'tenancy.rentCharges.payments'])
             ->whereHas('tenancy.unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id)))
+                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+                ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId)))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -106,7 +110,12 @@ class ManagementController extends Controller
             return $lease;
         });
 
-        return Inertia::render('Leases/Index', ['leases' => $leases]);
+        return Inertia::render('Leases/Index', [
+            'leases' => $leases,
+            'isAdmin' => $user->isAdmin(),
+            'owners' => $this->ownerOptions($user),
+            'filters' => ['owner_id' => $ownerId],
+        ]);
     }
 
     public function payments(Request $request): Response
@@ -115,8 +124,9 @@ class ManagementController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
         ]);
+        $ownerId = $this->ownerFilter($request, $user);
         $search = trim($validated['search'] ?? '');
-        $agreementReports = $this->agreementFinanceReports($user);
+        $agreementReports = $this->agreementFinanceReports($user, $ownerId);
         $agreementsByTenancy = collect($agreementReports)->keyBy('tenancy_id');
         $reportTotals = collect($agreementReports)->reduce(fn (array $totals, array $agreement) => [
             'paid' => $totals['paid'] + (float) $agreement['total_paid'],
@@ -127,7 +137,8 @@ class ManagementController extends Controller
         ], ['paid' => 0, 'taxable_rent' => 0, 'vat_collected' => 0, 'vat_unrecorded_payments' => 0, 'deposit_credit' => 0]);
         $matchingPayments = RentPayment::query()
             ->whereHas('charge.tenancy.unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id)))
+                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+                ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId)))
             ->whereHas('charge', fn ($query) => $query->where('charge_type', '!=', 'deposit'))
             ->when($search !== '', function ($query) use ($search) {
                 $term = '%'.$search.'%';
@@ -235,7 +246,9 @@ class ManagementController extends Controller
         return Inertia::render('Payments/Index', [
             'payments' => $payments,
             'reportTotals' => $reportTotals,
-            'filters' => ['search' => $search],
+            'filters' => ['search' => $search, 'owner_id' => $ownerId],
+            'isAdmin' => $user->isAdmin(),
+            'owners' => $this->ownerOptions($user),
             'vatRate' => config('finance.rwanda_vat_rate'),
         ]);
     }
@@ -243,26 +256,26 @@ class ManagementController extends Controller
     public function reports(Request $request): Response
     {
         $user = $request->user();
+        $ownerId = $this->ownerFilter($request, $user);
+        $propertyScope = fn ($query) => $query
+            ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+            ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId));
         $propertiesQuery = Property::query()
-            ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id));
+            ->where($propertyScope);
         $chargeQuery = RentCharge::query()
             ->whereNull('voided_at')
             ->whereIn('charge_type', ['rent', 'damage'])
-            ->whereHas('tenancy.unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id)));
+            ->whereHas('tenancy.unit.property', $propertyScope);
         $activeTenancies = Tenancy::query()
             ->where('status', 'active')
-            ->whereHas('unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id)));
+            ->whereHas('unit.property', $propertyScope);
 
         $paymentsQuery = RentPayment::query()
-            ->whereHas('charge.tenancy.unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id)));
+            ->whereHas('charge.tenancy.unit.property', $propertyScope);
         $chargePaymentsQuery = RentPayment::query()
             ->whereHas('charge', fn ($query) => $query
                 ->whereIn('charge_type', ['rent', 'damage'])
-                ->whereHas('tenancy.unit.property', fn ($propertyQuery) => $propertyQuery
-                    ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))));
+                ->whereHas('tenancy.unit.property', $propertyScope));
 
         $properties = $propertiesQuery
             ->withCount([
@@ -297,7 +310,7 @@ class ManagementController extends Controller
             ->whereMonth('paid_at', now()->month)
             ->whereYear('paid_at', now()->year)
             ->sum('amount');
-        $agreementReports = $this->agreementFinanceReports($user);
+        $agreementReports = $this->agreementFinanceReports($user, $ownerId);
 
         return Inertia::render('Reports/Index', [
             'summary' => [
@@ -327,11 +340,38 @@ class ManagementController extends Controller
             ],
             'properties' => $properties,
             'agreementReports' => $agreementReports,
+            'isAdmin' => $user->isAdmin(),
+            'owners' => $this->ownerOptions($user),
+            'filters' => ['owner_id' => $ownerId],
             'vatRate' => config('finance.rwanda_vat_rate'),
         ]);
     }
 
-    private function agreementFinanceReports($user): array
+    private function ownerFilter(Request $request, $user): ?int
+    {
+        if (! $user->isAdmin()) {
+            return null;
+        }
+
+        $validated = $request->validate([
+            'owner_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner')),
+            ],
+        ]);
+
+        return isset($validated['owner_id']) ? (int) $validated['owner_id'] : null;
+    }
+
+    private function ownerOptions($user)
+    {
+        return $user->isAdmin()
+            ? User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name'])
+            : collect();
+    }
+
+    private function agreementFinanceReports($user, ?int $ownerId = null): array
     {
         $tenancies = Tenancy::query()
             ->with([
@@ -343,7 +383,8 @@ class ManagementController extends Controller
                 'moveOutInspection',
             ])
             ->whereHas('unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id)))
+                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+                ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId)))
             ->orderByDesc('start_date')
             ->get();
 

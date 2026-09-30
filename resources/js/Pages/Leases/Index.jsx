@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { ArrowDownToLine, CheckCircle2, Clock3, FileText } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
@@ -33,15 +33,30 @@ const formatDate = (value, dateOnly = false, language = 'en') => {
         : new Intl.DateTimeFormat(localeForLanguage(language), { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 };
 
-export default function LeasesIndex({ leases }) {
+export default function LeasesIndex({ leases, isAdmin = false, owners = [], filters = {} }) {
     const { t, language } = useTranslation();
 
     return (
         <AuthenticatedLayout header="Leases">
             <Head title="Leases" />
-            <div className="mb-6">
-                <h1 className="font-[Sora] text-2xl font-bold text-gray-900">{t('Lease documents')}</h1>
-                <p className="mt-1 text-sm text-gray-500">{t('Signed agreements and renewals attached to your tenancies.')}</p>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <h1 className="font-[Sora] text-2xl font-bold text-gray-900">{t('Lease documents')}</h1>
+                    <p className="mt-1 text-sm text-gray-500">{t('Signed agreements and renewals attached to your tenancies.')}</p>
+                </div>
+                {isAdmin && (
+                    <label className="flex flex-col gap-1 text-xs font-semibold text-gray-600">
+                        {t('Filter by owner')}
+                        <select
+                            value={filters.owner_id || ''}
+                            onChange={event => router.get(route('leases.index'), { owner_id: event.target.value || undefined }, { preserveState: true, preserveScroll: true, replace: true })}
+                            className="min-w-56 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-800"
+                        >
+                            <option value="">{t('All owners')}</option>
+                            {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+                        </select>
+                    </label>
+                )}
             </div>
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                 {leases.data.length ? (

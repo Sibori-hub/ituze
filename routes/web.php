@@ -127,8 +127,76 @@ Route::get('/account/status', function (\Illuminate\Http\Request $request) {
 
 Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
+    if ($user->isAdmin()) {
+        $chartStart = now()->startOfMonth()->subMonths(5);
+        $owners = \App\Models\User::query()->where('role', 'owner');
+        $approvedOwners = (clone $owners)->where('status', 'approved');
+        $activeSubscriptions = (clone $approvedOwners)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '>', now());
+        $pendingApprovals = (clone $owners)
+            ->where('status', 'pending')
+            ->where('profile_completed', true)
+            ->whereNotNull('email_verified_at');
+        $months = collect(range(0, 5))->map(fn ($offset) => $chartStart->copy()->addMonths($offset));
+        $ownerGrowthByMonth = (clone $owners)
+            ->where('created_at', '>=', $chartStart)
+            ->get(['created_at'])
+            ->groupBy(fn ($owner) => $owner->created_at->format('Y-m'))
+            ->map->count();
+        $rentCollectedByMonth = \App\Models\RentPayment::query()
+            ->where('paid_at', '>=', $chartStart)
+            ->whereHas('charge', fn ($query) => $query->where('charge_type', 'rent'))
+            ->get(['amount', 'paid_at'])
+            ->groupBy(fn ($payment) => $payment->paid_at->format('Y-m'))
+            ->map(fn ($payments) => $payments->sum(fn ($payment) => (float) $payment->amount));
+        $unitCounts = \App\Models\Unit::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->whereHas('property')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        return Inertia::render('Dashboard', [
+            'recentInquiries' => \App\Models\PropertyInquiry::query()
+                ->with(['property:id,name', 'unit:id,unit_number', 'owner:id,name'])
+                ->latest()
+                ->take(20)
+                ->get(),
+            'adminOverview' => [
+                'totalAccounts' => \App\Models\User::query()->count(),
+                'totalOwners' => (clone $owners)->count(),
+                'newOwnersThisMonth' => (clone $owners)->where('created_at', '>=', now()->startOfMonth())->count(),
+                'pendingApprovals' => $pendingApprovals->count(),
+                'activeSubscriptions' => $activeSubscriptions->count(),
+                'expiredSubscriptions' => (clone $approvedOwners)
+                    ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '<=', now()))
+                    ->count(),
+                'properties' => \App\Models\Property::query()->count(),
+                'units' => \App\Models\Unit::query()->count(),
+                'tenants' => \App\Models\Tenant::query()->count(),
+                'leases' => \App\Models\Lease::query()->count(),
+                'payments' => \App\Models\RentPayment::query()->count(),
+                'newInquiries' => \App\Models\PropertyInquiry::query()->where('status', 'new')->count(),
+                'occupancy' => [
+                    'occupied' => (int) $unitCounts->get('occupied', 0),
+                    'available' => (int) $unitCounts->get('available', 0),
+                    'maintenance' => (int) $unitCounts->get('maintenance', 0),
+                ],
+                'ownerGrowth' => $months->map(fn ($month) => [
+                    'month' => $month->format('Y-m'),
+                    'count' => (int) $ownerGrowthByMonth->get($month->format('Y-m'), 0),
+                ])->values(),
+                'rentCollections' => $months->map(fn ($month) => [
+                    'month' => $month->format('Y-m'),
+                    'amount' => round((float) $rentCollectedByMonth->get($month->format('Y-m'), 0), 2),
+                ])->values(),
+                'rejectedOwners' => (clone $owners)->where('status', 'rejected')->count(),
+            ],
+        ]);
+    }
+
     $properties = \App\Models\Property::query()
-        ->when(!$user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+        ->where('owner_id', $user->id)
         ->with(['images'])
         ->withCount([
             'units',
@@ -141,13 +209,13 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
 
     $recentTenancies = \App\Models\Tenancy::with(['tenant', 'unit.property'])
         ->where('status', 'active')
-        ->when(!$user->isAdmin(), fn ($query) => $query->whereHas('unit.property', fn ($property) => $property->where('owner_id', $user->id)))
+        ->whereHas('unit.property', fn ($property) => $property->where('owner_id', $user->id))
         ->latest('start_date')
         ->take(5)
         ->get();
 
     $recentInquiries = \App\Models\PropertyInquiry::with(['property', 'unit'])
-        ->when(!$user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+        ->where('owner_id', $user->id)
         ->latest()
         ->take(6)
         ->get();

@@ -5,12 +5,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 import TenantLocationFields from '@/Components/TenantLocationFields';
 
-export default function TenantsIndex({ tenants, filters }) {
+export default function TenantsIndex({ tenants, filters = {}, isAdmin = false, owners = [] }) {
     const { t } = useTranslation();
     const [search, setSearch] = useState(filters.search || '');
     const first = useRef(true);
     const [showCreate, setShowCreate] = useState(false);
     const form = useForm({
+        owner_id: filters.owner_id || '',
         type: 'individual',
         first_name: '',
         last_name: '',
@@ -33,7 +34,7 @@ export default function TenantsIndex({ tenants, filters }) {
         }
 
         const timeout = setTimeout(() => {
-            router.get(route('tenants.index'), { search }, { preserveState: true, replace: true });
+            router.get(route('tenants.index'), { search, owner_id: filters.owner_id || undefined }, { preserveState: true, replace: true });
         }, 350);
         return () => clearTimeout(timeout);
     }, [search]);
@@ -58,6 +59,17 @@ export default function TenantsIndex({ tenants, filters }) {
                     <p className="mt-1 text-sm text-gray-500">{t('Manage the people and businesses occupying your units.')}</p>
                 </div>
                 <div className="flex w-full gap-2 sm:w-auto">
+                    {isAdmin && (
+                        <select
+                            value={filters.owner_id || ''}
+                            onChange={event => router.get(route('tenants.index'), { search, owner_id: event.target.value || undefined }, { preserveState: true, replace: true })}
+                            aria-label={t('Filter by owner')}
+                            className="max-w-52 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15"
+                        >
+                            <option value="">{t('All owners')}</option>
+                            {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+                        </select>
+                    )}
                     <div className="relative w-full sm:w-72">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('Search tenants...')} className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15" />
@@ -132,6 +144,14 @@ export default function TenantsIndex({ tenants, filters }) {
                             <button type="button" onClick={() => setShowCreate(false)} aria-label="Close"><X size={20} /></button>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
+                            {isAdmin && (
+                                <label className="text-sm font-medium text-gray-700">{t('Owner account (optional)')}
+                                    <select value={form.data.owner_id} onChange={event => form.setData('owner_id', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200">
+                                        <option value="">{t('No owner selected')}</option>
+                                        {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+                                    </select>
+                                </label>
+                            )}
                             <label className="text-sm font-medium text-gray-700">{t('Type')}
                                 <select value={form.data.type} onChange={event => form.setData('type', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">{t('Individual')}</option><option value="company">{t('Company')}</option></select>
                             </label>

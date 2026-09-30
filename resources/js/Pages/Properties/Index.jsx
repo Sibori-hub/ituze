@@ -9,7 +9,7 @@ const imageSource = (path) => {
     return /^https?:\/\//i.test(path) ? path : `/storage/${path}`;
 };
 
-export default function PropertiesIndex({ properties, filters, isAdmin, currentUserId }) {
+export default function PropertiesIndex({ properties, filters, isAdmin, currentUserId, owners = [] }) {
     const { t, language } = useTranslation();
     const [search, setSearch] = useState(filters.search || '');
     const [propertyToDelete, setPropertyToDelete] = useState(null);
@@ -22,7 +22,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
         }
 
         const timeout = setTimeout(() => {
-            router.get(route('properties.index'), { search }, { preserveState: true, replace: true });
+            router.get(route('properties.index'), { search, owner_id: filters.owner_id || undefined }, { preserveState: true, replace: true });
         }, 400);
         return () => clearTimeout(timeout);
     }, [search]);
@@ -52,8 +52,19 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {isAdmin && (
+                        <select
+                            value={filters.owner_id || ''}
+                            onChange={event => router.get(route('properties.index'), { search, owner_id: event.target.value || undefined }, { preserveState: true, replace: true })}
+                            aria-label={t('Filter by owner')}
+                            className="max-w-56 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15"
+                        >
+                            <option value="">{t('All owners')}</option>
+                            {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+                        </select>
+                    )}
                     <Link
-                        href={route('properties.create')}
+                        href={route('properties.create', filters.owner_id ? { owner_id: filters.owner_id } : {})}
                         className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                     >
                         <Plus size={15} />

@@ -7,17 +7,23 @@ use App\Models\Unit;
 use App\Services\TenantLocationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Validation\Rule;
 
 class TenantController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($request->user() && in_array($request->user()->role, ['admin', 'owner'], true), 403);
+        $user = $request->user();
+        abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
         $data = $request->validate([
             ...app(TenantLocationService::class)->validationRules($request),
+            'owner_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner')),
+            ],
             'type' => ['required', 'in:individual,company'],
             'first_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'last_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
@@ -35,7 +41,7 @@ class TenantController extends Controller
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
             'registration_number' => null,
             'address' => app(TenantLocationService::class)->address($data),
-            'created_by' => $request->user()->id,
+            'created_by' => $user->isAdmin() ? ($data['owner_id'] ?? $user->id) : $user->id,
             'status' => 'active',
         ]);
 
@@ -84,6 +90,15 @@ class TenantController extends Controller
     {
         $user = $request->user();
         abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
+        $ownerId = null;
+        $owners = collect();
+        if ($user->isAdmin()) {
+            $filters = $request->validate([
+                'owner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))],
+            ]);
+            $ownerId = isset($filters['owner_id']) ? (int) $filters['owner_id'] : null;
+            $owners = \App\Models\User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name']);
+        }
         $query = Tenant::query()
             ->with(['activeTenancies.unit.property'])
             ->withCount('activeTenancies')
@@ -91,6 +106,12 @@ class TenantController extends Controller
                 $query->where(function ($query) use ($user) {
                     $query->where('created_by', $user->id)
                         ->orWhereHas('tenancies.unit.property', fn ($property) => $property->where('owner_id', $user->id));
+                });
+            })
+            ->when($ownerId, function ($query, $ownerId) {
+                $query->where(function ($query) use ($ownerId) {
+                    $query->where('created_by', $ownerId)
+                        ->orWhereHas('tenancies.unit.property', fn ($property) => $property->where('owner_id', $ownerId));
                 });
             })
             ->when($request->search, function ($query, $search) {
@@ -103,8 +124,9 @@ class TenantController extends Controller
 
         return Inertia::render('Tenants/Index', [
             'tenants' => $query->paginate(12)->withQueryString(),
-            'filters' => ['search' => $request->search],
+            'filters' => ['search' => $request->search, 'owner_id' => $ownerId],
             'isAdmin' => $user->isAdmin(),
+            'owners' => $owners,
         ]);
     }
 

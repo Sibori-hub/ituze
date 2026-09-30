@@ -22,7 +22,7 @@ const formatDate = (value, language) => {
         }).format(date);
 };
 
-export default function PaymentsIndex({ payments, reportTotals = {}, filters = {}, vatRate = 18 }) {
+export default function PaymentsIndex({ payments, reportTotals = {}, filters = {}, vatRate = 18, isAdmin = false, owners = [] }) {
     const { t, language } = useTranslation();
     const locale = localeForLanguage(language);
     const [search, setSearch] = useState(filters.search || '');
@@ -36,7 +36,7 @@ export default function PaymentsIndex({ payments, reportTotals = {}, filters = {
         }
 
         const timeout = setTimeout(() => {
-            router.get(route('payments.index'), { search }, { preserveState: true, replace: true });
+            router.get(route('payments.index'), { search, owner_id: filters.owner_id || undefined }, { preserveState: true, replace: true });
         }, 350);
 
         return () => clearTimeout(timeout);
@@ -71,11 +71,6 @@ export default function PaymentsIndex({ payments, reportTotals = {}, filters = {
                     ))}
                 </div>
 
-                {reportTotals.vat_unrecorded_payments > 0 && (
-                    <p className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">
-                        {t(':count older rent payments do not have a saved VAT breakdown and are excluded from the VAT totals.', { count: reportTotals.vat_unrecorded_payments })}
-                    </p>
-                )}
                 <p className="border-b border-gray-100 bg-gray-50 px-5 py-3 text-xs text-gray-600">
                     {t('VAT is calculated at the configured Rwanda rate on the recorded rent amount and shown separately. The recorded payment amount is unchanged. Confirm tax applicability and registration with the Rwanda Revenue Authority; this management report is not a VAT invoice or tax return.')}
                 </p>
@@ -85,17 +80,33 @@ export default function PaymentsIndex({ payments, reportTotals = {}, filters = {
                         <h2 className="font-[Sora] text-lg font-semibold text-gray-900">{t('Payment history')}</h2>
                         <p className="mt-1 text-sm text-gray-500">{t('Each row shows one payment and its receipt.')}</p>
                     </div>
-                    <label className="relative block w-full sm:max-w-md">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="search"
-                            value={search}
-                            onChange={event => setSearch(event.target.value)}
-                            placeholder={t('Search tenant, agreement, receipt, reference...')}
-                            aria-label={t('Search payments')}
-                            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-3 text-sm transition focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
-                        />
-                    </label>
+                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                        {isAdmin && (
+                            <label className="sr-only" htmlFor="payments-owner-filter">{t('Filter by owner')}</label>
+                        )}
+                        {isAdmin && (
+                            <select
+                                id="payments-owner-filter"
+                                value={filters.owner_id || ''}
+                                onChange={event => router.get(route('payments.index'), { search, owner_id: event.target.value || undefined }, { preserveState: true, preserveScroll: true, replace: true })}
+                                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15 sm:w-56"
+                            >
+                                <option value="">{t('All owners')}</option>
+                                {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+                            </select>
+                        )}
+                        <label className="relative block w-full sm:max-w-md">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={event => setSearch(event.target.value)}
+                                placeholder={t('Search tenant, agreement, receipt, reference...')}
+                                aria-label={t('Search payments')}
+                                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-3 text-sm transition focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
+                            />
+                        </label>
+                    </div>
                 </div>
 
                 {payments.data.length ? (

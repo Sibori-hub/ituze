@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { AlertCircle, ArrowUpRight, Building2, CalendarClock, CheckCircle2, CreditCard, DoorOpen, FileText, Percent, Printer, Wallet, TrendingUp } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
@@ -14,7 +14,7 @@ const cards = [
     { key: 'past_due_charges', label: 'Past-due rent / damage charges', icon: AlertCircle, format: value => `${Number(value).toLocaleString()} RWF` },
 ];
 
-export default function ReportsIndex({ summary, properties, agreementReports = [], vatRate = 18 }) {
+export default function ReportsIndex({ summary, properties, agreementReports = [], vatRate = 18, isAdmin = false, owners = [], filters = {} }) {
     const { t, language } = useTranslation();
     const locale = { en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' }[language] || 'en-RW';
     const formatMoney = value => `${Number(value || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF`;
@@ -90,10 +90,24 @@ export default function ReportsIndex({ summary, properties, agreementReports = [
                     <h1 className="mt-1 font-[Sora] text-2xl font-bold text-gray-900 sm:text-3xl">{t('Finance at a glance')}</h1>
                     <p className="mt-1 text-sm text-gray-500">{t('A current overview of occupancy, leases, charges, and money received.')}</p>
                 </div>
-                <div className="hidden items-center gap-2 rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 shadow-sm sm:inline-flex">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {t('Live portfolio summary')}
-                </div>
+                {isAdmin ? (
+                    <label className="flex flex-col gap-1 text-xs font-semibold text-gray-600">
+                        {t('Report scope')}
+                        <select
+                            value={filters.owner_id || ''}
+                            onChange={event => router.get(route('reports.index'), { owner_id: event.target.value || undefined }, { preserveState: true, preserveScroll: true, replace: true })}
+                            className="min-w-56 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-800 shadow-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15"
+                        >
+                            <option value="">{t('All owners · platform-wide')}</option>
+                            {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+                        </select>
+                    </label>
+                ) : (
+                    <div className="hidden items-center gap-2 rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 shadow-sm sm:inline-flex">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        {t('Live portfolio summary')}
+                    </div>
+                )}
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ key, label, icon: Icon, format }) => (

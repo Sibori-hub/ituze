@@ -3,6 +3,7 @@ import InlineAlert from '@/Components/InlineAlert';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Upload, X, Image as ImageIcon, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@/localization';
 
 const ALL_AMENITIES = [
     { key: 'wifi', label: 'WiFi' },
@@ -33,8 +34,10 @@ const getCsrfToken = () => {
     return match ? decodeURIComponent(match[2]) : '';
 };
 
-export default function PropertyCreate() {
+export default function PropertyCreate({ isAdmin = false, owners = [], selectedOwnerId = '' }) {
+    const { t } = useTranslation();
     const { data, setData, errors, processing, post } = useForm({
+        owner_id: selectedOwnerId || '',
         name: '',
         address: '',
         description: '',
@@ -247,6 +250,7 @@ export default function PropertyCreate() {
         e.preventDefault();
 
         const missing = [];
+        if (isAdmin && !data.owner_id) missing.push('Owner');
         if (!data.name?.trim()) missing.push('Property Name');
         if (!data.address?.trim()) missing.push('Address');
         if (!data.cell_id) missing.push('Location (Cell)');
@@ -271,6 +275,7 @@ export default function PropertyCreate() {
         formData.append('address', data.address);
         formData.append('description', data.description);
         formData.append('cell_id', data.cell_id);
+        if (isAdmin) formData.append('owner_id', data.owner_id);
 
         ALL_AMENITIES.forEach(a => {
             formData.append(`amenities[${a.key}]`, data.amenities[a.key] ? '1' : '0');
@@ -300,7 +305,7 @@ export default function PropertyCreate() {
                 <div className="mx-auto min-h-full max-w-4xl rounded-3xl bg-white/95 p-4 shadow-2xl ring-1 ring-white/30 sm:p-7">
             <div className="mb-6 flex items-center justify-between">
                 <Link
-                    href={route('properties.index')}
+                    href={route('properties.index', selectedOwnerId ? { owner_id: selectedOwnerId } : {})}
                     className="inline-flex items-center gap-1.5 text-sm text-gray-600 transition-colors hover:text-[#0E3B2E]"
                 >
                     <ArrowLeft size={16} />
@@ -340,6 +345,20 @@ export default function PropertyCreate() {
                             <h3 className="text-lg font-semibold text-gray-900">Property Information</h3>
 
                             <div className="mt-6 space-y-4">
+                                {isAdmin && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">{t('Property owner')} *</label>
+                                        <select
+                                            value={data.owner_id}
+                                            onChange={event => setData('owner_id', event.target.value)}
+                                            className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
+                                        >
+                                            <option value="">{t('Select an owner')}</option>
+                                            {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+                                        </select>
+                                        {errors.owner_id && <p className="mt-1 text-sm text-red-500">{errors.owner_id}</p>}
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Property Name *</label>
                                     <input

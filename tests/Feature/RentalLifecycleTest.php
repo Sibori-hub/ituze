@@ -31,7 +31,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'users', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -43,6 +43,7 @@ class RentalLifecycleTest extends TestCase
             $table->string('role')->default('owner');
             $table->string('status')->default('approved');
             $table->timestamp('expires_at')->nullable();
+            $table->string('profile_photo')->nullable();
             $table->boolean('profile_completed')->default(true);
             $table->string('password');
             $table->timestamp('email_verified_at')->nullable();
@@ -69,6 +70,12 @@ class RentalLifecycleTest extends TestCase
         $province = Province::create(['name' => 'Kigali City']);
         $district = District::create(['name' => 'Nyarugenge', 'province_id' => $province->id]);
         Sector::create(['name' => 'Nyarugenge', 'district_id' => $district->id]);
+        Schema::create('cells', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->unsignedBigInteger('sector_id')->nullable();
+            $table->timestamps();
+        });
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
             $table->foreignId('owner_id')->constrained('users');
@@ -76,6 +83,20 @@ class RentalLifecycleTest extends TestCase
             $table->string('name');
             $table->string('address');
             $table->text('description')->nullable();
+            $table->json('amenities')->nullable();
+            $table->json('proximity')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('property_images', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('property_id')->constrained();
+            $table->string('image_path');
+            $table->boolean('is_cover')->default(false);
+            $table->timestamps();
+        });
+        Schema::create('property_inquiries', function (Blueprint $table) {
+            $table->id();
+            $table->string('status')->default('new');
             $table->timestamps();
         });
         Schema::create('unit_types', function (Blueprint $table) {
@@ -199,6 +220,238 @@ class RentalLifecycleTest extends TestCase
     {
         Carbon::setTestNow();
         parent::tearDown();
+    }
+
+    public function test_admin_dashboard_shows_platform_overview_and_management_card_totals(): void
+    {
+        $admin = User::create([
+            'name' => 'Platform Admin',
+            'email' => 'admin@example.com',
+            'password' => 'password',
+            'role' => 'admin',
+            'profile_completed' => true,
+        ]);
+        $admin->markEmailAsVerified();
+        $activeOwner = User::create([
+            'name' => 'Active Owner',
+            'email' => 'active@example.com',
+            'password' => 'password',
+            'status' => 'approved',
+            'expires_at' => now()->addMonth(),
+        ]);
+        $activeOwner->markEmailAsVerified();
+        User::create([
+            'name' => 'Ready Owner',
+            'email' => 'ready@example.com',
+            'password' => 'password',
+            'status' => 'pending',
+            'profile_completed' => true,
+        ])->markEmailAsVerified();
+        User::create([
+            'name' => 'Incomplete Owner',
+            'email' => 'incomplete@example.com',
+            'password' => 'password',
+            'status' => 'pending',
+            'profile_completed' => false,
+        ])->markEmailAsVerified();
+        \App\Models\PropertyInquiry::create(['status' => 'new']);
+
+        $response = $this->actingAs($admin)->get(route('dashboard'));
+        $this->assertSame(200, $response->getStatusCode(), (string) $response->headers->get('Location'));
+
+        $response
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('adminOverview.totalAccounts', 4)
+                ->where('adminOverview.totalOwners', 3)
+                ->where('adminOverview.pendingApprovals', 1)
+                ->where('adminOverview.activeSubscriptions', 1)
+                ->where('adminOverview.newInquiries', 1)
+                ->has('recentInquiries', 1)
+                ->where('adminOverview.properties', 0)
+                ->where('adminOverview.tenants', 0)
+                ->where('adminOverview.leases', 0)
+                ->where('adminOverview.payments', 0)
+                ->missing('recentOwners')
+                ->missing('summary'));
+
+        $inquiry = \App\Models\PropertyInquiry::query()->firstOrFail();
+        $this->post(route('inquiries.read', $inquiry))
+            ->assertRedirect();
+        $this->assertDatabaseHas('property_inquiries', [
+            'id' => $inquiry->id,
+            'status' => 'read',
+        ]);
+    }
+
+    public function test_admin_can_filter_and_create_properties_for_an_owner_without_changing_ownership(): void
+    {
+        $admin = User::create([
+            'name' => 'Platform Admin',
+            'email' => 'property-admin@example.com',
+            'password' => 'password',
+            'role' => 'admin',
+            'profile_completed' => true,
+        ]);
+        $admin->markEmailAsVerified();
+        $owner = User::factory()->create(['role' => 'owner']);
+        $otherOwner = User::factory()->create(['role' => 'owner']);
+        $existingProperty = Property::create([
+            'owner_id' => $owner->id,
+            'name' => 'Existing owner property',
+            'address' => 'Kigali',
+        ]);
+        Property::create([
+            'owner_id' => $otherOwner->id,
+            'name' => 'Other owner property',
+            'address' => 'Huye',
+        ]);
+        $cellId = \Illuminate\Support\Facades\DB::table('cells')->insertGetId([
+            'name' => 'Nyarugenge',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('properties.index', ['owner_id' => $owner->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Properties/Index')
+                ->where('filters.owner_id', $owner->id)
+                ->has('properties.data', 1)
+                ->where('properties.data.0.id', $existingProperty->id));
+
+        $this->get(route('properties.create', ['owner_id' => $owner->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Properties/Create')
+                ->where('selectedOwnerId', (string) $owner->id)
+                ->has('owners', 2));
+
+        $this->post(route('properties.store'), [
+            'owner_id' => $owner->id,
+            'name' => 'Created on behalf',
+            'address' => 'Kigali',
+            'description' => '',
+            'cell_id' => $cellId,
+            'amenities' => [],
+            'proximity' => [],
+        ])->assertRedirect(route('properties.index'));
+
+        $this->assertDatabaseHas('properties', [
+            'name' => 'Created on behalf',
+            'owner_id' => $owner->id,
+        ]);
+    }
+
+    public function test_admin_can_filter_reports_to_one_owner_or_view_the_entire_platform(): void
+    {
+        $admin = User::create([
+            'name' => 'Report Admin',
+            'email' => 'report-admin@example.com',
+            'password' => 'password',
+            'role' => 'admin',
+            'profile_completed' => true,
+        ]);
+        $admin->markEmailAsVerified();
+
+        [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
+        $tenancy = $this->makeTenancy($unit, $tenant, $owner);
+        $charge = RentCharge::create([
+            'tenancy_id' => $tenancy->id,
+            'charge_type' => 'rent',
+            'period_start' => '2026-01-01',
+            'period_end' => '2026-01-31',
+            'due_date' => '2026-01-01',
+            'amount' => 500,
+        ]);
+        RentPayment::create([
+            'rent_charge_id' => $charge->id,
+            'transaction_id' => 'owner-a-payment',
+            'recorded_by' => $owner->id,
+            'amount' => 100,
+            'taxable_amount' => '100.00',
+            'vat_rate' => '18.00',
+            'vat_amount' => '18.00',
+            'method' => 'cash',
+            'receipt_number' => 'ITZ-OWNER-A',
+            'paid_at' => '2026-01-01 10:00:00',
+        ]);
+        Lease::create([
+            'tenancy_id' => $tenancy->id,
+            'uploaded_by' => $owner->id,
+            'original_name' => 'owner-a-lease.pdf',
+            'path' => 'leases/owner-a.pdf',
+            'size' => 100,
+        ]);
+
+        [, $otherOwner, $otherUnit, $otherTenant] = $this->makeUnitAndTenant();
+        $otherTenancy = $this->makeTenancy($otherUnit, $otherTenant, $otherOwner);
+        $otherCharge = RentCharge::create([
+            'tenancy_id' => $otherTenancy->id,
+            'charge_type' => 'rent',
+            'period_start' => '2026-01-01',
+            'period_end' => '2026-01-31',
+            'due_date' => '2026-01-01',
+            'amount' => 500,
+        ]);
+        RentPayment::create([
+            'rent_charge_id' => $otherCharge->id,
+            'transaction_id' => 'owner-b-payment',
+            'recorded_by' => $otherOwner->id,
+            'amount' => 200,
+            'taxable_amount' => '200.00',
+            'vat_rate' => '18.00',
+            'vat_amount' => '36.00',
+            'method' => 'cash',
+            'receipt_number' => 'ITZ-OWNER-B',
+            'paid_at' => '2026-01-01 11:00:00',
+        ]);
+        Lease::create([
+            'tenancy_id' => $otherTenancy->id,
+            'uploaded_by' => $otherOwner->id,
+            'original_name' => 'owner-b-lease.pdf',
+            'path' => 'leases/owner-b.pdf',
+            'size' => 100,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('reports.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Reports/Index')
+                ->where('summary.properties', 2)
+                ->where('summary.payments_received', 300)
+                ->has('agreementReports', 2)
+                ->has('owners', 2));
+
+        $this->get(route('reports.index', ['owner_id' => $owner->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.owner_id', $owner->id)
+                ->where('summary.properties', 1)
+                ->where('summary.payments_received', 100)
+                ->has('agreementReports', 1)
+                ->where('properties.0.name', $property->name));
+
+        $this->get(route('tenants.index', ['owner_id' => $owner->id]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.owner_id', $owner->id)
+                ->has('tenants.data', 1)
+                ->where('tenants.data.0.id', $tenant->id));
+
+        $this->get(route('leases.index', ['owner_id' => $owner->id]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.owner_id', $owner->id)
+                ->has('leases.data', 1)
+                ->where('leases.data.0.original_name', 'owner-a-lease.pdf'));
+
+        $this->get(route('payments.index', ['owner_id' => $owner->id]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.owner_id', $owner->id)
+                ->where('reportTotals.paid', 100)
+                ->has('payments.data', 1)
+                ->where('payments.data.0.receipt_number', 'ITZ-OWNER-A'));
     }
 
     public function test_monthly_and_weekly_charges_are_idempotent_and_start_with_a_full_period(): void
