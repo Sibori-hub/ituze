@@ -581,7 +581,7 @@ export default function UnitShow({ property, unit }) {
                                     {unit.images.map((image) => (
                                         <img
                                             key={image.id}
-                                            src={/^https?:\/\//i.test(image.image_path) ? image.image_path : `/storage/${image.image_path}`}
+                                            src={/^https?:\/\//i.test(image.image_path) ? image.image_path : `/unit-images/${image.image_path}`}
                                             alt={t('Unit :unit', { unit: unit.unit_number })}
                                             className="h-36 w-full rounded-xl object-cover"
                                         />
