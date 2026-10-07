@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Printer } from 'lucide-react';
 import { useTranslation } from '@/localization';
+import BrandLockup from '@/Components/BrandLockup';
 
 const localeForLanguage = language => ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
 
@@ -56,9 +57,12 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
             <section ref={receiptRef} data-payment-receipt className="hidden">
                 <div className="payment-receipt-content mx-auto max-w-2xl bg-white p-8 font-sans text-gray-900">
                     <header className="flex items-center gap-4 border-b-2 border-[#0E3B2E] pb-5">
-                        <img src="/images/logo.png" alt="Ituze-Qra Ltd" className="h-16 w-16 object-contain" />
+                        <BrandLockup
+                            logoClassName="h-20 w-20"
+                            nameClassName="text-xs font-bold text-[#0E3B2E]"
+                            subtitleClassName="text-[8px] font-medium text-[#0E3B2E]/70"
+                        />
                         <div>
-                            <p className="text-sm font-bold uppercase tracking-widest text-[#0E3B2E]">{t('Ituze-Qra Ltd')}</p>
                             <h1 className="mt-1 text-2xl font-bold">{t('Payment receipt')}</h1>
                         </div>
                     </header>

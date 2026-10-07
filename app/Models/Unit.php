@@ -17,6 +17,8 @@ class Unit extends Model
         'rent_amount',
         'rent_frequency',
         'size_sqm',
+        'bedrooms',
+        'bathrooms',
         'description',
         'status',
     ];
@@ -25,6 +27,8 @@ class Unit extends Model
         'floor_number' => 'integer',
         'rent_amount' => 'decimal:2',
         'size_sqm' => 'decimal:2',
+        'bedrooms' => 'integer',
+        'bathrooms' => 'decimal:1',
     ];
 
     public function property()
@@ -35,6 +39,11 @@ class Unit extends Model
     public function unitType()
     {
         return $this->belongsTo(UnitType::class);
+    }
+
+    public function isApartmentAccommodation(): bool
+    {
+        return in_array(strtolower($this->unitType?->name ?? ''), ['apartment', 'studio'], true);
     }
 
     public function images()

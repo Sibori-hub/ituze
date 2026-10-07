@@ -40,6 +40,12 @@ class RentScheduleService
             return;
         }
 
+        if ($tenancy->rent_frequency === 'daily') {
+            $end = $effectiveEndDate
+                ? CarbonImmutable::parse($effectiveEndDate)->startOfDay()->subDay()
+                : CarbonImmutable::today();
+        }
+
         $periodStart = $start;
         while ($periodStart->lessThanOrEqualTo($end)) {
             $nextPeriodStart = $this->nextPeriodStart($periodStart, $tenancy->rent_frequency);

@@ -14,10 +14,6 @@ class UnitTypeSeeder extends Seeder
     {
         $unitTypes = [
             ['name' => 'Studio'],
-            ['name' => '1 Bedroom'],
-            ['name' => '2 Bedrooms'],
-            ['name' => '3 Bedrooms'],
-            ['name' => '4+ Bedrooms'],
             ['name' => 'Apartment'],
             ['name' => 'Commercial Space'],
             ['name' => 'Coffee Shop'],

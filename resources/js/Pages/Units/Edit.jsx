@@ -1,8 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Home, DollarSign, Grid3x3, Upload, X } from 'lucide-react';
+import { ArrowLeft, Home, DollarSign, Grid3x3, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from '@/localization';
+import { isApartmentUnitType } from '@/utils/unitType';
 
 export default function UnitEdit({ property, unit, unitTypes }) {
     const { t } = useTranslation();
@@ -13,12 +14,27 @@ export default function UnitEdit({ property, unit, unitTypes }) {
         rent_amount: unit.rent_amount || '',
         rent_frequency: unit.rent_frequency || 'monthly',
         size_sqm: unit.size_sqm || '',
+        bedrooms: unit.bedrooms ?? '',
+        bathrooms: unit.bathrooms ?? '',
         description: unit.description || '',
         status: unit.status || 'available',
         images: [],
         delete_images: [],
     });
     const [imagePreviews, setImagePreviews] = useState([]);
+    const isApartment = isApartmentUnitType(unitTypes.find(type => String(type.id) === String(data.unit_type_id)));
+
+    const changeUnitType = (unitTypeId) => {
+        const nextType = unitTypes.find(type => String(type.id) === String(unitTypeId));
+        const nextIsApartment = isApartmentUnitType(nextType);
+        setData(current => ({
+            ...current,
+            unit_type_id: unitTypeId,
+            rent_frequency: nextIsApartment ? current.rent_frequency : 'monthly',
+            bedrooms: nextIsApartment ? current.bedrooms : '',
+            bathrooms: nextIsApartment ? current.bathrooms : '',
+        }));
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -99,7 +115,7 @@ export default function UnitEdit({ property, unit, unitTypes }) {
                                     <label className="block text-sm font-medium text-gray-700">{t('Unit Type')} *</label>
                                     <select
                                         value={data.unit_type_id}
-                                        onChange={(e) => setData('unit_type_id', e.target.value)}
+                                        onChange={(e) => changeUnitType(e.target.value)}
                                         className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
                                     >
                                         <option value="">{t('Select Unit Type')}</option>
@@ -116,8 +132,23 @@ export default function UnitEdit({ property, unit, unitTypes }) {
                                     {errors.floor_number && <p className="mt-1 text-sm text-red-500">{errors.floor_number}</p>}
                                 </div>
 
+                                {isApartment && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">{t('Bedrooms')} *</label>
+                                            <input type="number" min="0" max="50" step="1" required value={data.bedrooms} onChange={e => setData('bedrooms', e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm" />
+                                            {errors.bedrooms && <p className="mt-1 text-sm text-red-500">{errors.bedrooms}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">{t('Bathrooms')} *</label>
+                                            <input type="number" min="0.5" max="30" step="0.5" required value={data.bathrooms} onChange={e => setData('bathrooms', e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm" />
+                                            {errors.bathrooms && <p className="mt-1 text-sm text-red-500">{errors.bathrooms}</p>}
+                                        </div>
+                                    </>
+                                )}
+
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">{t('Monthly Rent (RWF)')} *</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t(data.rent_frequency === 'daily' ? 'Daily rate (RWF)' : 'Monthly Rent (RWF)')} *</label>
                                     <div className="relative mt-1">
                                         <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                         <input
@@ -133,17 +164,14 @@ export default function UnitEdit({ property, unit, unitTypes }) {
                                     {errors.rent_amount && <p className="mt-1 text-sm text-red-500">{errors.rent_amount}</p>}
                                 </div>
 
-                                <div>
+                                {isApartment && <div>
                                     <label className="block text-sm font-medium text-gray-700">{t('Rent Frequency')} *</label>
                                     <select value={data.rent_frequency} onChange={(e) => setData('rent_frequency', e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm">
                                         <option value="monthly">{t('Monthly')}</option>
-                                        <option value="weekly">{t('Weekly')}</option>
                                         <option value="daily">{t('Daily')}</option>
-                                        <option value="quarterly">{t('Quarterly')}</option>
-                                        <option value="yearly">{t('Yearly')}</option>
                                     </select>
                                     {errors.rent_frequency && <p className="mt-1 text-sm text-red-500">{errors.rent_frequency}</p>}
-                                </div>
+                                </div>}
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">{t('Unit Size (m²)')}</label>
@@ -192,11 +220,14 @@ export default function UnitEdit({ property, unit, unitTypes }) {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">{t('Unit Images')}</label>
                                     <p className="mt-1 text-xs text-gray-500">{t('Add up to 10 JPG, PNG, GIF, or WebP images. Maximum 2 MB each.')}</p>
-                                    <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm font-medium text-gray-600 hover:border-[#0E3B2E] hover:text-[#0E3B2E]">
-                                        <Upload size={17} />
-                                        {t('Select images')}
-                                        <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple className="sr-only" onChange={handleImageChange} disabled={data.images.length >= 10} />
-                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        multiple
+                                        className="mt-3 block w-full cursor-pointer rounded-xl border border-dashed border-gray-300 bg-gray-50 text-sm text-gray-600 file:mr-4 file:cursor-pointer file:border-0 file:bg-[#0E3B2E] file:px-4 file:py-3 file:text-sm file:font-semibold file:text-white hover:border-[#0E3B2E] hover:file:bg-[#0a2e23] disabled:cursor-not-allowed disabled:opacity-50"
+                                        onChange={handleImageChange}
+                                        disabled={data.images.length >= 10}
+                                    />
                                     {errors.images && <p className="mt-1 text-sm text-red-500">{errors.images}</p>}
                                     {Object.entries(errors).filter(([field]) => field.startsWith('images.')).map(([field, message]) => (
                                         <p key={field} className="mt-1 text-sm text-red-500">{message}</p>

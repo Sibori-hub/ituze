@@ -1,4 +1,4 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
+import BrandLockup from '@/Components/BrandLockup';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
 import InlineAlert from '@/Components/InlineAlert';
@@ -28,7 +28,7 @@ const ownerNavigation = [
     { name: 'Tenants', href: 'tenants.index', icon: UsersIcon },
     { name: 'Leases', href: 'leases.index', icon: FileText },
     { name: 'Payments', href: 'payments.index', icon: CreditCard },
-    { name: 'Messages', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
+    { name: 'Visitor inquiries', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
     { name: 'Reports', href: 'reports.index', icon: BarChart3 },
 ];
 
@@ -40,7 +40,7 @@ const adminNavigation = [
     { name: 'Tenants', href: 'tenants.index', icon: UsersIcon },
     { name: 'Leases', href: 'leases.index', icon: FileText },
     { name: 'Payments', href: 'payments.index', icon: CreditCard },
-    { name: 'Messages', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
+    { name: 'Visitor inquiries', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
     { name: 'Reports', href: 'reports.index', icon: BarChart3 },
 ];
 
@@ -74,7 +74,10 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     return (
-        <div className="flex h-screen h-[100dvh] flex-col overflow-hidden bg-[#F4F6F5] font-[Inter]">
+        <div
+            className="authenticated-app-shell flex w-full flex-col overflow-hidden bg-[#F4F6F5] font-[Inter]"
+            style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', width: '100vw', height: '100dvh' }}
+        >
             {toasts.length > 0 && (
                 <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
                     {toasts.map(t => (
@@ -106,7 +109,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             )}
 
-            <div className="flex min-h-0 flex-1">
+            <div className="authenticated-layout-row flex min-h-0 flex-1" style={{ display: 'flex', flex: '1 1 0%', minHeight: 0 }}>
                 {sidebarOpen && (
                     <div
                         className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -116,16 +119,17 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* Sidebar */}
                 <aside
-                    className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden transform bg-[#0E3B2E] transition-transform duration-200 ease-in-out lg:static lg:shrink-0 lg:translate-x-0 ${
+                    className={`authenticated-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden transform bg-[#0E3B2E] transition-transform duration-200 ease-in-out lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${
                         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
                 >
-                    <div className="flex h-16 items-center justify-between px-6">
-                        <Link href="/" className="flex items-center gap-3">
-                            <ApplicationLogo className="h-9 w-9" />
-                            <span className="font-[Sora] font-bold text-white tracking-tight">
-                                Ituze QR Ltd
-                            </span>
+                    <div className="flex h-16 shrink-0 items-center justify-between px-6">
+                        <Link href="/" className="rounded-xl">
+                            <BrandLockup
+                                logoClassName="h-12 w-12"
+                                nameClassName="text-xs font-bold text-white"
+                                subtitleClassName="text-[8px] font-medium text-white/70"
+                            />
                         </Link>
                         <button
                             onClick={() => setSidebarOpen(false)}
@@ -136,12 +140,12 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
 
                     {user.role === 'admin' && (
-                        <div className="mx-4 mt-3 rounded-lg bg-[#D9A441]/10 px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-[#D9A441]">
+                        <div className="mx-4 mt-3 shrink-0 rounded-lg bg-[#D9A441]/10 px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-[#D9A441]">
                             Admin Access
                         </div>
                     )}
 
-                    <nav className="flex flex-1 flex-col gap-1.5 px-4 pt-4">
+                    <nav className="authenticated-sidebar-nav flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain px-4 pt-4">
                         {navigation.map((item) => {
                             const isActive = route().current(item.href);
                             const className = `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
@@ -175,7 +179,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         })}
                     </nav>
 
-                    <div className="border-t border-white/10 px-6 py-4">
+                    <div className="shrink-0 border-t border-white/10 px-6 py-4">
                         <p className="text-xs text-white/40">{t('Signed in as')}</p>
                         <p className="text-sm font-medium text-white/80">
                             {user.name}
@@ -184,9 +188,9 @@ export default function AuthenticatedLayout({ header, children }) {
                 </aside>
 
                 {/* Main content area */}
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="authenticated-main-column flex min-h-0 min-w-0 flex-1 flex-col" style={{ display: 'flex', flex: '1 1 0%', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
                     {/* Top bar */}
-                    <header className="z-30 flex h-16 shrink-0 items-center justify-between bg-[#0E3B2E] px-4 sm:px-6">
+                    <header className="authenticated-main-header z-30 flex h-16 shrink-0 items-center justify-between bg-[#0E3B2E] px-4 sm:px-6" style={{ flexShrink: 0 }}>
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={() => setSidebarOpen(true)}
@@ -241,7 +245,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     </header>
 
                     {/* Page content */}
-                    <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
+                    <main className="authenticated-page-content min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
                         {flash.error && (
                             <div className="mb-4 max-w-7xl mx-auto">
                                 <InlineAlert message={flash.error} type="error" />
@@ -259,9 +263,9 @@ export default function AuthenticatedLayout({ header, children }) {
                         )}
                         {children}
                     </main>
-                    <footer className="shrink-0 bg-[#111827] px-4 py-3 sm:px-6">
+                    <footer className="authenticated-main-footer shrink-0 bg-[#111827] px-4 py-3 sm:px-6" style={{ flexShrink: 0 }}>
                         <p className="mx-auto max-w-7xl text-xs text-white/40">
-                            © {new Date().getFullYear()} Ituze QR Ltd. {t('All rights reserved.')}
+                            © {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}
                         </p>
                     </footer>
                 </div>

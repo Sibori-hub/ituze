@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use App\Models\Unit;
 use App\Services\TenantLocationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,7 @@ use Inertia\Response;
 
 class TenantController extends Controller
 {
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         $user = $request->user();
         abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
@@ -36,7 +37,7 @@ class TenantController extends Controller
             'phone' => ['required', 'regex:/^(078|072|073)[0-9]{7}$/'],
         ]);
 
-        Tenant::create($data + [
+        $tenant = Tenant::create($data + [
             'name' => $data['company_name'] ?? trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? '')),
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
             'registration_number' => null,
@@ -45,10 +46,14 @@ class TenantController extends Controller
             'status' => 'active',
         ]);
 
+        if ($request->expectsJson()) {
+            return response()->json(['tenant' => $tenant], 201);
+        }
+
         return back()->with('success', 'Tenant created successfully.');
     }
 
-    public function update(Request $request, Tenant $tenant): RedirectResponse
+    public function update(Request $request, Tenant $tenant): JsonResponse|RedirectResponse
     {
         $user = $request->user();
         abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
@@ -82,6 +87,10 @@ class TenantController extends Controller
             'contact_person' => $data['type'] === 'company' ? $data['contact_person'] : null,
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['tenant' => $tenant->fresh()]);
+        }
 
         return back()->with('success', 'Tenant details updated successfully.');
     }
@@ -155,15 +164,22 @@ class TenantController extends Controller
             ->findOrFail($tenant->id);
 
         $availableUnits = Unit::query()
-            ->with('property:id,name,owner_id')
-            ->where('status', 'available')
-            ->whereDoesntHave('tenancies', fn ($query) => $query->whereIn('status', ['active', 'scheduled']))
+            ->with(['property:id,name,owner_id', 'unitType:id,name'])
             ->whereHas('property', function ($query) use ($user) {
                 $query->when(! $user->isAdmin(), fn ($properties) => $properties->where('owner_id', $user->id));
             })
+            ->where(function ($query) {
+                $query->where(function ($available) {
+                    $available->where('status', 'available')
+                        ->whereDoesntHave('tenancies', fn ($tenancies) => $tenancies->whereIn('status', ['active', 'scheduled']));
+                })->orWhere(function ($apartment) {
+                    $apartment->whereIn('status', ['available', 'reserved', 'occupied'])
+                        ->whereHas('unitType', fn ($type) => $type->whereIn('name', ['Apartment', 'Studio']));
+                });
+            })
             ->orderBy('property_id')
             ->orderBy('unit_number')
-            ->get(['id', 'property_id', 'unit_number', 'rent_amount', 'rent_frequency']);
+            ->get(['id', 'property_id', 'unit_type_id', 'unit_number', 'rent_amount', 'rent_frequency', 'bedrooms', 'bathrooms']);
 
         return Inertia::render('Tenants/Show', [
             'tenant' => $tenant,

@@ -17,7 +17,17 @@ class ActivateScheduledTenancies extends Command
     {
         $ids = Tenancy::query()
             ->where('status', 'scheduled')
-            ->whereDate('start_date', '<=', today())
+            ->where(function ($query) {
+                $query->whereDate('start_date', '<', today())
+                    ->orWhere(function ($today) {
+                        $today->whereDate('start_date', today())
+                            ->where(function ($time) {
+                                $time->where('rent_frequency', '!=', 'daily')
+                                    ->orWhereNull('check_in_time')
+                                    ->orWhere('check_in_time', '<=', now()->format('H:i:s'));
+                            });
+                    });
+            })
             ->orderBy('start_date')
             ->pluck('id');
 
@@ -34,7 +44,15 @@ class ActivateScheduledTenancies extends Command
                     ? Tenancy::query()->whereKey($scheduled->renewed_from_id)->lockForUpdate()->firstOrFail()
                     : null;
                 $tenancy = Tenancy::query()->whereKey($id)->lockForUpdate()->first();
-                if (!$tenancy || $tenancy->status !== 'scheduled' || $tenancy->start_date->isFuture()) {
+                if (
+                    ! $tenancy
+                    || $tenancy->status !== 'scheduled'
+                    || $tenancy->start_date->isFuture()
+                    || ($tenancy->rent_frequency === 'daily'
+                        && $tenancy->start_date->isToday()
+                        && $tenancy->check_in_time
+                        && $tenancy->check_in_time > now()->format('H:i:s'))
+                ) {
                     return true;
                 }
 

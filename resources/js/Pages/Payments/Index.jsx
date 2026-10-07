@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 import PaymentReceiptButton from '@/Components/PaymentReceiptButton';
+import BrandLockup from '@/Components/BrandLockup';
 
 const localeForLanguage = language => ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
 
@@ -47,10 +48,13 @@ export default function PaymentsIndex({ payments, reportTotals = {}, filters = {
             <Head title="Payments" />
             <section className="overflow-hidden rounded-3xl border border-emerald-950/10 bg-white shadow-xl shadow-emerald-950/5">
                 <header className="bg-gradient-to-br from-[#0E3B2E] via-[#124a39] to-[#1f6650] p-6 text-white sm:p-8">
-                    <div className="flex items-center gap-4">
-                        <img src="/images/logo.png" alt="Ituze-Qra Ltd" className="h-16 w-16 rounded-2xl bg-white p-1 object-contain shadow-lg" />
+                    <div className="flex flex-wrap items-center gap-4">
+                        <BrandLockup
+                            logoClassName="h-20 w-20"
+                            nameClassName="text-xs font-bold text-white"
+                            subtitleClassName="text-[8px] font-medium text-white/70"
+                        />
                         <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">{t('Ituze-Qra Ltd')}</p>
                             <h1 className="mt-1 font-[Sora] text-xl font-bold sm:text-2xl">{t('Payments')}</h1>
                             <p className="mt-1 text-sm text-emerald-100">{t('Each recorded payment has one receipt, even when it covers several rent periods.')}</p>
                         </div>

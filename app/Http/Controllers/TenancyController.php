@@ -14,6 +14,7 @@ use App\Services\RentScheduleService;
 use App\Services\TenantLocationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,8 @@ class TenancyController extends Controller
             abort(404);
         }
 
+        $unit->loadMissing('unitType');
+        $isApartment = $unit->isApartmentAccommodation();
         $request->merge(['tenant_type' => $request->input('tenant_type', $request->input('type'))]);
         $hasExistingTenant = $request->filled('tenant_id');
         $tenantType = $request->input('tenant_type');
@@ -103,8 +106,10 @@ class TenancyController extends Controller
             'contact_person' => [$requiredForNewTenant('company'), 'nullable', 'string', 'max:255'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after:start_date'],
+            'check_in_time' => ['required_if:rent_frequency,daily', 'prohibited_unless:rent_frequency,daily', 'date_format:H:i'],
+            'check_out_time' => ['required_if:rent_frequency,daily', 'prohibited_unless:rent_frequency,daily', 'date_format:H:i'],
             'monthly_rent' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
-            'rent_frequency' => ['required', 'in:daily,weekly,monthly,quarterly,yearly'],
+            'rent_frequency' => ['required', Rule::in($isApartment ? ['daily', 'monthly'] : ['monthly'])],
             'deposit_amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'lease_notes' => ['nullable', 'string', 'max:1000'],
@@ -114,14 +119,23 @@ class TenancyController extends Controller
             ...($hasExistingTenant ? [] : app(TenantLocationService::class)->validationRules($request)),
         ]);
 
-        DB::transaction(function () use ($data, $request, $unit, $tenantType) {
+        DB::transaction(function () use ($data, $request, $unit, $tenantType, $isApartment) {
             $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->firstOrFail();
 
-            if ($lockedUnit->status !== 'available' ||
-                $lockedUnit->tenancies()->whereIn('status', ['active', 'scheduled'])->exists()) {
+            if (! $isApartment && ($lockedUnit->status !== 'available' ||
+                $lockedUnit->tenancies()->whereIn('status', ['active', 'scheduled'])->exists())) {
                 throw ValidationException::withMessages([
                     'unit_id' => 'This unit is not available or already has an active tenancy.',
                 ]);
+            }
+            if ($isApartment && ! in_array($lockedUnit->status, ['available', 'reserved', 'occupied'], true)) {
+                throw ValidationException::withMessages([
+                    'unit_id' => 'This apartment is not available for bookings.',
+                ]);
+            }
+
+            if ($isApartment) {
+                $this->validateApartmentBookingDoesNotOverlap($lockedUnit, $data);
             }
 
             if (! empty($data['tenant_id'])) {
@@ -193,12 +207,16 @@ class TenancyController extends Controller
                 'due_day' => null,
                 'deposit_amount' => $data['deposit_amount'] ?? null,
                 'notes' => $data['notes'] ?? null,
-                'status' => CarbonImmutable::parse($data['start_date'])->isFuture() ? 'scheduled' : 'active',
+                'check_in_time' => $data['check_in_time'] ?? null,
+                'check_out_time' => $data['check_out_time'] ?? null,
+                'status' => $this->bookingStartsInFuture($data),
             ]);
 
             $this->storeLeaseDocument($tenancy, $request, $data['lease'], $data['lease_notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
             $lockedUnit->update([
-                'status' => $tenancy->status === 'scheduled' ? 'reserved' : 'occupied',
+                'status' => $tenancy->status === 'active' || $lockedUnit->tenancies()->where('status', 'active')->exists()
+                    ? 'occupied'
+                    : 'reserved',
             ]);
             app(RentScheduleService::class)->createCharges($tenancy);
 
@@ -261,7 +279,7 @@ class TenancyController extends Controller
         return $redirect->with('success', 'Tenancy created and rent schedule generated.');
     }
 
-    public function storePayment(Request $request, Property $property, Unit $unit, Tenancy $tenancy, RentCharge $charge): RedirectResponse
+    public function storePayment(Request $request, Property $property, Unit $unit, Tenancy $tenancy, RentCharge $charge): JsonResponse|RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
         if ($charge->tenancy_id !== $tenancy->id) {
@@ -331,6 +349,10 @@ class TenancyController extends Controller
                 'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $payment->id),
             ]);
         });
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Payment recorded and receipt number generated.']);
+        }
 
         return back()->with('success', 'Payment recorded and receipt number generated.');
     }
@@ -432,6 +454,8 @@ class TenancyController extends Controller
     public function renew(Request $request, Property $property, Unit $unit, Tenancy $tenancy): RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+        $unit->loadMissing('unitType');
+        $isApartment = $unit->isApartmentAccommodation();
         if ($tenancy->status !== 'active' || $tenancy->moveOutInspection()->exists()) {
             throw ValidationException::withMessages([
                 'tenancy' => 'Only an active tenancy that has not been settled can be renewed.',
@@ -441,8 +465,10 @@ class TenancyController extends Controller
         $data = $request->validate([
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after:start_date'],
+            'check_in_time' => ['required_if:rent_frequency,daily', 'prohibited_unless:rent_frequency,daily', 'date_format:H:i'],
+            'check_out_time' => ['required_if:rent_frequency,daily', 'prohibited_unless:rent_frequency,daily', 'date_format:H:i'],
             'monthly_rent' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
-            'rent_frequency' => ['required', 'in:daily,weekly,monthly,quarterly,yearly'],
+            'rent_frequency' => ['required', Rule::in($isApartment ? ['daily', 'monthly'] : ['monthly'])],
             'due_day' => ['nullable', 'required_if:rent_frequency,monthly', 'integer', 'between:1,31'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'lease_notes' => ['nullable', 'string', 'max:1000'],
@@ -456,7 +482,7 @@ class TenancyController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($data, $request, $unit, $tenancy) {
+        DB::transaction(function () use ($data, $request, $unit, $tenancy, $isApartment) {
             $lockedUnit = Unit::query()->whereKey($unit->id)->lockForUpdate()->firstOrFail();
             $lockedTenancy = Tenancy::query()->whereKey($tenancy->id)->lockForUpdate()->firstOrFail();
             if (
@@ -469,6 +495,10 @@ class TenancyController extends Controller
                 ]);
             }
 
+            if ($isApartment && $data['rent_frequency'] === 'daily') {
+                $this->validateApartmentBookingDoesNotOverlap($lockedUnit, $data);
+            }
+
             $renewal = Tenancy::create([
                 'unit_id' => $lockedUnit->id,
                 'renewed_from_id' => $lockedTenancy->id,
@@ -476,12 +506,14 @@ class TenancyController extends Controller
                 'assigned_by' => $request->user()->id,
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
+                'check_in_time' => $data['check_in_time'] ?? null,
+                'check_out_time' => $data['check_out_time'] ?? null,
                 'monthly_rent' => $data['monthly_rent'],
                 'rent_frequency' => $data['rent_frequency'],
                 'due_day' => $data['rent_frequency'] === 'monthly' ? $data['due_day'] : null,
                 'deposit_amount' => $lockedTenancy->deposit_amount,
                 'notes' => $data['notes'] ?? null,
-                'status' => CarbonImmutable::parse($data['start_date'])->isFuture() ? 'scheduled' : 'active',
+                'status' => $this->bookingStartsInFuture($data),
             ]);
 
             $this->storeLeaseDocument($renewal, $request, $data['lease'], $data['lease_notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
@@ -500,7 +532,7 @@ class TenancyController extends Controller
         return back()->with('success', 'Renewal recorded. The existing deposit carries forward to this lease.');
     }
 
-    public function moveOut(Request $request, Property $property, Unit $unit, Tenancy $tenancy): RedirectResponse
+    public function moveOut(Request $request, Property $property, Unit $unit, Tenancy $tenancy): JsonResponse|RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
         if ($tenancy->status !== 'active' || $tenancy->moveOutInspection()->exists()) {
@@ -607,6 +639,10 @@ class TenancyController extends Controller
             $lockedUnit->update(['status' => $data['unit_outcome']]);
         });
 
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Move-out inspection saved and the tenancy ended.']);
+        }
+
         return back()->with('success', 'Move-out inspection saved and the tenancy ended.');
     }
 
@@ -675,6 +711,51 @@ class TenancyController extends Controller
     {
         if ($lease->tenancy_id !== $tenancy->id) {
             abort(404);
+        }
+    }
+
+    private function bookingStartsInFuture(array $data): string
+    {
+        $startDate = CarbonImmutable::parse($data['start_date']);
+        if ($startDate->isFuture()) {
+            return 'scheduled';
+        }
+
+        if (
+            ($data['rent_frequency'] ?? null) === 'daily'
+            && $startDate->isToday()
+            && isset($data['check_in_time'])
+            && CarbonImmutable::parse($data['check_in_time'])->greaterThan(now())
+        ) {
+            return 'scheduled';
+        }
+
+        return 'active';
+    }
+
+    private function validateApartmentBookingDoesNotOverlap(Unit $unit, array $data): void
+    {
+        $newStart = CarbonImmutable::parse($data['start_date'].' '.($data['check_in_time'] ?? '00:00:00'));
+        $newEnd = CarbonImmutable::parse($data['end_date'].' '.($data['check_out_time'] ?? '23:59:59'));
+
+        $overlaps = $unit->tenancies()
+            ->whereIn('status', ['active', 'scheduled'])
+            ->get(['id', 'start_date', 'end_date', 'check_in_time', 'check_out_time'])
+            ->contains(function (Tenancy $existing) use ($newStart, $newEnd) {
+                $existingStart = CarbonImmutable::parse(
+                    $existing->start_date->toDateString().' '.($existing->check_in_time ?: '00:00:00'),
+                );
+                $existingEnd = CarbonImmutable::parse(
+                    ($existing->end_date?->toDateString() ?? '9999-12-31').' '.($existing->check_out_time ?: '23:59:59'),
+                );
+
+                return $newStart->lessThan($existingEnd) && $newEnd->greaterThan($existingStart);
+            });
+
+        if ($overlaps) {
+            throw ValidationException::withMessages([
+                'start_date' => 'This apartment already has a booking that overlaps these stay dates and times.',
+            ]);
         }
     }
 

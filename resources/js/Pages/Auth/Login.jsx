@@ -1,7 +1,7 @@
 import InputError from '@/Components/InputError';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/localization';
 
@@ -14,6 +14,7 @@ export default function Login({ status, canResetPassword }) {
     });
 
     const [loginStage, setLoginStage] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         let t1, t2;
@@ -45,39 +46,43 @@ export default function Login({ status, canResetPassword }) {
         <GuestLayout>
             <Head title={t('Log in')} />
 
-            <div className="pt-4 text-center">
-                <h2 className="font-[Sora] text-xl font-bold text-gray-800">
+            <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0e3b2e]/60">
+                    {t('Secure sign in')}
+                </p>
+                <h2 className="mt-3 font-[Sora] text-3xl font-semibold tracking-tight text-[#17241f]">
                     {t('Welcome back')}
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-2 text-sm leading-6 text-gray-500">
                     {t('Log in to continue')}
                 </p>
             </div>
 
             {status && (
-                <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
+                <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-3.5 text-sm font-medium text-emerald-800" role="status">
                     {status}
                 </div>
             )}
 
-            <form onSubmit={submit} className="mt-6 space-y-4">
+            <form onSubmit={submit} className="mt-8 space-y-5">
                 {processing && (
-                    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[#0E3B2E]/10">
-                        <div className="h-full w-full bg-gradient-to-r from-[#0E3B2E] via-[#D9A441] to-[#0E3B2E] animate-pulse" />
+                    <div className="relative h-1 w-full overflow-hidden rounded-full bg-[#0e3b2e]/10" aria-hidden="true">
+                        <div className="h-full w-full animate-pulse bg-gradient-to-r from-[#0e3b2e] via-[#d9a441] to-[#0e3b2e]" />
                     </div>
                 )}
 
                 <div>
                     <label
                         htmlFor="email"
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="mb-2 block text-sm font-semibold text-[#26352e]"
                     >
                         {t('Email')}
                     </label>
                     <div className="relative">
                         <Mail
-                            size={18}
-                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            size={17}
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
                         />
                         <input
                             id="email"
@@ -88,28 +93,34 @@ export default function Login({ status, canResetPassword }) {
                             autoFocus
                             disabled={processing}
                             onChange={(e) => setData('email', e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-[#0E3B2E] focus:ring-1 focus:ring-[#0E3B2E] disabled:bg-gray-50 disabled:text-gray-500"
+                            aria-invalid={Boolean(errors.email)}
+                            aria-describedby={errors.email ? 'email-error' : undefined}
+                            placeholder={t('name@example.com')}
+                            className="h-13 w-full rounded-xl border border-[#dce4df] bg-[#fbfcfb] py-3 pl-11 pr-4 text-sm text-[#17241f] shadow-sm shadow-black/[0.02] outline-none transition placeholder:text-gray-400 hover:border-[#b8c9be] focus:border-[#0e3b2e] focus:ring-4 focus:ring-[#0e3b2e]/10 disabled:bg-gray-50 disabled:text-gray-500"
                             required
                         />
                     </div>
-                    <InputError message={errors.email} className="mt-1" />
+                    <div id="email-error" aria-live="polite">
+                        <InputError message={errors.email} className="mt-1.5" />
+                    </div>
                 </div>
 
                 <div>
                     <label
                         htmlFor="password"
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="mb-2 block text-sm font-semibold text-[#26352e]"
                     >
                         {t('Password')}
                     </label>
                     <div className="relative">
                         <Lock
-                            size={18}
-                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            size={17}
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
                         />
                         <input
                             id="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
                             autoComplete="current-password"
@@ -117,15 +128,29 @@ export default function Login({ status, canResetPassword }) {
                             onChange={(e) =>
                                 setData('password', e.target.value)
                             }
-                            className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-[#0E3B2E] focus:ring-1 focus:ring-[#0E3B2E] disabled:bg-gray-50 disabled:text-gray-500"
+                            aria-invalid={Boolean(errors.password)}
+                            aria-describedby={errors.password ? 'password-error' : undefined}
+                            className="h-13 w-full rounded-xl border border-[#dce4df] bg-[#fbfcfb] py-3 pl-11 pr-12 text-sm text-[#17241f] shadow-sm shadow-black/[0.02] outline-none transition placeholder:text-gray-400 hover:border-[#b8c9be] focus:border-[#0e3b2e] focus:ring-4 focus:ring-[#0e3b2e]/10 disabled:bg-gray-50 disabled:text-gray-500"
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(value => !value)}
+                            disabled={processing}
+                            aria-label={showPassword ? t('Hide password') : t('Show password')}
+                            aria-pressed={showPassword}
+                            className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition hover:bg-[#0e3b2e]/5 hover:text-[#0e3b2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#0e3b2e] disabled:cursor-not-allowed"
+                        >
+                            {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
+                        </button>
                     </div>
-                    <InputError message={errors.password} className="mt-1" />
+                    <div id="password-error" aria-live="polite">
+                        <InputError message={errors.password} className="mt-1.5" />
+                    </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
+                    <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-600">
                         <input
                             type="checkbox"
                             name="remember"
@@ -134,7 +159,7 @@ export default function Login({ status, canResetPassword }) {
                             onChange={(e) =>
                                 setData('remember', e.target.checked)
                             }
-                            className="rounded border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]"
+                            className="h-4 w-4 rounded border-gray-300 text-[#0e3b2e] focus:ring-[#0e3b2e]/30"
                         />
                         {t('Remember me')}
                     </label>
@@ -142,7 +167,7 @@ export default function Login({ status, canResetPassword }) {
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="text-sm text-[#0E3B2E] hover:underline"
+                            className="text-sm font-semibold text-[#0e3b2e] decoration-[#d9a441] underline-offset-4 transition hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e3b2e]"
                         >
                             {t('Forgot password?')}
                         </Link>
@@ -152,35 +177,28 @@ export default function Login({ status, canResetPassword }) {
                 <button
                     type="submit"
                     disabled={processing}
-                    className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a2e23] hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#0E3B2E]/80"
+                    className="group flex min-h-[52px] w-full items-center justify-center gap-2.5 rounded-xl bg-[#0e3b2e] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#0e3b2e]/15 transition duration-200 hover:-translate-y-0.5 hover:bg-[#0a2e23] hover:shadow-xl hover:shadow-[#0e3b2e]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e3b2e] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-75"
                 >
                     {processing ? (
                         <>
-                            <Loader2 size={18} className="animate-spin text-[#D9A441]" />
+                            <Loader2 size={18} className="animate-spin text-[#e7c77d]" aria-hidden="true" />
                             <span>{loginStage || t('Signing you in...')}</span>
                         </>
                     ) : (
                         <>
-                            <span>{t('LOG IN')}</span>
-                            <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+                            <span>{t('Sign in')}</span>
+                            <ArrowRight size={17} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                         </>
                     )}
                 </button>
 
-                {processing && (
-                    <div className="flex items-center justify-center gap-2 rounded-xl border border-[#0E3B2E]/15 bg-[#0E3B2E]/5 py-2.5 px-3 text-xs font-medium text-[#0E3B2E] animate-pulse">
-                        <Loader2 size={14} className="animate-spin text-[#0E3B2E]" />
-                        <span>{loginStage || t('Authenticating...')}</span>
-                    </div>
-                )}
-
-                <p className="text-center text-sm text-gray-500">
+                <p className="pt-1 text-center text-sm text-gray-500">
                     {t("Don't have an account?")}{' '}
                     <Link
                         href={route('register')}
-                        className="font-medium text-[#0E3B2E] hover:underline"
+                        className="font-semibold text-[#0e3b2e] decoration-[#d9a441] underline-offset-4 transition hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e3b2e]"
                     >
-                        {t('Register')}
+                        {t('Create account')}
                     </Link>
                 </p>
             </form>

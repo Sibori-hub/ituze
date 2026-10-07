@@ -6,6 +6,7 @@ use App\Models\Property;
 use App\Models\RentPayment;
 use App\Models\Unit;
 use App\Models\UnitType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
@@ -38,7 +39,7 @@ class UnitController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $unitTypes = UnitType::all();
+        $unitTypes = $this->availableUnitTypes();
         $tenants = \App\Models\Tenant::where('status', 'active')
             ->when(!$request->user()->isAdmin(), function ($query) use ($request) {
                 $query->where(function ($query) use ($request) {
@@ -78,7 +79,7 @@ class UnitController extends Controller
     {
         $this->authorizePropertyAccess($request->user(), $property);
 
-        $unitTypes = UnitType::all();
+        $unitTypes = $this->availableUnitTypes();
 
         return Inertia::render('Units/Create', [
             'property' => $property,
@@ -89,19 +90,22 @@ class UnitController extends Controller
     /**
      * Store a newly created unit in storage.
      */
-    public function store(Request $request, Property $property): RedirectResponse
+    public function store(Request $request, Property $property): JsonResponse|RedirectResponse
     {
         try {
             $this->authorizePropertyAccess($request->user(), $property);
 
-            $request->validate([
+            $isApartment = $this->isApartmentUnitType($request->input('unit_type_id'));
+            $data = $request->validate([
                 'unit_type_id' => 'required|exists:unit_types,id',
                 'unit_number' => 'required|string|max:50',
                 'rent_amount' => 'required|numeric|min:0',
                 'size_sqm' => 'nullable|numeric|min:0',
+                'bedrooms' => $isApartment ? ['required', 'integer', 'between:0,50'] : ['prohibited'],
+                'bathrooms' => $isApartment ? ['required', 'numeric', 'decimal:0,1', 'between:0,30'] : ['prohibited'],
                 'description' => 'nullable|string',
                 'floor_number' => 'nullable|integer|min:-10|max:200',
-                'rent_frequency' => 'required|in:monthly,weekly,daily,quarterly,yearly',
+                'rent_frequency' => ['required', Rule::in($isApartment ? ['monthly', 'daily'] : ['monthly'])],
                 'status' => 'required|in:available,occupied,maintenance,reserved,inactive',
                 'images' => 'nullable|array|max:10',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
@@ -109,19 +113,27 @@ class UnitController extends Controller
 
             $unit = Unit::create([
                 'property_id' => $property->id,
-                'unit_type_id' => $request->unit_type_id,
-                'unit_number' => $request->unit_number,
-                'floor_number' => $request->floor_number,
-                'rent_amount' => $request->rent_amount,
-                'rent_frequency' => $request->rent_frequency,
-                'size_sqm' => $request->size_sqm,
-                'description' => $request->description,
-                'status' => $request->status,
+                'unit_type_id' => $data['unit_type_id'],
+                'unit_number' => $data['unit_number'],
+                'floor_number' => $data['floor_number'] ?? null,
+                'rent_amount' => $data['rent_amount'],
+                'rent_frequency' => $data['rent_frequency'],
+                'size_sqm' => $data['size_sqm'] ?? null,
+                'bedrooms' => $isApartment ? $data['bedrooms'] : null,
+                'bathrooms' => $isApartment ? $data['bathrooms'] : null,
+                'description' => $data['description'] ?? null,
+                'status' => $data['status'],
             ]);
 
             $this->storeImages($unit, $request->file('images', []));
 
             Log::info('Unit created: #' . $unit->id . ' ('. $unit->unit_number .') for property #' . $property->id);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'unit' => $unit->load(['unitType', 'images']),
+                ], 201);
+            }
 
             return redirect()->route('properties.units.index', $property)
                 ->with('success', '✅ Unit "' . $unit->unit_number . '" created successfully!');
@@ -131,6 +143,10 @@ class UnitController extends Controller
             throw $e;
         } catch (\Exception $e) {
             Log::error('Unit store error: ' . $e->getMessage());
+            if ($request->expectsJson()) {
+                throw $e;
+            }
+
             return back()
                 ->with('error', '❌ Failed to save unit: ' . $e->getMessage())
                 ->withInput();
@@ -191,7 +207,7 @@ class UnitController extends Controller
             abort(404);
         }
 
-        $unitTypes = UnitType::all();
+        $unitTypes = $this->availableUnitTypes();
 
         return Inertia::render('Units/Edit', [
             'property' => $property,
@@ -203,7 +219,7 @@ class UnitController extends Controller
     /**
      * Update the specified unit in storage.
      */
-    public function update(Request $request, Property $property, Unit $unit): RedirectResponse
+    public function update(Request $request, Property $property, Unit $unit): JsonResponse|RedirectResponse
     {
         try {
             $this->authorizePropertyAccess($request->user(), $property);
@@ -212,14 +228,17 @@ class UnitController extends Controller
                 abort(404);
             }
 
-            $request->validate([
+            $isApartment = $this->isApartmentUnitType($request->input('unit_type_id'));
+            $data = $request->validate([
                 'unit_type_id' => 'required|exists:unit_types,id',
                 'unit_number' => 'required|string|max:50',
                 'rent_amount' => 'required|numeric|min:0',
                 'size_sqm' => 'nullable|numeric|min:0',
+                'bedrooms' => $isApartment ? ['required', 'integer', 'between:0,50'] : ['prohibited'],
+                'bathrooms' => $isApartment ? ['required', 'numeric', 'decimal:0,1', 'between:0,30'] : ['prohibited'],
                 'description' => 'nullable|string',
                 'floor_number' => 'nullable|integer|min:-10|max:200',
-                'rent_frequency' => 'required|in:monthly,weekly,daily,quarterly,yearly',
+                'rent_frequency' => ['required', Rule::in($isApartment ? ['monthly', 'daily'] : ['monthly'])],
                 'status' => 'required|in:available,occupied,maintenance,reserved,inactive',
                 'images' => 'nullable|array|max:10',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
@@ -230,8 +249,16 @@ class UnitController extends Controller
                 ],
             ]);
 
-            DB::transaction(function () use ($request, $unit) {
+            DB::transaction(function () use ($request, $unit, $data, $isApartment) {
                 $lockedUnit = Unit::query()->whereKey($unit->id)->lockForUpdate()->firstOrFail();
+                if (
+                    $lockedUnit->unit_type_id !== (int) $data['unit_type_id']
+                    && $lockedUnit->tenancies()->whereIn('status', ['active', 'scheduled'])->exists()
+                ) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'unit_type_id' => 'The unit category cannot change while an active or future tenancy exists.',
+                    ]);
+                }
                 if ($lockedUnit->tenancies()->where('status', 'active')->exists() && $request->status !== 'occupied') {
                     throw \Illuminate\Validation\ValidationException::withMessages([
                         'status' => 'A unit with an active tenancy must remain occupied.',
@@ -245,14 +272,16 @@ class UnitController extends Controller
                 }
 
                 $lockedUnit->update([
-                    'unit_type_id' => $request->unit_type_id,
-                    'unit_number' => $request->unit_number,
-                    'floor_number' => $request->floor_number,
-                    'rent_amount' => $request->rent_amount,
-                    'rent_frequency' => $request->rent_frequency,
-                    'size_sqm' => $request->size_sqm,
-                    'description' => $request->description,
-                    'status' => $request->status,
+                    'unit_type_id' => $data['unit_type_id'],
+                    'unit_number' => $data['unit_number'],
+                    'floor_number' => $data['floor_number'] ?? null,
+                    'rent_amount' => $data['rent_amount'],
+                    'rent_frequency' => $data['rent_frequency'],
+                    'size_sqm' => $data['size_sqm'] ?? null,
+                    'bedrooms' => $isApartment ? $data['bedrooms'] : null,
+                    'bathrooms' => $isApartment ? $data['bathrooms'] : null,
+                    'description' => $data['description'] ?? null,
+                    'status' => $data['status'],
                 ]);
             });
 
@@ -270,6 +299,12 @@ class UnitController extends Controller
 
             Log::info('Unit updated: #' . $unit->id . ' (' . $unit->unit_number . ')');
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'unit' => $unit->fresh()->load(['unitType', 'images']),
+                ]);
+            }
+
             return redirect()->route('properties.units.index', $property)
                 ->with('success', '✅ Unit "' . $unit->unit_number . '" updated successfully!');
 
@@ -278,6 +313,10 @@ class UnitController extends Controller
             throw $e;
         } catch (\Exception $e) {
             Log::error('Unit update error: ' . $e->getMessage());
+            if ($request->expectsJson()) {
+                throw $e;
+            }
+
             return back()
                 ->with('error', '❌ Failed to update unit: ' . $e->getMessage())
                 ->withInput();
@@ -287,7 +326,7 @@ class UnitController extends Controller
     /**
      * Remove the specified unit from storage.
      */
-    public function destroy(Request $request, Property $property, Unit $unit): RedirectResponse
+    public function destroy(Request $request, Property $property, Unit $unit): JsonResponse|RedirectResponse
     {
         try {
             $this->authorizePropertyAccess($request->user(), $property);
@@ -308,6 +347,12 @@ class UnitController extends Controller
                 return $paths;
             });
             if ($imagePaths === null) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'This unit has tenancy history and cannot be deleted.',
+                    ], 409);
+                }
+
                 return back()->with('error', 'This unit has tenancy history and cannot be deleted.');
             }
 
@@ -318,11 +363,19 @@ class UnitController extends Controller
 
             Log::info('Unit deleted: ' . $unitNum . ' (property #' . $property->id . ')');
 
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unit deleted successfully.']);
+            }
+
             return redirect()->route('properties.units.index', $property)
                 ->with('success', '🗑️ Unit "' . $unitNum . '" deleted successfully.');
 
         } catch (\Exception $e) {
             Log::error('Unit destroy error: ' . $e->getMessage());
+            if ($request->expectsJson()) {
+                throw $e;
+            }
+
             return back()
                 ->with('error', '❌ Failed to delete unit: ' . $e->getMessage());
         }
@@ -336,6 +389,21 @@ class UnitController extends Controller
         if (!$user->isAdmin() && $property->owner_id !== $user->id) {
             abort(403, 'You do not have permission to access this property.');
         }
+    }
+
+    private function availableUnitTypes()
+    {
+        return UnitType::query()
+            ->whereNotIn('name', ['1 Bedroom', '2 Bedrooms', '3 Bedrooms', '4+ Bedrooms'])
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function isApartmentUnitType(mixed $unitTypeId): bool
+    {
+        $name = UnitType::query()->whereKey($unitTypeId)->value('name');
+
+        return in_array(strtolower($name ?? ''), ['apartment', 'studio'], true);
     }
 
     private function storeImages(Unit $unit, array $images): void

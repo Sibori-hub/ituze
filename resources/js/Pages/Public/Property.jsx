@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
+import BrandLockup from '@/Components/BrandLockup';
 import {
     ArrowLeft,
     ArrowUpRight,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/localization';
+import { isApartmentUnit } from '@/utils/unitType';
 
 const locationLabel = (property) => {
     const parts = [
@@ -41,7 +43,8 @@ const formatRent = (unit, t) => {
 const listValues = (value) => (Array.isArray(value) ? value : []);
 
 const imageSource = (path) => (/^https?:\/\//i.test(path) ? path : `/storage/${path}`);
-const companyPhone = '+250789265436';
+const companyPhone = '+250793905166';
+const companyPhoneDisplay = '0793905166';
 const companyAddress = 'KG 14 Ave, Kigali-Gisozi-Musezero: ULK-Kagugu Road, Source Oil Building';
 const companyMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(companyAddress)}`;
 
@@ -179,16 +182,19 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                             </a>
                             <a href={`tel:${companyPhone}`} className="flex shrink-0 items-center gap-1.5 text-white/90 transition hover:text-white">
                                 <Phone size={14} className="text-[#f0a052]" />
-                                <span className="hidden sm:inline">{companyPhone}</span>
+                                <span className="hidden sm:inline">{companyPhoneDisplay}</span>
                                 <span className="sm:hidden">Call us</span>
                             </a>
                             <LanguageSwitcher className="rounded-lg bg-white/10 p-1" />
                         </div>
                     </div>
                     <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6 lg:px-8">
-                        <Link href="/" className="flex min-w-0 items-center gap-2.5 text-[#064b78] sm:gap-3">
-                            <img src="/images/logo.png" alt="Ituze-Qra Ltd Logo" className="h-10 w-10 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-sm" />
-                            <span className="whitespace-nowrap text-base font-black tracking-tight sm:text-xl">Ituze-Qra Ltd</span>
+                        <Link href="/" className="min-w-0 rounded-xl text-[#064b78]">
+                            <BrandLockup
+                                logoClassName="h-14 w-14"
+                                nameClassName="text-xs font-black sm:text-sm"
+                                subtitleClassName="text-[8px] font-semibold"
+                            />
                         </Link>
                         <nav className="hidden items-center gap-6 text-xs font-bold uppercase text-slate-700 lg:flex">
                             <Link href="/" className="transition hover:text-[#078dcc]">Home</Link>
@@ -233,6 +239,10 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                                 <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Unit')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit?.unit_number || '—'}</p></div>
                                 <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Type')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit?.unit_type?.name || t('Rental unit')}</p></div>
                                 <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Size / Floor')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit?.size_sqm ? `${selectedUnit.size_sqm} m²` : '—'}{selectedUnit?.floor_number !== null && selectedUnit?.floor_number !== undefined ? ` · ${t('Floor')} ${selectedUnit.floor_number}` : ''}</p></div>
+                                {isApartmentUnit(selectedUnit) && <>
+                                    <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Bedrooms')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit.bedrooms ?? '—'}</p></div>
+                                    <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Bathrooms')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit.bathrooms ?? '—'}</p></div>
+                                </>}
                             </div>
                             <section className="border-b border-slate-200 py-8"><h2 className="text-2xl font-black">{isUnitDetail ? t('Description') : t('About this property')}</h2><p className="mt-4 max-w-3xl whitespace-pre-line text-[16px] leading-8 text-slate-600">{selectedUnit?.description || property.description || t('This :type in :location is available for rent. Contact the owner to arrange a viewing and learn more.', { type: selectedUnit?.unit_type?.name?.toLowerCase() || t('rental space'), location })}</p></section>
                                     <section className="border-b border-slate-200 py-8"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-black">{t('Address')}</h2><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.address}, ${location}`)}`} target="_blank" rel="noreferrer" className="rounded-lg bg-[#b57c35] px-4 py-2 text-sm font-bold text-white">{t('Open in Google Maps')}</a></div><dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="font-semibold text-slate-500">{t('Property')}</dt><dd className="mt-1 text-slate-800">{property.name}</dd></div><div><dt className="font-semibold text-slate-500">{t('Street address')}</dt><dd className="mt-1 text-slate-800">{property.address}</dd></div><div><dt className="font-semibold text-slate-500">{t('Location')}</dt><dd className="mt-1 text-slate-800">{location}</dd></div><div><dt className="font-semibold text-slate-500">{t('Floor')}</dt><dd className="mt-1 text-slate-800">{selectedUnit?.floor_number ?? t('Not specified')}</dd></div></dl></section>
@@ -299,9 +309,12 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                     <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
                         <div className="grid gap-9 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.2fr]">
                             <div>
-                                <Link href="/" className="flex items-center gap-3 text-2xl font-black">
-                                    <img src="/images/logo.png" alt="" className="h-11 w-11 rounded-full bg-white p-0.5 object-contain shadow-sm" />
-                                    <span>Ituze-Qra Ltd</span>
+                                <Link href="/" className="rounded-xl">
+                                    <BrandLockup
+                                        logoClassName="h-16 w-16"
+                                        nameClassName="text-lg font-black text-white"
+                                        subtitleClassName="text-[9px] font-medium text-white/70"
+                                    />
                                 </Link>
                                 <p className="mt-4 max-w-sm text-sm leading-7 text-white/70">{t('Beautiful spaces, better business, and a simpler way to rent in Rwanda.')}</p>
                             </div>
@@ -317,13 +330,13 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                                 <h2 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact Ituze')}</h2>
                                 <div className="mt-4 space-y-3 text-sm text-white/75">
                                     <a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex items-start gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a>
-                                    <a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={16} className="text-[#f0a052]" />{companyPhone}</a>
+                                    <a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={16} className="text-[#f0a052]" />{companyPhoneDisplay}</a>
                                     <a href="mailto:hello@ituze.rw" className="flex items-center gap-3 transition hover:text-white"><Mail size={16} className="text-[#f0a052]" />hello@ituze.rw</a>
                                 </div>
                             </div>
                         </div>
                         <div className="mt-10 flex flex-col justify-between gap-3 border-t border-white/10 pt-5 text-xs text-white/55 sm:flex-row">
-                            <span>© {new Date().getFullYear()} Ituze-Qra Ltd. {t('All rights reserved.')}</span>
+                            <span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span>
                             <span>{t('Trusted property listings in Rwanda.')}</span>
                         </div>
                     </div>

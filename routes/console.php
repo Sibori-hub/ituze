@@ -8,5 +8,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('tenancies:activate-scheduled')->dailyAt('00:05')->withoutOverlapping();
+Schedule::command('tenancies:activate-scheduled')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('tenancies:complete-apartment-stays')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('rent:generate-charges')->dailyAt('00:10')->withoutOverlapping();

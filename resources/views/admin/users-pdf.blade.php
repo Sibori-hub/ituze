@@ -193,7 +193,8 @@
     @endif
 
     <div class="footer">
-        Ituze QR Ltd — User Management System · Page <span class="page"></span>
+        {{ config('app.name') }}<br>
+        <small>Powered by Q.R.A GROUP LTD</small> — User Management System · Page <span class="page"></span>
     </div>
 </body>
 </html>

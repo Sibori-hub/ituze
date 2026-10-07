@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Cell;
+use App\Models\District;
 use App\Models\Property;
+use App\Models\Province;
+use App\Models\Sector;
 use App\Models\Unit;
 use App\Models\UnitImage;
 use App\Models\UnitType;
@@ -19,7 +23,7 @@ class UnitImageTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'unit_images', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'users'] as $table) {
+        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'unit_images', 'property_images', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'cells', 'sectors', 'districts', 'provinces', 'users'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -52,6 +56,39 @@ class UnitImageTest extends TestCase
             $table->string('name');
             $table->string('address');
             $table->text('description')->nullable();
+            $table->json('amenities')->nullable();
+            $table->json('proximity')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('provinces', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        Schema::create('districts', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('province_id');
+            $table->string('name');
+            $table->timestamps();
+        });
+        Schema::create('sectors', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('district_id');
+            $table->string('name');
+            $table->timestamps();
+        });
+        Schema::create('cells', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('sector_id');
+            $table->string('name');
+            $table->timestamps();
+        });
+        Schema::create('property_images', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('property_id');
+            $table->string('image_path');
+            $table->boolean('is_cover')->default(false);
             $table->timestamps();
         });
 
@@ -70,6 +107,8 @@ class UnitImageTest extends TestCase
             $table->decimal('rent_amount', 12, 2);
             $table->string('rent_frequency')->default('monthly');
             $table->decimal('size_sqm', 12, 2)->nullable();
+            $table->unsignedTinyInteger('bedrooms')->nullable();
+            $table->decimal('bathrooms', 3, 1)->nullable();
             $table->text('description')->nullable();
             $table->string('status')->default('available');
             $table->timestamps();
@@ -103,6 +142,8 @@ class UnitImageTest extends TestCase
                 'floor_number' => 1,
                 'rent_amount' => 250000,
                 'rent_frequency' => 'monthly',
+                'bedrooms' => 2,
+                'bathrooms' => 1,
                 'status' => 'available',
                 'images' => [
                     $this->fakeImage('living-room.png'),
@@ -113,12 +154,120 @@ class UnitImageTest extends TestCase
 
         $unit = Unit::query()->where('unit_number', 'A-101')->firstOrFail();
         $this->assertCount(2, $unit->images);
+        $this->assertSame(2, $unit->bedrooms);
+        $this->assertSame('1.0', $unit->bathrooms);
         $this->assertTrue($unit->images->first()->is_cover);
         $this->assertFalse($unit->images->last()->is_cover);
 
         foreach ($unit->images as $image) {
             Storage::disk('public')->assertExists($image->image_path);
         }
+    }
+
+    public function test_non_apartment_unit_categories_are_restricted_to_monthly_rent(): void
+    {
+        [$owner, $property] = $this->makeOwnerPropertyAndUnitType();
+        $officeType = UnitType::query()->create(['name' => 'Office']);
+
+        $this->actingAs($owner)
+            ->post(route('properties.units.store', $property), [
+                'unit_type_id' => $officeType->id,
+                'unit_number' => 'OFF-1',
+                'rent_amount' => 250000,
+                'rent_frequency' => 'daily',
+                'status' => 'available',
+            ])
+            ->assertSessionHasErrors('rent_frequency');
+
+        $this->assertDatabaseCount('units', 0);
+    }
+
+    public function test_mobile_owner_can_create_update_and_delete_a_unit_through_the_workspace_api(): void
+    {
+        [$owner, $property, $unitType] = $this->makeOwnerPropertyAndUnitType();
+
+        $createResponse = $this->actingAs($owner)
+            ->postJson('/api/mobile/workspace/properties/'.$property->id.'/units', [
+                'unit_type_id' => $unitType->id,
+                'unit_number' => 'M-101',
+                'floor_number' => 1,
+                'rent_amount' => 250000,
+                'rent_frequency' => 'monthly',
+                'bedrooms' => 2,
+                'bathrooms' => 1,
+                'size_sqm' => 45,
+                'description' => 'Mobile-created unit',
+                'status' => 'available',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('unit.unit_number', 'M-101');
+
+        $unitId = $createResponse->json('unit.id');
+
+        $this->putJson('/api/mobile/workspace/properties/'.$property->id.'/units/'.$unitId, [
+            'unit_type_id' => $unitType->id,
+            'unit_number' => 'M-102',
+            'floor_number' => 2,
+            'rent_amount' => 300000,
+            'rent_frequency' => 'monthly',
+            'bedrooms' => 2,
+            'bathrooms' => 1,
+            'size_sqm' => 50,
+            'description' => 'Updated from mobile',
+            'status' => 'available',
+        ])
+            ->assertOk()
+            ->assertJsonPath('unit.unit_number', 'M-102')
+            ->assertJsonPath('unit.rent_amount', '300000.00');
+
+        $this->deleteJson('/api/mobile/workspace/properties/'.$property->id.'/units/'.$unitId)
+            ->assertOk()
+            ->assertJsonPath('message', 'Unit deleted successfully.');
+        $this->assertDatabaseMissing('units', ['id' => $unitId]);
+    }
+
+    public function test_mobile_owner_can_update_and_delete_a_property_and_cannot_edit_another_owners_property(): void
+    {
+        [$owner, $property] = $this->makeOwnerPropertyAndUnitType();
+        $province = Province::query()->create(['name' => 'Kigali']);
+        $district = District::query()->create(['name' => 'Gasabo', 'province_id' => $province->id]);
+        $sector = Sector::query()->create(['name' => 'Kacyiru', 'district_id' => $district->id]);
+        $cell = Cell::query()->create(['name' => 'Kamatamu', 'sector_id' => $sector->id]);
+
+        $this->actingAs($owner)
+            ->putJson('/api/mobile/workspace/properties/'.$property->id, [
+                'name' => 'Updated property',
+                'address' => 'New address',
+                'description' => 'Updated from the mobile app',
+                'cell_id' => $cell->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('property.name', 'Updated property')
+            ->assertJsonPath('property.cell.name', 'Kamatamu');
+
+        $otherOwner = User::factory()->create([
+            'role' => 'owner',
+            'status' => 'approved',
+            'profile_completed' => true,
+            'expires_at' => now()->addYear(),
+            'email_verified_at' => now(),
+        ]);
+        $otherProperty = Property::query()->create([
+            'owner_id' => $otherOwner->id,
+            'name' => 'Another owner property',
+            'address' => 'Kigali',
+        ]);
+
+        $this->putJson('/api/mobile/workspace/properties/'.$otherProperty->id, [
+            'name' => 'Unauthorized change',
+            'address' => 'Kigali',
+            'cell_id' => $cell->id,
+        ])->assertForbidden();
+
+        $this->deleteJson('/api/mobile/workspace/properties/'.$property->id)
+            ->assertOk()
+            ->assertJsonPath('message', 'Property deleted successfully.');
+        $this->assertDatabaseMissing('properties', ['id' => $property->id]);
     }
 
     public function test_owner_can_remove_and_replace_unit_images(): void
@@ -148,6 +297,8 @@ class UnitImageTest extends TestCase
                 'floor_number' => '',
                 'rent_amount' => 250000,
                 'rent_frequency' => 'monthly',
+                'bedrooms' => 2,
+                'bathrooms' => 1,
                 'size_sqm' => '',
                 'description' => '',
                 'status' => 'available',
@@ -174,6 +325,8 @@ class UnitImageTest extends TestCase
             'unit_number' => 'A-101',
             'rent_amount' => 250000,
             'rent_frequency' => 'monthly',
+            'bedrooms' => 2,
+            'bathrooms' => 1,
             'status' => 'available',
         ]);
         $imagePath = 'unit-images/cover.jpg';

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Auth\MobileAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -9,6 +10,10 @@ class ProfileCompletionController extends Controller
 {
     public function store(Request $request)
     {
+        abort_unless($request->user()->role === 'owner', 403);
+        abort_if($request->user()->status === 'rejected', 403, 'This owner account has been rejected.');
+        abort_unless($request->user()->hasVerifiedEmail(), 403, 'Verify your email before completing your profile.');
+
         try {
             $validated = $request->validate(
                 [
@@ -35,7 +40,8 @@ class ProfileCompletionController extends Controller
 
             $path = $request->file('profile_photo')->store('profile-photos', 'public');
 
-            $updated = $request->user()->update([
+            $user = $request->user();
+            $updated = $user->update([
                 'national_id'       => $validated['national_id'],
                 'identity_document_type' => $validated['identity_document_type'],
                 'address'           => $validated['address'],
@@ -46,20 +52,39 @@ class ProfileCompletionController extends Controller
 
             if (!$updated) {
                 Log::warning('Profile completion update returned false for user ID: ' . $request->user()->id);
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Profile was not saved. Please try again.',
+                    ], 500);
+                }
+
                 return back()->with('warning', 'Profile was not saved. Please try again or contact support.')->withInput();
             }
 
             Log::info('Profile completed successfully for user ID: ' . $request->user()->id);
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Profile completed successfully. Your account is waiting for admin approval.',
+                    'user' => MobileAuthController::userData($user->fresh()),
+                ]);
+            }
+
             return redirect()
                 ->route('dashboard')
-                ->with('success', '🎉 Profile completed successfully! Welcome to Ituze QR Ltd.');
+                ->with('success', '🎉 Profile completed successfully! Welcome to '.config('app.name').'.');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::warning('Profile completion validation failed for user ' . $request->user()->id . ': ' . json_encode($e->errors()));
             throw $e;
         } catch (\Exception $e) {
             Log::error('Profile completion error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ' | Line: ' . $e->getLine());
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Something went wrong while saving your profile. Please try again.',
+                ], 500);
+            }
+
             return back()
                 ->with('error', '❌ Something went wrong while saving your profile: ' . $e->getMessage())
                 ->withInput();

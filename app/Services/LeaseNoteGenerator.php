@@ -89,6 +89,11 @@ class LeaseNoteGenerator
             'Rent: '.number_format((float) $context['monthly_rent'], 2).' RWF per '.$period,
         ];
 
+        if (($context['rent_frequency'] ?? null) === 'daily') {
+            $details[] = 'Check-in time: '.($context['check_in_time'] ?? '14:00');
+            $details[] = 'Check-out time: '.($context['check_out_time'] ?? '11:00');
+        }
+
         if (isset($context['deposit_amount']) && (float) $context['deposit_amount'] > 0) {
             $details[] = 'Recorded deposit: '.number_format((float) $context['deposit_amount'], 2).' RWF';
         }

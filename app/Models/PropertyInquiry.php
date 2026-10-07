@@ -14,6 +14,7 @@ class PropertyInquiry extends Model
         'visitor_email',
         'visitor_phone',
         'message',
+        'response_message',
         'status',
         'responded_at',
         'whatsapp_sent_at',
@@ -39,4 +40,5 @@ class PropertyInquiry extends Model
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
+
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Property;
 use App\Models\PropertyInquiry;
 use App\Models\Unit;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +49,7 @@ class PublicPropertyController extends Controller
         ]);
     }
 
-    public function inquire(Request $request, Property $property): RedirectResponse
+    public function inquire(Request $request, Property $property): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
@@ -66,7 +67,7 @@ class PublicPropertyController extends Controller
             $phoneDigits = '250'.substr($phoneDigits, 1);
         }
         if (strlen($phoneDigits) < 7 || strlen($phoneDigits) > 15) {
-            return back()->withErrors(['visitor_phone' => 'Enter a valid phone number.'])->withInput();
+            return $this->inquiryError($request, 'visitor_phone', 'Enter a valid phone number.');
         }
         $validated['visitor_phone'] = '+'.$phoneDigits;
 
@@ -77,7 +78,7 @@ class PublicPropertyController extends Controller
             ->first();
 
         if (! $unit) {
-            return back()->withErrors(['unit_id' => 'That available space is no longer listed. Please refresh and try again.']);
+            return $this->inquiryError($request, 'unit_id', 'That available space is no longer listed. Please refresh and try again.');
         }
 
         $phoneVariants = [$phoneDigits];
@@ -88,7 +89,7 @@ class PublicPropertyController extends Controller
             $phoneVariants[] = '250'.substr($phoneDigits, 1);
         }
 
-        $created = DB::transaction(function () use ($property, $unit, $validated, $phoneDigits, $phoneVariants): bool {
+        $created = DB::transaction(function () use ($property, $unit, $validated, $phoneDigits, $phoneVariants): ?PropertyInquiry {
             Property::query()->whereKey($property->id)->lockForUpdate()->firstOrFail();
 
             $hasUnresolvedInquiry = PropertyInquiry::query()
@@ -107,37 +108,67 @@ class PublicPropertyController extends Controller
                 ->exists();
 
             if ($hasUnresolvedInquiry) {
-                return false;
+                return null;
             }
 
-            PropertyInquiry::create([
+            return PropertyInquiry::create([
                 ...$validated,
                 'unit_id' => $unit->id,
                 'property_id' => $property->id,
                 'owner_id' => $property->owner_id,
                 'status' => 'new',
             ]);
-
-            return true;
         });
 
         if (! $created) {
-            return back()->withErrors([
-                'inquiry' => 'We already have your inquiry for this property. The owner will review it shortly. You can send another inquiry after the owner marks this one as read.',
-            ]);
+            return $this->inquiryError(
+                $request,
+                'inquiry',
+                'We already have your inquiry for this property. The owner will review it shortly. You can send another inquiry after the owner marks this one as read.',
+            );
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Your inquiry was received and sent to the property owner.',
+                'inquiry' => ['id' => $created->id],
+            ], 201);
         }
 
         return back()->with('success', 'Your inquiry was received and sent to the property owner.');
+    }
+
+    private function inquiryError(Request $request, string $field, string $message): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'errors' => [$field => [$message]],
+            ], 422);
+        }
+
+        return back()->withErrors([$field => $message])->withInput();
     }
 
     public function markRead(Request $request, PropertyInquiry $inquiry): RedirectResponse
     {
         abort_unless($request->user()->isAdmin() || $inquiry->owner_id === $request->user()->id, 403);
 
+        $validated = $request->validate([
+            'reply_message' => ['sometimes', 'nullable', 'string', 'max:2000'],
+        ]);
+        $reply = trim($validated['reply_message'] ?? '');
+
         $inquiry->forceFill([
             'status' => 'read',
+            ...($reply !== '' ? [
+                'response_message' => $reply,
+                'responded_at' => now(),
+            ] : []),
         ])->save();
 
-        return back()->with('success', 'Inquiry marked as read. The visitor can submit another inquiry.');
+        return back()->with('success', $reply !== ''
+            ? 'Reply prepared. The inquiry was marked as read.'
+            : 'Inquiry marked as read. The visitor can submit another inquiry.');
     }
 }

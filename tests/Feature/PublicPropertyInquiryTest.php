@@ -84,6 +84,7 @@ class PublicPropertyInquiryTest extends TestCase
             $table->string('visitor_email');
             $table->string('visitor_phone', 40);
             $table->text('message');
+            $table->text('response_message')->nullable();
             $table->string('status')->default('new');
             $table->timestamp('responded_at')->nullable();
             $table->timestamp('whatsapp_sent_at')->nullable();
@@ -126,6 +127,31 @@ class PublicPropertyInquiryTest extends TestCase
         ]);
     }
 
+    public function test_mobile_inquiry_endpoint_returns_json_and_preserves_duplicate_protection(): void
+    {
+        [$owner, $property, $unit] = $this->makeListing();
+        $data = $this->inquiryData($unit);
+
+        $response = $this->postJson('/api/mobile/properties/'.$property->id.'/inquiries', $data)
+            ->assertCreated()
+            ->assertJsonPath('message', 'Your inquiry was received and sent to the property owner.')
+            ->assertJsonStructure(['inquiry' => ['id']]);
+
+        $this->assertDatabaseHas('property_inquiries', [
+            'property_id' => $property->id,
+            'unit_id' => $unit->id,
+            'owner_id' => $owner->id,
+            'visitor_email' => 'visitor@example.com',
+            'visitor_phone' => '+250783000111',
+            'status' => 'new',
+        ]);
+
+        $this->postJson('/api/mobile/properties/'.$property->id.'/inquiries', $data)
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.inquiry.0', 'We already have your inquiry for this property. The owner will review it shortly. You can send another inquiry after the owner marks this one as read.');
+        $this->assertDatabaseCount('property_inquiries', 1);
+    }
+
     public function test_duplicate_property_inquiry_is_blocked_until_owner_marks_previous_inquiry_read(): void
     {
         [$owner, $property, $unit, $otherUnit] = $this->makeListing(true);
@@ -151,9 +177,13 @@ class PublicPropertyInquiryTest extends TestCase
 
         $inquiry = PropertyInquiry::query()->firstOrFail();
         $this->actingAs($owner)
-            ->post(route('inquiries.read', $inquiry))
-            ->assertSessionHas('success', 'Inquiry marked as read. The visitor can submit another inquiry.');
-        $this->assertDatabaseHas('property_inquiries', ['id' => $inquiry->id, 'status' => 'read']);
+            ->post(route('inquiries.read', $inquiry), ['reply_message' => 'Hello Jean, the office is available.'])
+            ->assertSessionHas('success', 'Reply prepared. The inquiry was marked as read.');
+        $this->assertDatabaseHas('property_inquiries', [
+            'id' => $inquiry->id,
+            'status' => 'read',
+            'response_message' => 'Hello Jean, the office is available.',
+        ]);
 
         $this->submitInquiry($property, $otherUnit);
         $this->assertDatabaseCount('property_inquiries', 2);

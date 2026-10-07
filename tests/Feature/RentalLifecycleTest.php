@@ -113,6 +113,8 @@ class RentalLifecycleTest extends TestCase
             $table->decimal('rent_amount', 12, 2);
             $table->string('rent_frequency')->default('monthly');
             $table->decimal('size_sqm', 12, 2)->nullable();
+            $table->unsignedTinyInteger('bedrooms')->nullable();
+            $table->decimal('bathrooms', 3, 1)->nullable();
             $table->text('description')->nullable();
             $table->string('status')->default('available');
             $table->timestamps();
@@ -148,6 +150,8 @@ class RentalLifecycleTest extends TestCase
             $table->foreignId('assigned_by')->constrained('users');
             $table->date('start_date');
             $table->date('end_date')->nullable();
+            $table->time('check_in_time')->nullable();
+            $table->time('check_out_time')->nullable();
             $table->date('actual_end_date')->nullable();
             $table->decimal('monthly_rent', 12, 2);
             $table->string('rent_frequency')->default('monthly');
@@ -433,6 +437,12 @@ class RentalLifecycleTest extends TestCase
                 ->where('summary.payments_received', 100)
                 ->has('agreementReports', 1)
                 ->where('properties.0.name', $property->name));
+
+        $this->getJson('/api/mobile/workspace/reports')
+            ->assertOk()
+            ->assertJsonPath('summary.properties', 2)
+            ->assertJsonPath('summary.payments_received', 300)
+            ->assertJsonCount(2, 'agreementReports');
 
         $this->get(route('tenants.index', ['owner_id' => $owner->id]))
             ->assertInertia(fn (Assert $page) => $page
@@ -721,6 +731,70 @@ class RentalLifecycleTest extends TestCase
         $this->assertSame(300.0, (float) $depositCharge->payments()->sum('amount'));
     }
 
+    public function test_daily_apartment_stays_use_checkin_checkout_times_prevent_overlaps_and_release_after_checkout(): void
+    {
+        [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
+        $unit->update(['status' => 'available']);
+        Storage::fake('local');
+
+        $assignment = [
+            'tenant_id' => $tenant->id,
+            'start_date' => '2026-01-02',
+            'end_date' => '2026-01-04',
+            'check_in_time' => '14:00',
+            'check_out_time' => '11:00',
+            'monthly_rent' => '500.00',
+            'rent_frequency' => 'daily',
+            'deposit_amount' => '0',
+            'payment_method' => 'cash',
+            'lease' => UploadedFile::fake()->create('daily-stay.pdf', 30, 'application/pdf'),
+        ];
+
+        $this->actingAs($owner)
+            ->post(route('properties.units.tenancy.store', [$property, $unit]), $assignment)
+            ->assertRedirect();
+
+        $stay = Tenancy::query()->firstOrFail();
+        $this->assertSame('scheduled', $stay->status);
+        $this->assertSame('14:00', substr($stay->check_in_time, 0, 5));
+        $this->assertSame('11:00', substr($stay->check_out_time, 0, 5));
+        $this->assertSame(2, $stay->rentCharges()->where('charge_type', 'rent')->count());
+
+        $this->actingAs($owner)
+            ->post(route('properties.units.tenancy.store', [$property, $unit]), [
+                ...$assignment,
+                'start_date' => '2026-01-03',
+                'end_date' => '2026-01-05',
+                'lease' => UploadedFile::fake()->create('overlap.pdf', 30, 'application/pdf'),
+            ])
+            ->assertSessionHasErrors('start_date');
+        $this->assertSame(1, Tenancy::query()->count());
+
+        Carbon::setTestNow('2026-01-02 14:00:00');
+        $this->artisan('tenancies:activate-scheduled')->assertExitCode(0);
+        $this->assertSame('active', $stay->fresh()->status);
+
+        Carbon::setTestNow('2026-01-04 10:59:00');
+        $this->artisan('tenancies:complete-apartment-stays')->assertExitCode(0);
+        $this->assertSame('active', $stay->fresh()->status);
+
+        Carbon::setTestNow('2026-01-04 11:00:00');
+        $this->artisan('tenancies:complete-apartment-stays')->assertExitCode(0);
+        $this->assertSame('ended', $stay->fresh()->status);
+        $this->assertSame('available', $unit->fresh()->status);
+
+        $this->actingAs($owner)
+            ->post(route('properties.units.tenancy.store', [$property, $unit]), [
+                ...$assignment,
+                'start_date' => '2026-01-04',
+                'end_date' => '2026-01-05',
+                'check_in_time' => '11:00',
+                'lease' => UploadedFile::fake()->create('same-day-checkin.pdf', 30, 'application/pdf'),
+            ])
+            ->assertRedirect();
+        $this->assertSame(2, Tenancy::query()->count());
+    }
+
     public function test_company_tenant_assignment_saves_representative_identity_rent_terms_and_lease(): void
     {
         [$property, $owner, $unit] = $this->makeUnitAndTenant();
@@ -846,6 +920,117 @@ class RentalLifecycleTest extends TestCase
             'province_id' => $location['province_id'],
             'district_id' => $location['district_id'],
             'sector_id' => $location['sector_id'],
+        ]);
+    }
+
+    public function test_mobile_tenant_api_preserves_validation_and_owner_scope_for_create_and_update(): void
+    {
+        [, $owner] = $this->makeUnitAndTenant();
+        $payload = [
+            'type' => 'individual',
+            'first_name' => 'Aline',
+            'last_name' => 'Mobile',
+            'identity_type' => 'national_id',
+            'identity_number' => '1234567890123456',
+            'email' => 'aline-mobile@example.com',
+            'phone' => '0780123456',
+            ...$this->tenantLocationData(),
+        ];
+
+        $response = $this->actingAs($owner)
+            ->postJson('/api/mobile/workspace/tenants', $payload)
+            ->assertCreated()
+            ->assertJsonPath('tenant.name', 'Aline Mobile')
+            ->assertJsonPath('tenant.created_by', $owner->id);
+        $tenantId = $response->json('tenant.id');
+
+        $this->putJson('/api/mobile/workspace/tenants/'.$tenantId, [
+            ...$payload,
+            'phone' => '0720123456',
+        ])
+            ->assertOk()
+            ->assertJsonPath('tenant.phone', '0720123456');
+
+        $otherOwner = User::factory()->create([
+            'role' => 'owner',
+            'status' => 'approved',
+            'profile_completed' => true,
+            'expires_at' => now()->addYear(),
+        ]);
+        $this->actingAs($otherOwner)
+            ->putJson('/api/mobile/workspace/tenants/'.$tenantId, [
+                ...$payload,
+                'phone' => '0730123456',
+            ])
+            ->assertNotFound();
+    }
+
+    public function test_mobile_tenancy_workspace_can_list_outstanding_charges_and_record_a_payment(): void
+    {
+        [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
+        $tenancy = $this->makeTenancy($unit, $tenant, $owner);
+        $charge = RentCharge::create([
+            'tenancy_id' => $tenancy->id,
+            'charge_type' => 'rent',
+            'period_start' => '2026-01-01',
+            'period_end' => '2026-01-31',
+            'due_date' => '2026-01-01',
+            'amount' => 500,
+        ]);
+
+        $this->actingAs($owner)
+            ->getJson('/api/mobile/workspace/tenancies')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $tenancy->id)
+            ->assertJsonPath('data.0.rent_charges.0.id', $charge->id);
+
+        $this->postJson('/api/mobile/workspace/properties/'.$property->id.'/units/'.$unit->id.'/tenancies/'.$tenancy->id.'/charges/'.$charge->id.'/payments', [
+            'amount' => '125.50',
+            'method' => 'mobile_money',
+            'reference' => 'MOMO-MOBILE-TEST',
+            'paid_at' => now()->format('Y-m-d H:i:s'),
+        ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Payment recorded and receipt number generated.');
+
+        $this->assertDatabaseHas('rent_payments', [
+            'rent_charge_id' => $charge->id,
+            'amount' => '125.50',
+            'reference' => 'MOMO-MOBILE-TEST',
+            'receipt_number' => 'ITZ-2026-000001',
+        ]);
+
+        $this->postJson('/api/mobile/workspace/properties/'.$property->id.'/units/'.$unit->id.'/tenancies/'.$tenancy->id.'/charges/'.$charge->id.'/payments', [
+            'amount' => '374.51',
+            'method' => 'cash',
+            'paid_at' => now()->format('Y-m-d H:i:s'),
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('amount');
+    }
+
+    public function test_mobile_owner_can_complete_move_out_through_the_workspace_api(): void
+    {
+        [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
+        $tenancy = $this->makeTenancy($unit, $tenant, $owner);
+
+        $this->actingAs($owner)
+            ->postJson('/api/mobile/workspace/properties/'.$property->id.'/units/'.$unit->id.'/tenancies/'.$tenancy->id.'/move-out', [
+                'move_out_date' => '2026-01-01',
+                'condition_notes' => 'The unit was returned in good condition.',
+                'damage_cost' => '0',
+                'unit_outcome' => 'available',
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Move-out inspection saved and the tenancy ended.');
+
+        $this->assertDatabaseHas('tenancies', [
+            'id' => $tenancy->id,
+            'status' => 'ended',
+            'actual_end_date' => '2026-01-01 00:00:00',
+        ]);
+        $this->assertDatabaseHas('units', [
+            'id' => $unit->id,
+            'status' => 'available',
         ]);
     }
 
@@ -1104,6 +1289,8 @@ class RentalLifecycleTest extends TestCase
                 'unit_type_id' => $unit->unit_type_id,
                 'unit_number' => $unit->unit_number,
                 'rent_amount' => $unit->rent_amount,
+                'bedrooms' => $unit->bedrooms,
+                'bathrooms' => $unit->bathrooms,
                 'rent_frequency' => 'monthly',
                 'status' => 'available',
             ])
@@ -1423,6 +1610,8 @@ class RentalLifecycleTest extends TestCase
             'unit_number' => 'A-1',
             'rent_amount' => 500,
             'rent_frequency' => 'monthly',
+            'bedrooms' => 1,
+            'bathrooms' => 1,
             'status' => 'occupied',
         ]);
         $tenant = Tenant::create([

@@ -1,5 +1,6 @@
 import { Head, InfiniteScroll, Link, router, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
+import BrandLockup from '@/Components/BrandLockup';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import {
     ArrowRight,
@@ -148,44 +149,108 @@ function LoginPanel({ onClose, canRegister }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="welcome-login-title">
-            <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl">
-                <button type="button" onClick={onClose} aria-label="Close login" className="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><X size={19} /></button>
-                <div className="grid grid-cols-2 gap-2 p-3">
-                    <div className="rounded-lg bg-[#0E3B2E] py-2.5 text-center text-sm font-semibold text-white shadow-sm">{t('Login')}</div>
-                    {canRegister ? <Link href={route('register')} className="rounded-lg bg-gray-100 py-2.5 text-center text-sm font-semibold text-gray-500 transition hover:bg-gray-200">{t('Register')}</Link> : <div className="rounded-lg bg-gray-100 py-2.5 text-center text-sm font-semibold text-gray-400">{t('Register')}</div>}
-                </div>
-                <div className="px-6 pb-8 pt-5 sm:px-10">
-                    <div className="text-center">
-                        <h2 id="welcome-login-title" className="font-[Sora] text-xl font-bold text-gray-800">{t('Welcome back')}</h2>
-                        <p className="mt-1 text-sm text-gray-500">{t('Log in to continue')}</p>
+        <div className="fixed inset-0 z-50 bg-[#f3f6fb] p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-login-title">
+            <div className="relative flex min-h-full w-full overflow-hidden bg-white shadow-none sm:min-h-[calc(100vh-2rem)] sm:rounded-[28px] sm:shadow-[0_30px_80px_-30px_rgba(15,23,42,0.45)]">
+                <button type="button" onClick={onClose} aria-label="Close login" className="absolute right-5 top-5 z-20 rounded-full border border-slate-200 bg-white/90 p-2.5 text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700">
+                    <X size={18} />
+                </button>
+
+                <div className="hidden w-[42%] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#062f47] via-[#0a4b79] to-[#0f7bb5] p-8 text-white md:flex">
+                    <div className="flex items-center gap-3">
+                        <BrandLockup
+                            logoClassName="h-16 w-16"
+                            nameClassName="text-xl font-black text-white"
+                            subtitleClassName="text-[9px] font-medium text-white/75"
+                        />
                     </div>
-                    <form onSubmit={submit} className="mt-7 space-y-4">
-                        <div>
-                            <label htmlFor="welcome-login-email" className="mb-1 block text-sm font-medium text-gray-700">{t('Email')}</label>
-                            <div className="relative">
-                                <Mail size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input id="welcome-login-email" type="email" value={form.data.email} autoComplete="username" autoFocus disabled={form.processing} onChange={(event) => form.setData('email', event.target.value)} className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-[#0E3B2E] focus:ring-1 focus:ring-[#0E3B2E] disabled:bg-gray-50" required />
+
+                    <div>
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-50/90">
+                            <Building2 size={14} />
+                            {t('Owner dashboard')}
+                        </div>
+                        <h2 className="mt-8 max-w-sm text-4xl font-light leading-tight tracking-[-0.04em]">
+                            {t('Manage your spaces with confidence.')}
+                        </h2>
+                        <p className="mt-4 max-w-sm text-sm leading-7 text-sky-50/80">
+                            {t('Access listings, applications, and property updates from one secure workspace designed for modern property management.')}
+                        </p>
+                    </div>
+
+                    <div className="space-y-3 text-sm text-sky-50/80">
+                        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
+                            <CheckCircle2 size={18} className="text-cyan-200" />
+                            <span>{t('Fast account access')}</span>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
+                            <CheckCircle2 size={18} className="text-cyan-200" />
+                            <span>{t('Secure property operations')}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex w-full items-center justify-center bg-slate-50 px-5 py-10 sm:px-8 md:w-[58%] md:px-10 md:py-12">
+                    <div className="w-full max-w-md">
+                        <div className="mb-8 text-center md:text-left">
+                            <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#0a6da5]">{t('Welcome back')}</p>
+                            <h2 id="welcome-login-title" className="mt-3 text-3xl font-black tracking-[-0.04em] text-slate-900">{t('Sign in')}</h2>
+                            <p className="mt-2 text-sm text-slate-500">{t('Log in to continue')}</p>
+                        </div>
+
+                        <form onSubmit={submit} className="space-y-5">
+                            <div>
+                                <label htmlFor="welcome-login-email" className="mb-2 block text-sm font-semibold text-slate-700">{t('Email')}</label>
+                                <div className="relative">
+                                    <Mail size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input id="welcome-login-email" type="email" value={form.data.email} autoComplete="username" autoFocus disabled={form.processing} onChange={(event) => form.setData('email', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-sm transition focus:border-[#0a6da5] focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:bg-slate-100" required />
+                                </div>
+                                <InputError message={form.errors.email} className="mt-2" />
                             </div>
-                            <InputError message={form.errors.email} className="mt-1" />
-                        </div>
-                        <div>
-                            <label htmlFor="welcome-login-password" className="mb-1 block text-sm font-medium text-gray-700">{t('Password')}</label>
-                            <div className="relative">
-                                <Lock size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input id="welcome-login-password" type="password" value={form.data.password} autoComplete="current-password" disabled={form.processing} onChange={(event) => form.setData('password', event.target.value)} className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-[#0E3B2E] focus:ring-1 focus:ring-[#0E3B2E] disabled:bg-gray-50" required />
+
+                            <div>
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                    <label htmlFor="welcome-login-password" className="block text-sm font-semibold text-slate-700">{t('Password')}</label>
+                                    <Link href={route('password.request')} className="text-xs font-medium text-[#0a6da5] transition hover:text-[#094f7d]">{t('Forgot password?')}</Link>
+                                </div>
+                                <div className="relative">
+                                    <Lock size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input id="welcome-login-password" type="password" value={form.data.password} autoComplete="current-password" disabled={form.processing} onChange={(event) => form.setData('password', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-sm transition focus:border-[#0a6da5] focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:bg-slate-100" required />
+                                </div>
+                                <InputError message={form.errors.password} className="mt-2" />
                             </div>
-                            <InputError message={form.errors.password} className="mt-1" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" checked={form.data.remember} disabled={form.processing} onChange={(event) => form.setData('remember', event.target.checked)} className="rounded border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]" /> {t('Remember me')}</label>
-                            <Link href={route('password.request')} className="text-sm text-[#0E3B2E] hover:underline">{t('Forgot password?')}</Link>
-                        </div>
-                        <button type="submit" disabled={form.processing} className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0a2e23] disabled:cursor-not-allowed disabled:opacity-80">
-                            {form.processing ? <><Loader2 size={18} className="animate-spin text-[#D9A441]" /> {t('Signing you in...')}</> : <><span>{t('LOG IN')}</span><ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" /></>}
-                        </button>
-                        <p className="text-center text-sm text-gray-500">{t("Don't have an account?")} {canRegister ? <Link href={route('register')} className="font-medium text-[#0E3B2E] hover:underline">{t('Register')}</Link> : t('Register')}</p>
-                    </form>
+
+                            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+                                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                                    <input type="checkbox" checked={form.data.remember} disabled={form.processing} onChange={(event) => form.setData('remember', event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-[#0a6da5] focus:ring-[#0a6da5]" />
+                                    {t('Remember me')}
+                                </label>
+                                <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">{t('Secure')}</span>
+                            </div>
+
+                            <button type="submit" disabled={form.processing} className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0E3B2E] px-4 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_18px_30px_-18px_rgba(14,59,46,0.9)] transition hover:bg-[#143f35] disabled:cursor-not-allowed disabled:opacity-80">
+                                {form.processing ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin text-[#f0c867]" />
+                                        {t('Signing you in...')}
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>{t('Log in')}</span>
+                                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+                                    </>
+                                )}
+                            </button>
+
+                            <p className="text-center text-sm text-slate-500">
+                                {t("Don't have an account?")}{' '}
+                                {canRegister ? (
+                                    <Link href={route('register')} className="font-semibold text-[#0a6da5] transition hover:text-[#094f7d]">{t('Register')}</Link>
+                                ) : (
+                                    <span className="font-semibold text-slate-400">{t('Register')}</span>
+                                )}
+                            </p>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -228,7 +293,7 @@ function RegisterPanel({ onClose }) {
                 <div className="px-6 pb-8 pt-5 sm:px-10">
                     <div className="text-center">
                         <h2 id="welcome-register-title" className="font-[Sora] text-xl font-bold text-gray-800">{t('Create your account')}</h2>
-                        <p className="mt-1 text-sm text-gray-500">{t('Join Ituze-Qra Ltd to manage your property listings.')}</p>
+                        <p className="mt-1 text-sm text-gray-500">{t('Join ITUZE GREEN PLATFORM to manage your property listings.')}</p>
                     </div>
                     <form onSubmit={submit} className="mt-7 space-y-4">
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -278,7 +343,8 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
         price_range: searchFilters.price_range || 'any',
     });
     const current = heroSlides[slide];
-    const companyPhone = '+250789265436';
+    const companyPhone = '+250793905166';
+    const companyPhoneDisplay = '0793905166';
     const companyAddress = 'KG 14 Ave, Kigali-Gisozi-Musezero: ULK-Kagugu Road, Source Oil Building';
     const companyMapUrl = 'https://www.google.com/maps/search/?api=1&query=KG%2014%20Ave%2C%20Kigali-Gisozi-Musezero%3A%20ULK-Kagugu%20Road%2C%20Source%20Oil%20Building';
 
@@ -329,32 +395,61 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
 
     return (
         <>
-            <Head title={t('Find your perfect space to rent | Ituze-Qra Ltd')} />
+            <Head title={t('Find your perfect space to rent | ITUZE GREEN PLATFORM')} />
             <div className="min-h-screen bg-[#f6f8fa] text-slate-900">
-                <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">
+                <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.45)] backdrop-blur-md">
                     <div className="bg-[#063f67] text-white">
-                        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-3.5 text-xs font-medium sm:flex-row sm:items-center sm:justify-between lg:px-8">
+                        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 text-[11px] font-medium sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-xs lg:px-8">
                             <a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-white/85 transition hover:text-white">
-                                <MapPin size={16} className="shrink-0 text-[#f0a052]" />
-                                <span>{companyAddress}</span>
+                                <MapPin size={15} className="shrink-0 text-[#f0a052]" />
+                                <span className="truncate sm:truncate-none">{companyAddress}</span>
                             </a>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
                                 <a href={`tel:${companyPhone}`} className="flex items-center gap-1.5 text-white/90 transition hover:text-white">
-                                    <Phone size={16} className="text-[#f0a052]" />
-                                    <span>{companyPhone}</span>
+                                    <Phone size={15} className="text-[#f0a052]" />
+                                    <span>{companyPhoneDisplay}</span>
                                 </a>
                             </div>
                         </div>
                     </div>
-                    <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8">
-                        <Link href="/" className="flex items-center gap-3 text-2xl font-black tracking-tight text-[#064b78]">
-                            <img src="/images/logo.png" alt="Ituze-Qra Ltd Logo" className="h-10 w-10 rounded-full object-contain bg-white p-0.5 shadow-sm" />
-                            <span>Ituze-Qra Ltd</span>
+                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+                        <Link href="/" className="rounded-xl text-[#064b78]">
+                            <BrandLockup
+                                logoClassName="h-14 w-14 sm:h-16 sm:w-16"
+                                nameClassName="text-xs font-black sm:text-sm"
+                                subtitleClassName="text-[8px] font-semibold sm:text-[9px]"
+                            />
                         </Link>
-                        <nav className="hidden items-center gap-8 text-xs font-bold uppercase text-slate-700 md:flex"><a href="#featured" className="hover:text-[#078dcc]">{t('Home')}</a><a href="#featured" className="hover:text-[#078dcc]">{t('Properties')}</a><a href="#categories" className="hover:text-[#078dcc]">{t('Property types')}</a><a href="#enquiry" className="hover:text-[#078dcc]">{t('Enquiry')}</a></nav>
-                        <div className="flex items-center gap-2"><LanguageSwitcher className="rounded-lg bg-[#0E3B2E] p-1" />{auth?.user ? <Link href={route('dashboard')} className="rounded bg-[#08a8ec] px-4 py-2 text-xs font-bold uppercase text-white">{t('Dashboard')}</Link> : <>{canLogin && <button type="button" onClick={() => setLoginOpen(true)} className="hidden px-3 py-2 text-xs font-bold uppercase text-slate-600 sm:block">{t('Log in')}</button>}<button type="button" onClick={() => setInquiryOpen(true)} className="rounded bg-[#08a8ec] px-4 py-2 text-xs font-bold uppercase text-white">{t('Inquiry')}</button></>}<button type="button" className="md:hidden" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></div>
+                        <nav className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 p-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 md:flex">
+                            <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Home')}</a>
+                            <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Properties')}</a>
+                            <a href="#categories" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Property types')}</a>
+                            <a href="#enquiry" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Enquiry')}</a>
+                        </nav>
+                        <div className="flex items-center gap-2">
+                            <LanguageSwitcher className="rounded-lg bg-[#0E3B2E] p-1" />
+                            {auth?.user ? (
+                                <Link href={route('dashboard')} className="hidden rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white sm:inline-flex sm:text-xs">{t('Dashboard')}</Link>
+                            ) : (
+                                <>
+                                    {canLogin && <button type="button" onClick={() => setLoginOpen(true)} className="hidden px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 transition hover:text-[#078dcc] sm:block">{t('Log in')}</button>}
+                                    <button type="button" onClick={() => setInquiryOpen(true)} className="rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#0a9ee1] sm:text-xs">{t('Inquiry')}</button>
+                                </>
+                            )}
+                            <button type="button" className="rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-100 md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation menu">
+                                {menuOpen ? <X size={17} /> : <Menu size={17} />}
+                            </button>
+                        </div>
                     </div>
-                    {menuOpen && <div className="border-t border-slate-100 px-6 py-3 text-sm md:hidden"><a className="block py-2" href="#featured">{t('Properties')}</a><a className="block py-2" href="#categories">{t('Property types')}</a><a className="block py-2" href="#enquiry">{t('Enquiry')}</a>{!auth?.user && canLogin && <button type="button" onClick={() => { setLoginOpen(true); setMenuOpen(false); }} className="block py-2 font-semibold text-slate-700">{t('Log in')}</button>}{!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block py-2 font-semibold text-[#078dcc]">{t('Inquiry')}</button>}</div>}
+                    {menuOpen && (
+                        <div className="border-t border-slate-100 bg-white px-4 py-3 text-sm md:hidden">
+                            <a className="block py-2 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
+                            <a className="block py-2 font-medium text-slate-700" href="#categories">{t('Property types')}</a>
+                            <a className="block py-2 font-medium text-slate-700" href="#enquiry">{t('Enquiry')}</a>
+                            {!auth?.user && canLogin && <button type="button" onClick={() => { setLoginOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-slate-700">{t('Log in')}</button>}
+                            {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
+                        </div>
+                    )}
                 </header>
 
                 <main>
@@ -495,7 +590,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <div className="rounded-l-2xl bg-[#0e3b2e] p-8 text-white sm:p-12">
                                 <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">{t('Partner with us')}</p>
                                 <h2 className="mt-3 text-3xl font-light sm:text-4xl">{t('Let’s work together')}</h2>
-                                <p className="mt-4 max-w-lg text-sm leading-7 text-white/75">{t('Tell us how you would like to work with Ituze-Qra Ltd. Complete the form and our team will contact you.')}</p>
+                                <p className="mt-4 max-w-lg text-sm leading-7 text-white/75">{t('Tell us how you would like to work with ITUZE GREEN PLATFORM. Complete the form and our team will contact you.')}</p>
                                 {partnerContactSent ? (
                                     <div className="mt-8 rounded-xl bg-white/10 p-5 text-sm leading-6 text-white">
                                         {t('Thank you. Your partner enquiry has been received and our team will contact you soon.')}
@@ -520,7 +615,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                 )}
                             </div>
                             <div className="relative min-h-[28rem] overflow-hidden rounded-r-2xl bg-slate-200">
-                                <iframe title={t('Ituze-Qra Ltd location map')} src={`https://www.google.com/maps?q=${encodeURIComponent(companyAddress)}&output=embed`} className="h-full min-h-[28rem] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                                <iframe title={t('ITUZE GREEN PLATFORM location map')} src={`https://www.google.com/maps?q=${encodeURIComponent(companyAddress)}&output=embed`} className="h-full min-h-[28rem] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
                                 <a href={companyMapUrl} target="_blank" rel="noreferrer" className="absolute bottom-4 left-4 right-4 flex items-center gap-3 rounded-xl bg-white/95 p-4 text-sm text-slate-700 shadow-lg transition hover:bg-white sm:right-auto sm:max-w-md">
                                     <MapPin size={20} className="shrink-0 text-orange-600" />
                                     <span className="min-w-0 flex-1"><span className="block font-bold text-slate-900">{t('Find us on Google Maps')}</span><span className="mt-0.5 block">{companyAddress}</span></span>
@@ -535,10 +630,11 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     <div className="mx-auto max-w-7xl px-6 py-14 lg:px-8">
                         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
                             <div>
-                                <div className="flex items-center gap-3 text-3xl font-black">
-                                    <img src="/images/logo.png" alt={t('Ituze-Qra Ltd Logo')} className="h-11 w-11 rounded-full object-contain bg-white p-0.5 shadow-sm" />
-                                    <span>Ituze-Qra Ltd</span>
-                                </div>
+                                <BrandLockup
+                                    logoClassName="h-16 w-16"
+                                    nameClassName="text-lg font-black text-white"
+                                    subtitleClassName="text-[9px] font-medium text-white/70"
+                                />
                                 <p className="mt-4 max-w-xs text-sm leading-7 text-white/65">{t('Beautiful spaces, better business, and a simpler way to rent in Rwanda.')}</p>
                                 <div className="mt-6 flex gap-3">
                                     <a href={`tel:${companyPhone}`} aria-label={t('Call Ituze')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><Phone size={17} /></a>
@@ -548,9 +644,9 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             </div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#categories">{t('Property categories')}</a><a className="block transition hover:text-white" href="#enquiry">{t('Send an enquiry')}</a></div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <button type="button" className="block transition hover:text-white" onClick={() => setLoginOpen(true)}>{t('Owner login')}</button>}</div></div>
-                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhone}</a><a href={`mailto:hello@ituze.rw`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> hello@ituze.rw</a></div></div>
+                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:hello@ituze.rw`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> hello@ituze.rw</a></div></div>
                         </div>
-                        <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} Ituze-Qra Ltd. {t('All rights reserved.')}</span><span>{t('Trusted property listings in Rwanda.')}</span></div>
+                        <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><span>{t('Trusted property listings in Rwanda.')}</span></div>
                     </div>
                     <a href={`https://web.whatsapp.com/send?phone=${companyPhone.replace('+', '')}&text=${encodeURIComponent(t('Hello Ituze, I am interested in finding a property for rent.'))}`} target="_blank" rel="noreferrer" aria-label={t('Chat with Ituze on WhatsApp Web')} className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-xl shadow-black/20 transition hover:scale-105 hover:bg-[#1fba59] sm:bottom-8 sm:right-10">
                         <MessageCircle size={27} />

@@ -97,7 +97,7 @@ export default function Register() {
                     {t('Create Account')}
                 </h2>
                 <p className="mt-1.5 text-sm text-gray-500">
-                    {t('Join Ituze QR Ltd to manage your properties')}
+                    {t('Join ITUZE GREEN PLATFORM to manage your properties')}
                 </p>
             </div>
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Property;
 use App\Models\PropertyImage;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
@@ -98,7 +99,7 @@ class PropertyController extends Controller
     /**
      * Store a newly created property in storage.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         try {
             $user = $request->user();
@@ -154,6 +155,12 @@ class PropertyController extends Controller
 
             Log::info('Property created: #' . $property->id . ' by user #' . $request->user()->id);
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'property' => $property->load(['images', 'cell.sector.district.province']),
+                ], 201);
+            }
+
             return redirect()
                 ->route('properties.index')
                 ->with('success', '🏠 Property "' . $property->name . '" created successfully!');
@@ -163,6 +170,10 @@ class PropertyController extends Controller
             throw $e;
         } catch (\Exception $e) {
             Log::error('Property store error: ' . $e->getMessage());
+            if ($request->expectsJson()) {
+                throw $e;
+            }
+
             return back()
                 ->with('error', '❌ Failed to save property: ' . $e->getMessage())
                 ->withInput();
@@ -210,7 +221,7 @@ class PropertyController extends Controller
     /**
      * Update the specified property in storage.
      */
-    public function update(Request $request, Property $property): RedirectResponse
+    public function update(Request $request, Property $property): JsonResponse|RedirectResponse
     {
         $this->authorizePropertyAccess($request->user(), $property);
 
@@ -269,6 +280,12 @@ class PropertyController extends Controller
             }
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'property' => $property->fresh()->load(['images', 'cell.sector.district.province']),
+            ]);
+        }
+
         return redirect()->route('properties.index')
             ->with('success', 'Property updated successfully.');
     }
@@ -276,7 +293,7 @@ class PropertyController extends Controller
     /**
      * Remove the specified property from storage.
      */
-    public function destroy(Request $request, Property $property): RedirectResponse
+    public function destroy(Request $request, Property $property): JsonResponse|RedirectResponse
     {
         $this->authorizePropertyAccess($request->user(), $property);
 
@@ -286,6 +303,10 @@ class PropertyController extends Controller
         }
 
         $property->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Property deleted successfully.']);
+        }
 
         return redirect()->route('properties.index')
             ->with('success', 'Property deleted successfully.');

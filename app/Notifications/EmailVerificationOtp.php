@@ -24,7 +24,7 @@ class EmailVerificationOtp extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Your Verification Code - Ituze QR Ltd')
+            ->subject('Your Verification Code - '.config('app.name'))
             ->greeting('Hello '.$notifiable->first_name.'!')
             ->line('Use the code below to verify your email address.')
             ->line(new \Illuminate\Support\HtmlString(

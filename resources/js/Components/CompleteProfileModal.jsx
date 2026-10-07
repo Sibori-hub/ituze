@@ -81,7 +81,7 @@ export default function CompleteProfileModal({ onDone }) {
                         Thank you for completing your profile!
                     </h2>
                     <p className="mt-2 text-sm text-gray-500">
-                        You're all set. You can now start using Ituze QR Ltd
+                        You're all set. You can now start using ITUZE GREEN PLATFORM
                         to manage your properties.
                     </p>
                     <button

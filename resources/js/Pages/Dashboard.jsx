@@ -4,7 +4,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Activity, ArrowUpRight, BadgeCheck, BarChart3, Building2, CalendarDays, CalendarX,
     CheckCircle2, Clock3, CreditCard, DoorOpen, FileText, Home, Mail, MessageSquare,
-    Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound,
+    Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound, X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from '@/localization';
@@ -33,50 +33,174 @@ const formatDate = (value, language) => {
 };
 
 function VisitorInquiries({ inquiries }) {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const [replies, setReplies] = useState({});
+    const [selectedInquiryId, setSelectedInquiryId] = useState(null);
+    const selectedInquiry = inquiries.find(inquiry => inquiry.id === selectedInquiryId);
+    const selectedReply = selectedInquiry
+        ? replies[selectedInquiry.id] ?? selectedInquiry.response_message ?? ''
+        : '';
+    const phone = (selectedInquiry?.visitor_phone || '').replace(/\D/g, '');
+    const whatsappPhone = phone.startsWith('00')
+        ? phone.slice(2)
+        : phone.startsWith('0')
+            ? `250${phone.slice(1)}`
+            : phone.length === 9
+                ? `250${phone}`
+                : phone;
+    const validWhatsAppPhone = whatsappPhone.length >= 7 && whatsappPhone.length <= 15;
+    const whatsappHref = validWhatsAppPhone && selectedReply.trim()
+        ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(selectedReply.trim())}`
+        : null;
+
+    const prepareWhatsAppReply = () => {
+        router.post(route('inquiries.read', selectedInquiry.id), {
+            reply_message: selectedReply.trim(),
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+        });
+    };
+
+    const markSelectedInquiryRead = () => {
+        router.post(route('inquiries.read', selectedInquiry.id), {}, {
+            preserveScroll: true,
+            preserveState: true,
+        });
+    };
 
     return (
         <div id="visitor-inquiries" className="mt-5 scroll-mt-20 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
                 <div>
                     <h2 className="font-[Sora] font-semibold text-gray-900">{t('Visitor inquiries')}</h2>
-                    <p className="mt-1 text-xs text-gray-500">{t('Contact the visitor, then mark the inquiry as read to allow a new inquiry for this property.')}</p>
+                    <p className="mt-1 text-xs text-gray-500">{t('Review visitor questions and reply directly to visitors about your properties.')}</p>
                 </div>
                 <MessageSquare size={18} className="text-[#D9A441]" />
             </div>
             {inquiries.length ? (
-                <div className="divide-y divide-gray-100">
-                    {inquiries.map(inquiry => {
-                        const replyText = `Hello ${inquiry.visitor_name}, regarding your inquiry about ${inquiry.property?.name}${inquiry.unit?.unit_number ? `, unit ${inquiry.unit.unit_number}` : ''}.`;
-
-                        return (
-                            <div key={inquiry.id} className="py-4 first:pt-0">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-800">{inquiry.visitor_name}</p>
-                                        <p className="text-xs text-gray-500">{inquiry.property?.name} · {t('Unit')} {inquiry.unit?.unit_number || '—'}</p>
-                                        {inquiry.owner?.name && <p className="mt-1 text-xs text-gray-400">{t('Owner')}: {inquiry.owner.name}</p>}
-                                    </div>
-                                    <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${inquiry.status === 'read' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                                        {t(inquiry.status === 'new' ? 'New' : inquiry.status)}
-                                    </span>
-                                </div>
-                                <p className="mt-2 text-sm text-gray-600">{inquiry.message}</p>
-                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                                    <a href={`tel:${inquiry.visitor_phone}`} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 font-semibold text-gray-700 transition hover:border-[#0E3B2E] hover:bg-emerald-50"><Phone size={13} /> {t('Call')}</a>
-                                    <a href={`sms:${inquiry.visitor_phone}?body=${encodeURIComponent(replyText)}`} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 font-semibold text-gray-700 transition hover:border-[#0E3B2E] hover:bg-emerald-50"><MessageSquare size={13} /> {t('SMS visitor')}</a>
-                                    {inquiry.visitor_email && <a href={`mailto:${inquiry.visitor_email}`} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 font-semibold text-gray-700 transition hover:border-[#0E3B2E] hover:bg-emerald-50"><Mail size={13} /> {t('Email')}</a>}
-                                </div>
-                                {inquiry.status !== 'read' && (
-                                    <button type="button" onClick={() => router.post(route('inquiries.read', inquiry.id), {}, { preserveScroll: true })} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0E3B2E] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0a2e23]">
-                                        <CheckCircle2 size={14} /> {t('Mark as read')}
-                                    </button>
-                                )}
-                            </div>
-                        );
-                    })}
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                    <table className="w-full min-w-[680px] divide-y divide-gray-100 text-left">
+                        <thead className="bg-slate-50">
+                            <tr className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                <th className="px-4 py-3">{t('Visitor')}</th>
+                                <th className="px-4 py-3">{t('Property / unit')}</th>
+                                <th className="px-4 py-3">{t('Inquiry')}</th>
+                                <th className="px-4 py-3">{t('Status')}</th>
+                                <th className="px-4 py-3">{t('Received')}</th>
+                                <th className="px-4 py-3"><span className="sr-only">{t('View inquiry')}</span></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                            {inquiries.map(inquiry => (
+                                <tr key={inquiry.id} className="transition hover:bg-slate-50/80">
+                                    <td className="px-4 py-3">
+                                        <button type="button" onClick={() => setSelectedInquiryId(inquiry.id)} className="text-left">
+                                            <span className="block text-sm font-semibold text-gray-800 hover:text-[#0E3B2E]">{inquiry.visitor_name}</span>
+                                            <span className="mt-0.5 block text-xs text-gray-500">{inquiry.visitor_email || inquiry.visitor_phone}</span>
+                                        </button>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs text-gray-600">
+                                        <span className="block font-semibold text-gray-800">{inquiry.property?.name || '—'}</span>
+                                        <span className="mt-0.5 block">{t('Unit')} {inquiry.unit?.unit_number || '—'}</span>
+                                    </td>
+                                    <td className="max-w-xs px-4 py-3 text-xs text-gray-600">
+                                        <p className="line-clamp-2">{inquiry.message}</p>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${inquiry.status === 'read' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                            {t(inquiry.status === 'new' ? 'New' : inquiry.status)}
+                                        </span>
+                                    </td>
+                                    <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">
+                                        {formatDate(inquiry.created_at, language)}
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        <button type="button" onClick={() => setSelectedInquiryId(inquiry.id)} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0E3B2E] hover:bg-emerald-50">
+                                            {t('View')}
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             ) : <p className="py-4 text-sm text-gray-500">{t('No visitor inquiries yet.')}</p>}
+
+            {selectedInquiry && (
+                <div
+                    className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm"
+                    role="presentation"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) setSelectedInquiryId(null);
+                    }}
+                >
+                    <section
+                        className="my-auto w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="visitor-inquiry-dialog-title"
+                    >
+                        <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a4772f]">{t('Visitor inquiry')}</p>
+                                <h3 id="visitor-inquiry-dialog-title" className="mt-1 font-[Sora] text-lg font-semibold text-gray-900">{selectedInquiry.visitor_name}</h3>
+                                <p className="mt-1 text-xs text-gray-500">{selectedInquiry.property?.name} · {t('Unit')} {selectedInquiry.unit?.unit_number || '—'}</p>
+                            </div>
+                            <button type="button" onClick={() => setSelectedInquiryId(null)} aria-label={t('Close')} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                                <X size={18} />
+                            </button>
+                        </header>
+                        <div className="max-h-[min(70vh,620px)] space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
+                            <div className="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                                <div><p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{t('Email')}</p><p className="mt-1 break-all text-gray-700">{selectedInquiry.visitor_email || '—'}</p></div>
+                                <div><p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{t('Phone')}</p><p className="mt-1 text-gray-700">{selectedInquiry.visitor_phone || '—'}</p></div>
+                                {selectedInquiry.owner?.name && <div><p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{t('Owner')}</p><p className="mt-1 text-gray-700">{selectedInquiry.owner.name}</p></div>}
+                                <div><p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{t('Received')}</p><p className="mt-1 text-gray-700">{formatDate(selectedInquiry.created_at, language)}</p></div>
+                            </div>
+                            <div className="rounded-xl border border-gray-100 p-4">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{t('Visitor inquiry')}</p>
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{selectedInquiry.message}</p>
+                            </div>
+                            <label className="block text-sm font-semibold text-gray-800" htmlFor={`inquiry-reply-${selectedInquiry.id}`}>
+                                {t('Your reply')}
+                                <textarea
+                                    id={`inquiry-reply-${selectedInquiry.id}`}
+                                    value={selectedReply}
+                                    onChange={(event) => setReplies(current => ({ ...current, [selectedInquiry.id]: event.target.value }))}
+                                    rows={4}
+                                    maxLength={2000}
+                                    placeholder={t('Write a reply to the visitor...')}
+                                    className="mt-2 w-full resize-y rounded-xl border-gray-200 text-sm font-normal text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]"
+                                />
+                            </label>
+                            {selectedInquiry.response_message && (
+                                <p className="text-xs text-gray-500">{t('Your last reply is saved here so you can reuse or edit it.')}</p>
+                            )}
+                            <p className="text-xs leading-5 text-gray-500">{t('WhatsApp opens outside Ituze. The inquiry is marked as read and this reply is saved when you open WhatsApp; Ituze cannot confirm delivery or retrieve the visitor’s reply.')}</p>
+                        </div>
+                        <footer className="flex flex-wrap justify-end gap-2 border-t border-gray-100 bg-slate-50/70 px-5 py-4 sm:px-6">
+                            {selectedInquiry.status !== 'read' && (
+                                <button type="button" onClick={markSelectedInquiryRead} className="mr-auto inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                                    <CheckCircle2 size={14} /> {t('Mark as read')}
+                                </button>
+                            )}
+                            {whatsappHref ? (
+                                <a href={whatsappHref} target="_blank" rel="noreferrer" onClick={prepareWhatsAppReply} className="inline-flex items-center gap-2 rounded-lg bg-[#168447] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#116c39]">
+                                    <MessageSquare size={15} /> {t('Reply via WhatsApp')}
+                                </a>
+                            ) : (
+                                <button type="button" disabled className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-500" title={!validWhatsAppPhone ? t('Visitor phone number is unavailable.') : t('Write a reply before opening WhatsApp.')}>
+                                    <MessageSquare size={15} /> {t('Reply via WhatsApp')}
+                                </button>
+                            )}
+                            <button type="button" onClick={() => setSelectedInquiryId(null)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                {t('Close')}
+                            </button>
+                        </footer>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }
@@ -103,7 +227,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
         { title: 'Tenants', description: 'View and manage tenants across the platform.', href: route('tenants.index'), icon: Users, count: overview.tenants, tone: 'bg-violet-50 text-violet-700' },
         { title: 'Lease records', description: 'Review lease documents and tenancy records.', href: route('leases.index'), icon: FileText, count: overview.leases, tone: 'bg-cyan-50 text-cyan-700' },
         { title: 'Payments', description: 'Review payment history and owner collections.', href: route('payments.index'), icon: CreditCard, count: overview.payments, tone: 'bg-indigo-50 text-indigo-700' },
-        { title: 'Manage inquiries', description: 'Contact visitors by SMS, email, or phone and track inquiry status.', href: `${route('dashboard')}#visitor-inquiries`, icon: MessageSquare, count: overview.newInquiries, tone: 'bg-amber-50 text-amber-700', attention: overview.newInquiries > 0 },
+        { title: 'Visitor inquiries', description: 'Review visitor requests and reply about listed properties.', href: `${route('dashboard')}#visitor-inquiries`, icon: MessageSquare, count: overview.newInquiries, tone: 'bg-amber-50 text-amber-700', attention: overview.newInquiries > 0 },
         { title: 'Platform reports', description: 'View financial and portfolio reports across all owners.', href: route('reports.index'), icon: BarChart3, tone: 'bg-rose-50 text-rose-700' },
     ];
     const monthLabel = value => new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(`${value}-01T12:00:00`));

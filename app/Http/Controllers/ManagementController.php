@@ -9,6 +9,7 @@ use App\Models\RentPayment;
 use App\Models\Tenancy;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -253,7 +254,7 @@ class ManagementController extends Controller
         ]);
     }
 
-    public function reports(Request $request): Response
+    public function reports(Request $request): JsonResponse|Response
     {
         $user = $request->user();
         $ownerId = $this->ownerFilter($request, $user);
@@ -312,7 +313,7 @@ class ManagementController extends Controller
             ->sum('amount');
         $agreementReports = $this->agreementFinanceReports($user, $ownerId);
 
-        return Inertia::render('Reports/Index', [
+        $report = [
             'summary' => [
                 'properties' => $properties->count(),
                 'units' => $properties->sum('units_count'),
@@ -344,7 +345,13 @@ class ManagementController extends Controller
             'owners' => $this->ownerOptions($user),
             'filters' => ['owner_id' => $ownerId],
             'vatRate' => config('finance.rwanda_vat_rate'),
-        ]);
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json($report);
+        }
+
+        return Inertia::render('Reports/Index', $report);
     }
 
     private function ownerFilter(Request $request, $user): ?int

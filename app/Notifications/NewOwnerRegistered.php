@@ -25,9 +25,9 @@ class NewOwnerRegistered extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New Owner Registered - Ituze QR Ltd')
+            ->subject('New Owner Registered - '.config('app.name'))
             ->greeting('Hello Admin,')
-            ->line('A new owner has just registered on Ituze QR Ltd.')
+            ->line('A new owner has just registered on '.config('app.name').'.')
             ->line('Name: '.$this->newUser->name)
             ->line('Email: '.$this->newUser->email)
             ->line('Phone: '.$this->newUser->phone)

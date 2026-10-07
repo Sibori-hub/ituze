@@ -12,12 +12,12 @@ export default function Status({ status, expired }) {
         ? 'Your account was not approved'
         : isExpired
           ? 'Your subscription has expired'
-          : 'Welcome to Ituze-Qra Ltd';
+          : 'Welcome to ITUZE GREEN PLATFORM';
     const message = rejected
-        ? 'Please contact Ituze-Qra Ltd for help with your account.'
+        ? 'Please contact ITUZE GREEN PLATFORM for help with your account.'
         : isExpired
-          ? 'Your owner subscription has ended. Please contact Ituze-Qra Ltd to renew access.'
-          : 'Welcome to Ituze-Qra Ltd web app. Our team is checking and your account will be available in less than 5 minutes.';
+          ? 'Your owner subscription has ended. Please contact ITUZE GREEN PLATFORM to renew access.'
+          : 'Welcome to ITUZE GREEN PLATFORM web app. Our team is checking and your account will be available in less than 5 minutes.';
 
     return (
         <AuthenticatedLayout header="Account status">

@@ -6,6 +6,7 @@ import PaymentRecordDetails from '@/Components/PaymentRecordDetails';
 import PaymentReceiptButton from '@/Components/PaymentReceiptButton';
 import { ArrowLeft, Home, DollarSign, Edit, MapPin, Upload, Download, Trash2, FileText, CalendarClock, Receipt, ClipboardCheck } from 'lucide-react';
 import { useTranslation } from '@/localization';
+import { isApartmentUnit } from '@/utils/unitType';
 
 const statusStyles = {
     available: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
@@ -129,6 +130,7 @@ function TenancyManager({ tenancy, property, unit }) {
     const { t, language } = useTranslation();
     const locale = { en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' }[language];
     const todayDate = today();
+    const apartmentStay = isApartmentUnit(unit);
     const nextStartDate = tenancy.end_date
         ? inputDate(new Date(new Date(tenancy.end_date).getTime() + 86400000).toISOString().slice(0, 10))
         : todayDate;
@@ -137,7 +139,9 @@ function TenancyManager({ tenancy, property, unit }) {
         start_date: renewalStart,
         end_date: '',
         monthly_rent: tenancy.monthly_rent,
-        rent_frequency: tenancy.rent_frequency || 'monthly',
+        rent_frequency: apartmentStay && tenancy.rent_frequency === 'daily' ? 'daily' : 'monthly',
+        check_in_time: tenancy.check_in_time || '14:00',
+        check_out_time: tenancy.check_out_time || '11:00',
         due_day: tenancy.due_day || '1',
         lease: null,
         lease_notes: '',
@@ -248,6 +252,7 @@ function TenancyManager({ tenancy, property, unit }) {
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{t('Tenancy & lease')}</h3>
                             <p className="mt-1 text-lg font-semibold text-gray-900">{tenancy.tenant?.name}</p>
                             <p className="mt-1 text-sm text-gray-600">{formatDate(tenancy.start_date, locale)} {t('to')} {tenancy.end_date ? formatDate(tenancy.end_date, locale) : t('Ongoing')} · {t(tenancy.rent_frequency)} {t('rent')}</p>
+                            {tenancy.rent_frequency === 'daily' && <p className="mt-1 text-xs text-gray-500">{t('Check-in')}: {tenancy.check_in_time?.slice(0, 5) || '14:00'} · {t('Check-out')}: {tenancy.check_out_time?.slice(0, 5) || '11:00'}</p>}
                         </div>
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold capitalize text-blue-700">{t(tenancy.status)}</span>
                     </div>
@@ -362,9 +367,13 @@ function TenancyManager({ tenancy, property, unit }) {
                         <form onSubmit={submitRenewal} className="grid gap-3 p-5 sm:grid-cols-2">
                             <label className="text-xs font-medium text-gray-600">{t('New lease start')}<input type="date" required min={renewalStart} value={renewalForm.data.start_date} onChange={e => renewalForm.setData('start_date', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
                             <label className="text-xs font-medium text-gray-600">{t('New lease end')}<input type="date" required value={renewalForm.data.end_date} onChange={e => renewalForm.setData('end_date', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
-                            <label className="text-xs font-medium text-gray-600">{t('Rent frequency')}<select value={renewalForm.data.rent_frequency} onChange={e => renewalForm.setData('rent_frequency', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm"><option value="daily">{t('Daily')}</option><option value="weekly">{t('Weekly')}</option><option value="monthly">{t('Monthly')}</option><option value="quarterly">{t('Quarterly')}</option><option value="yearly">{t('Yearly')}</option></select></label>
+                            {apartmentStay ? <label className="text-xs font-medium text-gray-600">{t('Rent frequency')}<select value={renewalForm.data.rent_frequency} onChange={e => renewalForm.setData('rent_frequency', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm"><option value="daily">{t('Daily')}</option><option value="monthly">{t('Monthly')}</option></select></label> : <div className="text-xs font-medium text-gray-600">{t('Rent frequency')}<p className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">{t('Monthly')}</p></div>}
+                            {renewalForm.data.rent_frequency === 'daily' && <>
+                                <label className="text-xs font-medium text-gray-600">{t('Check-in time')}<input type="time" required value={renewalForm.data.check_in_time} onChange={e => renewalForm.setData('check_in_time', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
+                                <label className="text-xs font-medium text-gray-600">{t('Check-out time')}<input type="time" required value={renewalForm.data.check_out_time} onChange={e => renewalForm.setData('check_out_time', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
+                            </>}
                             {renewalForm.data.rent_frequency === 'monthly' && <label className="text-xs font-medium text-gray-600">{t('Due day')}<input type="number" min="1" max="31" required value={renewalForm.data.due_day} onChange={e => renewalForm.setData('due_day', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>}
-                            <label className="text-xs font-medium text-gray-600">{t('Rent per period (RWF)')}<input type="number" min="0.01" step="0.01" required value={renewalForm.data.monthly_rent} onChange={e => renewalForm.setData('monthly_rent', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
+                            <label className="text-xs font-medium text-gray-600">{t(renewalForm.data.rent_frequency === 'daily' ? 'Nightly rate (RWF)' : 'Monthly rent (RWF)')}<input type="number" min="0.01" step="0.01" required value={renewalForm.data.monthly_rent} onChange={e => renewalForm.setData('monthly_rent', e.target.value)} className="mt-1 w-full rounded-lg border-gray-200 text-sm" /></label>
                             <LeaseRecordFields
                                 paymentMethod={renewalForm.data.payment_method}
                                 onPaymentMethodChange={value => renewalForm.setData('payment_method', value)}
@@ -381,6 +390,8 @@ function TenancyManager({ tenancy, property, unit }) {
                                     purpose: 'renewal',
                                     start_date: renewalForm.data.start_date,
                                     end_date: renewalForm.data.end_date,
+                                    check_in_time: renewalForm.data.rent_frequency === 'daily' ? renewalForm.data.check_in_time : null,
+                                    check_out_time: renewalForm.data.rent_frequency === 'daily' ? renewalForm.data.check_out_time : null,
                                     monthly_rent: renewalForm.data.monthly_rent,
                                     rent_frequency: renewalForm.data.rent_frequency,
                                 }}
@@ -484,7 +495,7 @@ export default function UnitShow({ property, unit }) {
                                     <dd className="mt-1 text-sm font-medium text-gray-900">{unit.unit_type?.name || '—'}</dd>
                                 </div>
                                 <div>
-                                    <dt className="text-sm font-medium text-gray-500">{t('Monthly Rent')}</dt>
+                                    <dt className="text-sm font-medium text-gray-500">{t(unit.rent_frequency === 'daily' ? 'Daily rate (RWF)' : 'Monthly rent')}</dt>
                                     <dd className="mt-1 flex items-center gap-1">
                                         <DollarSign size={14} className="text-gray-400" />
                                         <span className="text-sm font-semibold text-gray-900">
@@ -505,6 +516,16 @@ export default function UnitShow({ property, unit }) {
                                             : '—'}
                                     </dd>
                                 </div>
+                                {isApartmentUnit(unit) && <>
+                                    <div>
+                                        <dt className="text-sm font-medium text-gray-500">{t('Bedrooms')}</dt>
+                                        <dd className="mt-1 text-sm font-medium text-gray-900">{unit.bedrooms ?? '—'}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-sm font-medium text-gray-500">{t('Bathrooms')}</dt>
+                                        <dd className="mt-1 text-sm font-medium text-gray-900">{unit.bathrooms ?? '—'}</dd>
+                                    </div>
+                                </>}
                                 <div>
                                     <dt className="text-sm font-medium text-gray-500">{t('Status')}</dt>
                                     <dd className="mt-1">

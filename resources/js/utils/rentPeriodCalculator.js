@@ -37,7 +37,7 @@ export function countRentPeriods(startValue, endValue, frequency) {
     if (!start || !end || end < start) return 0;
 
     if (frequency === 'daily') {
-        return Math.floor((end - start) / 86400000) + 1;
+        return Math.floor((end - start) / 86400000);
     }
 
     if (frequency === 'weekly') {

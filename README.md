@@ -7,9 +7,9 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## Ituze rental management
+## ITUZE GREEN PLATFORM
 
-Rental charges and scheduled lease activations use Laravel's scheduler. During local Windows development, keep `php artisan schedule:work` running. On production, configure the host's task scheduler or cron to run `php artisan schedule:run` every minute. Apply pending database migrations with `php artisan migrate` before using the rent ledger.
+Rental charges, scheduled lease activations, and apartment check-outs use Laravel's scheduler. Daily apartment bookings are checked for overlaps, then completed after their configured check-out time. During local Windows development, keep `php artisan schedule:work` running. On production, configure the host's task scheduler or cron to run `php artisan schedule:run` every minute. Apply pending database migrations with `php artisan migrate` before using the rent ledger or apartment stay fields.
 
 ## About Laravel
 

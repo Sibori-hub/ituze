@@ -2,6 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body,
+#app {
+    width: 100%;
+    height: 100%;
+}
+
+.authenticated-app-shell {
+    position: fixed !important;
+    inset: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+}
+
+#app .authenticated-layout-row {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+}
+
+#app .authenticated-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 16rem !important;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden !important;
+}
+
+#app .authenticated-sidebar-nav {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+}
+
+#app .authenticated-main-column {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+}
+
+#app .authenticated-main-header,
+#app .authenticated-main-footer {
+    flex-shrink: 0 !important;
+}
+
+#app .authenticated-page-content {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+}
+
+@media (min-width: 1024px) {
+    #app .authenticated-sidebar {
+        position: relative !important;
+        inset: auto !important;
+        height: 100% !important;
+        flex: 0 0 16rem !important;
+        transform: none !important;
+    }
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -29,17 +31,37 @@ class RegisteredUserController extends Controller
      *
      * @throws ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'device_name' => ['nullable', 'string', 'max:80'],
         ], [
             'phone.regex' => 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $email = (string) ($request->input('email') ?? '');
+            $password = (string) ($request->input('password') ?? '');
+            $confirmation = (string) ($request->input('password_confirmation') ?? '');
+            $phone = (string) ($request->input('phone') ?? '');
+
+            if (
+                $email !== ''
+                && ! filter_var($email, FILTER_VALIDATE_EMAIL)
+                && $password !== ''
+                && $password !== $confirmation
+                && preg_match('/^079\d{7}$/', $phone) === 1
+            ) {
+                $validator->errors()->add('phone', 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).');
+            }
+        });
+
+        $validator->validate();
 
         $user = User::create([
             'first_name' => $request->first_name,
@@ -50,6 +72,7 @@ class RegisteredUserController extends Controller
             'role' => 'owner',
             'status' => 'pending',
             'expires_at' => null,
+            'profile_completed' => false,
             'password' => Hash::make($request->password),
         ]);
 
@@ -57,6 +80,14 @@ class RegisteredUserController extends Controller
             event(new Registered($user));
         } else {
             $user->markEmailAsVerified();
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'token' => $user->createToken($request->input('device_name', 'ituze-mobile'))->plainTextToken,
+                'user' => MobileAuthController::userData($user),
+                'verification_required' => ! $user->hasVerifiedEmail(),
+            ], 201);
         }
 
         // TODO: Re-enable admin notification after queue worker is set up

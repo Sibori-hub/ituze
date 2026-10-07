@@ -7,6 +7,7 @@ import TenantLocationFields from '@/Components/TenantLocationFields';
 import LeaseNoteField from '@/Components/LeaseNoteField';
 import LeaseRecordFields from '@/Components/LeaseRecordFields';
 import { countRentPeriods } from '@/utils/rentPeriodCalculator';
+import { isApartmentUnit } from '@/utils/unitType';
 
 const statusStyles = {
     available: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
@@ -23,10 +24,12 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
     const [unitToDelete, setUnitToDelete] = useState(null);
     const [unitToAssign, setUnitToAssign] = useState(null);
     const [showTenantForm, setShowTenantForm] = useState(false);
-    const assignmentForm = useForm({ tenant_type: 'individual', first_name: '', last_name: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', monthly_rent: '', rent_frequency: 'monthly', deposit_amount: '', lease: null, lease_notes: '', payment_method: '', payment_reference: '' });
+    const assignmentForm = useForm({ tenant_type: 'individual', first_name: '', last_name: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', check_in_time: '14:00', check_out_time: '11:00', monthly_rent: '', rent_frequency: 'monthly', deposit_amount: '', lease: null, lease_notes: '', payment_method: '', payment_reference: '' });
     const tenantForm = useForm({ type: 'individual', first_name: '', last_name: '', identity_type: 'national_id', identity_number: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '' });
     const isFirstRender = useRef(true);
     const rentPeriods = countRentPeriods(assignmentForm.data.start_date, assignmentForm.data.end_date, assignmentForm.data.rent_frequency);
+    const apartmentStay = isApartmentUnit(unitToAssign);
+    const dailyStay = apartmentStay && assignmentForm.data.rent_frequency === 'daily';
     const totalRent = rentPeriods > 0 && Number(assignmentForm.data.monthly_rent) > 0
         ? rentPeriods * Number(assignmentForm.data.monthly_rent)
         : '';
@@ -54,8 +57,10 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
         setUnitToAssign(unit);
         assignmentForm.setData({
             ...assignmentForm.data,
+            rent_frequency: isApartmentUnit(unit) && unit.rent_frequency === 'daily' ? 'daily' : 'monthly',
             monthly_rent: unit.rent_amount || '',
-            rent_frequency: unit.rent_frequency || 'monthly',
+            check_in_time: '14:00',
+            check_out_time: '11:00',
         });
     };
 
@@ -198,6 +203,14 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                             </td>
                                             <td className="px-5 py-3.5 text-gray-600">
                                                 {unit.unit_type?.name || '—'}
+                                                {isApartmentUnit(unit) && (
+                                                    <span className="mt-1 block text-xs text-gray-400">
+                                                        {t(':bedrooms bedrooms · :bathrooms bathrooms', {
+                                                            bedrooms: unit.bedrooms ?? '—',
+                                                            bathrooms: unit.bathrooms ?? '—',
+                                                        })}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-5 py-3.5 text-gray-600">
                                                 <div className="flex items-center gap-1">
@@ -205,7 +218,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                     <span className="font-medium">
                                                         {Number(unit.rent_amount).toLocaleString()}
                                                     </span>
-                                                    <span className="text-xs text-gray-400">/month</span>
+                                                    <span className="text-xs text-gray-400">{unit.rent_frequency === 'daily' ? `/${t('night')}` : `/${t('month')}`}</span>
                                                     {unit.size_sqm != null && unit.size_sqm !== '' && (
                                                         <span className="text-xs text-gray-400">
                                                             {' '}· {Number(unit.size_sqm).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²
@@ -232,7 +245,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                             </td>
                                             <td className="px-5 py-3.5 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    {unit.status === 'available' && (
+                                                    {(unit.status === 'available' || (isApartmentUnit(unit) && ['reserved', 'occupied'].includes(unit.status))) && (
                                                         <button onClick={() => openAssignment(unit)} className="rounded-lg bg-[#0E3B2E]/10 px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] hover:bg-[#0E3B2E]/20">
                                                             {t('Assign tenant')}
                                                         </button>
@@ -271,12 +284,16 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                                 <label className="text-sm font-medium text-gray-700">{t('Email')}<input required type="email" value={assignmentForm.data.email} onChange={e => assignmentForm.setData('email', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                                                                 <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required type="tel" value={assignmentForm.data.phone} maxLength={10} inputMode="numeric" pattern="(078|072|073)[0-9]{7}" onChange={e => assignmentForm.setData('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} className="mt-1 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Enter 10 digits starting with 078, 072, or 073.')}</span></label>
                                                                 <TenantLocationFields data={assignmentForm.data} setData={assignmentForm.setData} errors={assignmentForm.errors} t={t} />
-                                                                <label className="text-sm font-medium text-gray-700">{t('Tenancy start date')}<input type="date" required value={assignmentForm.data.start_date} onChange={e => assignmentForm.setData('start_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">{t('Tenancy end date')}<input type="date" required value={assignmentForm.data.end_date} onChange={e => assignmentForm.setData('end_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">{t('Rent frequency')}<select value={assignmentForm.data.rent_frequency} onChange={e => assignmentForm.setData('rent_frequency', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="daily">{t('Daily')}</option><option value="weekly">{t('Weekly')}</option><option value="monthly">{t('Monthly')}</option><option value="quarterly">{t('Quarterly')}</option><option value="yearly">{t('Yearly')}</option></select></label>
-                                                                <label className="text-sm font-medium text-gray-700">{t('Rent per period (RWF)')}<input type="number" min="0.01" step="0.01" required value={assignmentForm.data.monthly_rent} onChange={e => assignmentForm.setData('monthly_rent', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">{t('Number of rent periods')}<input type="number" disabled value={rentPeriods || ''} className="mt-1 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" /></label>
-                                                                <label className="text-sm font-medium text-gray-700">{t('Total rent for lease (RWF)')}<input type="text" disabled value={totalRent === '' ? '' : Number(totalRent).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} className="mt-1 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Each started rent period is charged in full. The security deposit is separate.')}</span></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t(dailyStay ? 'Check-in date' : 'Tenancy start date')}<input type="date" required value={assignmentForm.data.start_date} onChange={e => assignmentForm.setData('start_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t(dailyStay ? 'Check-out date' : 'Tenancy end date')}<input type="date" required min={assignmentForm.data.start_date || undefined} value={assignmentForm.data.end_date} onChange={e => assignmentForm.setData('end_date', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                {dailyStay && <>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Check-in time')}<input type="time" required value={assignmentForm.data.check_in_time} onChange={e => assignmentForm.setData('check_in_time', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Standard check-in time is 14:00.')}</span></label>
+                                                                    <label className="text-sm font-medium text-gray-700">{t('Check-out time')}<input type="time" required value={assignmentForm.data.check_out_time} onChange={e => assignmentForm.setData('check_out_time', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Standard check-out time is 11:00.')}</span></label>
+                                                                </>}
+                                                                {apartmentStay ? <label className="text-sm font-medium text-gray-700">{t('Rent frequency')}<select value={assignmentForm.data.rent_frequency} onChange={e => assignmentForm.setData('rent_frequency', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="daily">{t('Daily')}</option><option value="monthly">{t('Monthly')}</option></select></label> : <div className="text-sm font-medium text-gray-700">{t('Rent frequency')}<p className="mt-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">{t('Monthly')}</p></div>}
+                                                                <label className="text-sm font-medium text-gray-700">{t(dailyStay ? 'Nightly rate (RWF)' : 'Monthly rent (RWF)')}<input type="number" min="0.01" step="0.01" required value={assignmentForm.data.monthly_rent} onChange={e => assignmentForm.setData('monthly_rent', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t(dailyStay ? 'Number of nights' : 'Number of rent periods')}<input type="number" disabled value={rentPeriods || ''} className="mt-1 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" /></label>
+                                                                <label className="text-sm font-medium text-gray-700">{t('Total rent for stay (RWF)')}<input type="text" disabled value={totalRent === '' ? '' : Number(totalRent).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} className="mt-1 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" /><span className="mt-1 block text-xs font-normal text-gray-500">{t(dailyStay ? 'Rent is charged per night; check-out day is not billed.' : 'The security deposit is separate from rent.')}</span></label>
                                                                 <label className="text-sm font-medium text-gray-700">{t('Security deposit (RWF)')}<input type="number" min="0" step="0.01" value={assignmentForm.data.deposit_amount} onChange={e => assignmentForm.setData('deposit_amount', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                                                                 <LeaseRecordFields
                                                                     paymentMethod={assignmentForm.data.payment_method}
@@ -294,6 +311,8 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                                     payload={{
                                                                         start_date: assignmentForm.data.start_date,
                                                                         end_date: assignmentForm.data.end_date,
+                                                                        check_in_time: dailyStay ? assignmentForm.data.check_in_time : null,
+                                                                        check_out_time: dailyStay ? assignmentForm.data.check_out_time : null,
                                                                         monthly_rent: assignmentForm.data.monthly_rent,
                                                                         rent_frequency: assignmentForm.data.rent_frequency,
                                                                         deposit_amount: assignmentForm.data.deposit_amount,
