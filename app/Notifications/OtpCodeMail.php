@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
 
 class OtpCodeMail extends Notification implements ShouldQueue
@@ -16,7 +17,7 @@ class OtpCodeMail extends Notification implements ShouldQueue
         public string $code,
         public string $purpose = 'login',
     ) {
-        $this->onConnection('deferred');
+        $this->onConnection(config('mail.code_queue_connection', 'deferred'));
     }
 
     /**
@@ -44,5 +45,13 @@ class OtpCodeMail extends Notification implements ShouldQueue
             ))
             ->line('This code expires in 10 minutes.')
             ->line('If you did not request this code, you can ignore this message.');
+    }
+
+    /**
+     * A queued send that fails would otherwise vanish silently; leave a trace.
+     */
+    public function failed(\Throwable $e): void
+    {
+        Log::warning(class_basename($this).' could not be sent: '.$e->getMessage());
     }
 }

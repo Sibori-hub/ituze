@@ -5,6 +5,7 @@ namespace App\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\Messages\MailMessage;
 
 class EmailVerificationOtp extends Notification implements ShouldQueue
@@ -13,7 +14,7 @@ class EmailVerificationOtp extends Notification implements ShouldQueue
 
     public function __construct(public string $code)
     {
-        $this->onConnection('deferred');
+        $this->onConnection(config('mail.code_queue_connection', 'deferred'));
     }
 
     public function via(object $notifiable): array
@@ -34,5 +35,13 @@ class EmailVerificationOtp extends Notification implements ShouldQueue
             ))
             ->line('This code expires in 10 minutes.')
             ->line('If you did not create an account, no further action is required.');
+    }
+
+    /**
+     * A queued send that fails would otherwise vanish silently; leave a trace.
+     */
+    public function failed(\Throwable $e): void
+    {
+        Log::warning(class_basename($this).' could not be sent: '.$e->getMessage());
     }
 }

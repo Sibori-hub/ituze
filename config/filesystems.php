@@ -38,9 +38,12 @@ return [
             'report' => false,
         ],
 
+        // Files are written straight into the web root: symlinks are unreliable on
+        // Windows and on the Wasmer host, and a broken public/storage link left
+        // new uploads invisible.
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            'root' => public_path('storage'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
@@ -73,8 +76,7 @@ return [
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    // No link needed: the public disk already writes into public/storage.
+    'links' => [],
 
 ];

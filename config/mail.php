@@ -110,6 +110,21 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Verification Code Delivery
+    |--------------------------------------------------------------------------
+    |
+    | Queue connection used for OTP / verification code emails. "deferred"
+    | sends after the response, which only frees the browser under PHP-FPM;
+    | under Apache mod_php (XAMPP) the visitor still waits for SMTP. Use
+    | "database" with a running `php artisan queue:work` to send truly in the
+    | background, or "sync" to send inline.
+    |
+    */
+
+    'code_queue_connection' => env('MAIL_QUEUE_CONNECTION', 'deferred'),
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'ITUZE GREEN PLATFORM')),
