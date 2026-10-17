@@ -10,7 +10,11 @@ return new class extends Migration
     public function up(): void
     {
         DB::statement("UPDATE units SET status = 'available' WHERE status = 'vacant'");
-        DB::statement("ALTER TABLE units MODIFY status ENUM('available', 'occupied', 'maintenance', 'reserved', 'inactive') NOT NULL DEFAULT 'available'");
+
+        // SQLite keeps enums as plain text, and has no ALTER ... MODIFY.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE units MODIFY status ENUM('available', 'occupied', 'maintenance', 'reserved', 'inactive') NOT NULL DEFAULT 'available'");
+        }
 
         Schema::table('units', function (Blueprint $table) {
             $table->integer('floor_number')->nullable()->after('unit_number');
@@ -21,7 +25,10 @@ return new class extends Migration
     public function down(): void
     {
         DB::statement("UPDATE units SET status = 'vacant' WHERE status IN ('available', 'reserved', 'inactive')");
-        DB::statement("ALTER TABLE units MODIFY status ENUM('vacant', 'occupied', 'maintenance') NOT NULL DEFAULT 'vacant'");
+
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE units MODIFY status ENUM('vacant', 'occupied', 'maintenance') NOT NULL DEFAULT 'vacant'");
+        }
 
         Schema::table('units', function (Blueprint $table) {
             $table->dropColumn(['floor_number', 'rent_frequency']);

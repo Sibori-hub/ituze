@@ -7,12 +7,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE tenancies MODIFY status ENUM('active', 'ended', 'cancelled', 'scheduled') NOT NULL DEFAULT 'active'");
+        // SQLite keeps enums as plain text, and has no ALTER ... MODIFY.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE tenancies MODIFY status ENUM('active', 'ended', 'cancelled', 'scheduled') NOT NULL DEFAULT 'active'");
+        }
     }
 
     public function down(): void
     {
         DB::statement("UPDATE tenancies SET status = 'active' WHERE status = 'scheduled'");
-        DB::statement("ALTER TABLE tenancies MODIFY status ENUM('active', 'ended', 'cancelled') NOT NULL DEFAULT 'active'");
+
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE tenancies MODIFY status ENUM('active', 'ended', 'cancelled') NOT NULL DEFAULT 'active'");
+        }
     }
 };

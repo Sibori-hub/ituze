@@ -11,6 +11,8 @@ use App\Models\UnitType;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class DemoMarketplaceSeeder extends Seeder
@@ -126,6 +128,8 @@ class DemoMarketplaceSeeder extends Seeder
         ];
 
         DB::transaction(function () use ($buildings, $unitDefinitions): void {
+            $this->ensureOwnerAccounts($buildings);
+
             $users = User::query()
                 ->whereIn('email', array_column($buildings, 'owner_email'))
                 ->get()
@@ -230,5 +234,42 @@ class DemoMarketplaceSeeder extends Seeder
         });
 
         $this->command?->info('Created or updated 4 sample buildings with 20 searchable units each (4 per category).');
+    }
+
+    /**
+     * The sample buildings reference fixed owner/admin accounts.
+     * Create the ones that are missing so a clean database can be seeded.
+     *
+     * @param  array<int, array<string, mixed>>  $buildings
+     */
+    protected function ensureOwnerAccounts(array $buildings): void
+    {
+        $profiles = [
+            'sebakire@gmail.com' => ['Se Bakire', '0780000001'],
+            'uwagrace@gmail.com' => ['Uwase Grace', '0780000002'],
+            'olivier1@gmail.com' => ['Olivier Demo', '0780000003'],
+        ];
+
+        foreach (array_unique(array_column($buildings, 'owner_email')) as $email) {
+            if (User::query()->where('email', $email)->exists()) {
+                continue;
+            }
+
+            [$name, $phone] = $profiles[$email] ?? [Str::headline(Str::before($email, '@')), null];
+
+            User::query()->create([
+                'first_name' => Str::before($name, ' '),
+                'last_name' => Str::after($name, ' '),
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'role' => 'owner',
+                'status' => 'approved',
+                'expires_at' => now()->addYear(),
+                'profile_completed' => true,
+                'email_verified_at' => now(),
+                'password' => Hash::make('Owner@2026'),
+            ]);
+        }
     }
 }

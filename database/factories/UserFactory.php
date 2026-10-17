@@ -30,6 +30,9 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Accounts that finished onboarding; the profile gate would otherwise
+            // bounce every factory user back to /complete-profile.
+            'profile_completed' => true,
         ];
     }
 

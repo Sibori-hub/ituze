@@ -8,19 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->dropColumn(['district', 'sector']);
-            $table->foreignId('cell_id')->nullable()->constrained()->nullOnDelete()->after('owner_id');
+        Schema::create('properties', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
+            $table->string('district')->nullable();
+            $table->string('sector')->nullable();
+            $table->string('name');
+            $table->string('address');
+            $table->text('description')->nullable();
+            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::table('properties', function (Blueprint $table) {
-            $table->dropForeign(['cell_id']);
-            $table->dropColumn('cell_id');
-            $table->string('district')->nullable();
-            $table->string('sector')->nullable();
-        });
+        Schema::dropIfExists('properties');
     }
 };

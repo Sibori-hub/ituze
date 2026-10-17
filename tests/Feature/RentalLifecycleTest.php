@@ -49,6 +49,7 @@ class RentalLifecycleTest extends TestCase
             $table->timestamp('email_verified_at')->nullable();
             $table->string('remember_token')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('provinces', function (Blueprint $table) {
             $table->id();

@@ -27,6 +27,10 @@
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Keep the suite independent of the developer's .env: the OTP channels
+             default to off here and each test that needs one turns it on itself. -->
+        <env name="EMAIL_OTP_ENABLED" value="false"/>
+        <env name="LOGIN_OTP_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
