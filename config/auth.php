@@ -116,4 +116,28 @@ return [
 
     'email_otp_enabled' => env('EMAIL_OTP_ENABLED', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Login Second Factor
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, a correct email/phone + password combination does not grant
+    | access on its own: a one-time code is sent to the account's *other*
+    | channel (email sign-in codes go to the phone, phone sign-in codes go to
+    | the email) and must be entered before the dashboard opens.
+    |
+    | Every role, administrators included, must clear the second factor. When
+    | WhatsApp is not configured the code falls back to email, so a delivery
+    | problem cannot lock anyone out. List roles (comma separated) in
+    | LOGIN_OTP_EXEMPT_ROLES only as an emergency measure.
+    |
+    */
+
+    'login_otp_enabled' => env('LOGIN_OTP_ENABLED', true),
+
+    'login_otp_exempt_roles' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('LOGIN_OTP_EXEMPT_ROLES', '')),
+    ))),
+
 ];

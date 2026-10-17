@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -96,19 +97,84 @@ class UserController extends Controller
         return back()->with('status', 'Owner plan updated. Access is available until '.$newExpiry->toDateString().'.');
     }
 
+    /**
+     * Suspend an account without losing any history.
+     */
+    public function disable(Request $request, User $user): RedirectResponse
+    {
+        $this->assertManageable($request, $user);
+
+        if ($user->isDisabled()) {
+            return back()->withErrors(['user' => 'This account is already disabled.']);
+        }
+
+        $validated = $request->validate([
+            'disabled_reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $user->forceFill([
+            'status_before_disabled' => $user->status,
+            'status' => 'disabled',
+            'disabled_at' => now(),
+            'disabled_reason' => $validated['disabled_reason'] ?? null,
+        ])->save();
+
+        $user->endAllSessions();
+
+        return back()->with('status', $user->name.' has been disabled and can no longer sign in.');
+    }
+
+    /**
+     * Undo a suspension.
+     */
+    public function enable(Request $request, User $user): RedirectResponse
+    {
+        $this->assertManageable($request, $user);
+
+        if (! $user->isDisabled()) {
+            return back()->withErrors(['user' => 'This account is not disabled.']);
+        }
+
+        $user->forceFill([
+            'status' => $user->status_before_disabled ?: ($user->profile_completed ? 'approved' : 'pending'),
+            'status_before_disabled' => null,
+            'disabled_at' => null,
+            'disabled_reason' => null,
+        ])->save();
+
+        return back()->with('status', $user->name.' has been re-enabled.');
+    }
+
+    /**
+     * Soft delete: the account disappears but tenants, leases and payment
+     * history stay intact for reporting.
+     */
     public function destroy(Request $request, User $user): RedirectResponse
     {
+        $this->assertManageable($request, $user);
+
+        $user->endAllSessions();
+        $user->delete();
+
+        return back()->with('status', $user->name.' was deleted. Their tenant, lease and payment records were kept.');
+    }
+
+    /**
+     * An administrator may never act on themselves or on another administrator.
+     */
+    protected function assertManageable(Request $request, User $user): void
+    {
         if ($user->isAdmin()) {
-            return back()->withErrors(['user' => 'Admin accounts cannot be deleted.']);
+            throw ValidationException::withMessages([
+                'user' => 'Administrator accounts cannot be disabled or deleted.',
+            ]);
         }
 
         if ($user->id === $request->user()->id) {
-            return back()->withErrors(['user' => 'You cannot delete your own account.']);
+            throw ValidationException::withMessages([
+                'user' => 'You cannot disable or delete your own account.',
+            ]);
         }
-
-        $user->delete();
-
-        return back()->with('status', 'Account deleted permanently.');
     }
 
     public function exportExcel(Request $request)
@@ -124,7 +190,7 @@ class UserController extends Controller
                     ? $user->sector->name.', '.optional($user->sector->district)->name
                     : '';
 
-                fputcsv($handle, [
+                fputcsv($handle, array_map([$this, 'csvSafe'], [
                     $user->name,
                     $user->email,
                     $user->phone,
@@ -134,7 +200,7 @@ class UserController extends Controller
                     $location,
                     $user->created_at->format('Y-m-d'),
                     $user->expires_at?->format('Y-m-d'),
-                ]);
+                ]));
             }
 
             fclose($handle);
@@ -145,12 +211,21 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Stop spreadsheet apps from running user-supplied text as a formula.
+     */
+    protected function csvSafe(mixed $value): mixed
+    {
+        if (is_string($value) && $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$value;
+        }
+
+        return $value;
+    }
+
     public function exportPdf(Request $request)
     {
-        $users = User::query()
-            ->with('sector.district.province')
-            ->orderBy('id')
-            ->get();
+        $users = $this->filteredUsers($request)->get();
 
         $pdf = Pdf::loadView('admin.users-pdf', [
             'users' => $users,

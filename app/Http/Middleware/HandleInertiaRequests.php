@@ -34,6 +34,18 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // Read-only legal metadata so the Terms/Privacy dialog can show the
+            // same version and contact details as the full pages.
+            'legal' => [
+                'termsVersion' => config('legal.terms_version'),
+                'termsUpdatedAt' => config('legal.terms_updated_at'),
+                'company' => [
+                    'name' => config('legal.company_name'),
+                    'email' => config('legal.contact_email'),
+                    'phone' => config('legal.contact_phone'),
+                    'address' => config('legal.contact_address'),
+                ],
+            ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error'   => fn () => $request->session()->get('error'),

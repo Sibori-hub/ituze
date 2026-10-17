@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ProfileCompletionController;
 use App\Http\Controllers\Auth\MobileAuthController;
+use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailOtpController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -15,6 +16,7 @@ Route::prefix('mobile')->group(function () {
     Route::get('/properties', [MobilePropertyController::class, 'index'])->name('api.mobile.properties.index');
     Route::get('/properties/{property}', [MobilePropertyController::class, 'show'])->name('api.mobile.properties.show');
     Route::post('/properties/{property}/inquiries', [PublicPropertyController::class, 'inquire'])
+        ->middleware('throttle:5,1')
         ->name('api.mobile.properties.inquiries.store');
 
     Route::post('/login', [MobileAuthController::class, 'login'])
@@ -23,12 +25,27 @@ Route::prefix('mobile')->group(function () {
     Route::post('/register', [RegisteredUserController::class, 'store'])
         ->middleware('throttle:5,1')
         ->name('api.mobile.register');
-    Route::middleware('auth:sanctum')->group(function () {
+
+    // Second factor: the password is checked first, only then is a code sent.
+    Route::post('/login-otp', [MobileAuthController::class, 'verifyLoginOtp'])
+        ->middleware('throttle:6,1')
+        ->name('api.mobile.login-otp.verify');
+    Route::post('/login-otp/resend', [MobileAuthController::class, 'resendLoginOtp'])
+        ->middleware('throttle:3,1')
+        ->name('api.mobile.login-otp.resend');
+
+    Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/me', [MobileAuthController::class, 'me'])->name('api.mobile.me');
         Route::post('/logout', [MobileAuthController::class, 'logout'])->name('api.mobile.logout');
         Route::post('/verify-email-otp', [VerifyEmailOtpController::class, 'store'])
             ->middleware('throttle:6,1')
             ->name('api.mobile.verify-email-otp');
+        Route::post('/verify-phone', [PhoneVerificationController::class, 'store'])
+            ->middleware('throttle:6,1')
+            ->name('api.mobile.verify-phone');
+        Route::post('/phone/verification-notification', [PhoneVerificationController::class, 'resend'])
+            ->middleware('throttle:3,1')
+            ->name('api.mobile.phone.notification');
         Route::post('/verification-notification', [EmailVerificationNotificationController::class, 'store'])
             ->middleware('throttle:6,1')
             ->name('api.mobile.verification-notification');
@@ -56,6 +73,7 @@ Route::prefix('mobile')->group(function () {
         Route::get('/workspace/leases', [MobileWorkspaceController::class, 'leases'])->name('api.mobile.workspace.leases');
         Route::get('/workspace/payments', [MobileWorkspaceController::class, 'payments'])->name('api.mobile.workspace.payments');
         Route::get('/workspace/approvals', [MobileWorkspaceController::class, 'approvals'])->name('api.mobile.workspace.approvals');
+        Route::post('/workspace/approvals/{user}/approve', [MobileWorkspaceController::class, 'approveOwner'])->name('api.mobile.workspace.approvals.approve');
         Route::post('/workspace/approvals/{user}/reject', [MobileWorkspaceController::class, 'rejectOwner'])->name('api.mobile.workspace.approvals.reject');
     });
 

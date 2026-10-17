@@ -14,16 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands()
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureAccountIsActive::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-        ]);
-
-        $middleware->validateCsrfTokens(except: [
-            '/api/ai/generate-property-description',
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
         $middleware->alias([
+            'active' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'profile.complete' => \App\Http\Middleware\EnsureProfileIsComplete::class,
+            'phone.verified' => \App\Http\Middleware\EnsurePhoneIsVerified::class,
             'owner.approved' => \App\Http\Middleware\EnsureOwnerIsApproved::class,
             'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
         ]);

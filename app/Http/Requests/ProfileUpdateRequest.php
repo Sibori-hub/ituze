@@ -28,12 +28,27 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'phone' => ['sometimes', 'required', 'string', 'max:30'],
+            'phone' => [
+                'sometimes',
+                'required',
+                'regex:/^(072|073|078|079)\d{7}$/',
+                Rule::unique(User::class)->ignore($this->user()->id),
+            ],
             'address' => ['sometimes', 'required', 'string', 'max:255'],
             'identity_document_type' => ['sometimes', 'required', 'in:nida,passport'],
             'national_id' => ['sometimes', 'required', 'string', 'max:20'],
             'sector_id' => ['sometimes', 'required', 'exists:sectors,id'],
             'profile_photo' => ['nullable', 'image', 'max:2048'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'phone.regex' => 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).',
         ];
     }
 }

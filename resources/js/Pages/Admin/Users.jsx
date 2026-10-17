@@ -10,6 +10,8 @@ import {
     FileText,
     Trash2,
     CalendarClock,
+    Ban,
+    RotateCcw,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/localization';
@@ -18,11 +20,13 @@ const statusStyles = {
     approved: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
     pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10',
     rejected: 'bg-red-50 text-red-700 ring-1 ring-red-600/10',
+    disabled: 'bg-gray-100 text-gray-600 ring-1 ring-gray-600/10',
 };
 
 const roleStyles = {
     admin: 'bg-purple-50 text-purple-700 ring-1 ring-purple-600/10',
     owner: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/10',
+    advertiser: 'bg-teal-50 text-teal-700 ring-1 ring-teal-600/10',
 };
 
 function formatDate(value, language) {
@@ -41,7 +45,7 @@ function toInputDate(value) {
 }
 
 function PlanBadge({ user }) {
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'advertiser') {
         return (
             <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500 ring-1 ring-gray-600/10">
                 Not applicable
@@ -84,12 +88,15 @@ function PlanBadge({ user }) {
 }
 
 export default function Users({ users, filters }) {
-    const { auth, flash } = usePage().props;
+    const { auth, flash, errors } = usePage().props;
     const { language } = useTranslation();
     const currentUserId = auth.user.id;
     const [search, setSearch] = useState(filters.search || '');
     const [exportOpen, setExportOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
+    const [userToDisable, setUserToDisable] = useState(null);
+    const [disableReason, setDisableReason] = useState('');
+    const [userToEnable, setUserToEnable] = useState(null);
     const [planUser, setPlanUser] = useState(null);
     const [planDate, setPlanDate] = useState('');
     const [processing, setProcessing] = useState(false);
@@ -176,6 +183,43 @@ export default function Users({ users, filters }) {
         });
     };
 
+    const openDisable = (user) => {
+        setUserToDisable(user);
+        setDisableReason('');
+    };
+
+    const disableUser = () => {
+        if (!userToDisable) return;
+        setProcessing(true);
+        router.post(
+            route('admin.users.disable', userToDisable.id),
+            { disabled_reason: disableReason || undefined },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setProcessing(false);
+                    setUserToDisable(null);
+                },
+            },
+        );
+    };
+
+    const enableUser = () => {
+        if (!userToEnable) return;
+        setProcessing(true);
+        router.post(
+            route('admin.users.enable', userToEnable.id),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setProcessing(false);
+                    setUserToEnable(null);
+                },
+            },
+        );
+    };
+
     return (
         <AuthenticatedLayout header="All Users">
             <Head title="All Users" />
@@ -188,6 +232,11 @@ export default function Users({ users, filters }) {
             {flash?.error && (
                 <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">
                     {flash.error}
+                </div>
+            )}
+            {errors?.user && (
+                <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">
+                    {errors.user}
                 </div>
             )}
 
@@ -216,6 +265,7 @@ export default function Users({ users, filters }) {
                         >
                             <option value="">All roles</option>
                             <option value="owner">Owner</option>
+                            <option value="advertiser">Advertiser</option>
                             <option value="admin">Admin</option>
                         </select>
 
@@ -230,6 +280,7 @@ export default function Users({ users, filters }) {
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                             <option value="rejected">Rejected</option>
+                            <option value="disabled">Disabled</option>
                         </select>
 
                         <div className="relative">
@@ -387,11 +438,18 @@ export default function Users({ users, filters }) {
                                             >
                                                 {user.status}
                                             </span>
+                                            {user.status === 'disabled' && (
+                                                <p className="mt-1 max-w-[14rem] text-xs text-gray-400">
+                                                    {user.disabled_reason
+                                                        ? user.disabled_reason
+                                                        : formatDate(user.disabled_at, language)}
+                                                </p>
+                                            )}
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <div className="space-y-1">
                                                 <PlanBadge user={user} />
-                                                {user.role === 'admin' ? (
+                                                {user.role === 'admin' || user.role === 'advertiser' ? (
                                                     <p className="text-xs text-gray-400">Owner plan not applicable</p>
                                                 ) : (
                                                     <p className="text-xs text-gray-400">
@@ -407,7 +465,7 @@ export default function Users({ users, filters }) {
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     type="button"
-                                                    disabled={user.role === 'admin'}
+                                                    disabled={user.role !== 'owner'}
                                                     onClick={() =>
                                                         openPlan(user)
                                                     }
@@ -416,11 +474,38 @@ export default function Users({ users, filters }) {
                                                     <CalendarClock size={14} />
                                                     Plan
                                                 </button>
+                                                {user.status === 'disabled' ? (
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            user.role === 'admin' ||
+                                                            user.id === currentUserId
+                                                        }
+                                                        onClick={() => setUserToEnable(user)}
+                                                        className="inline-flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <RotateCcw size={14} />
+                                                        Enable
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            user.role === 'admin' ||
+                                                            user.id === currentUserId
+                                                        }
+                                                        onClick={() => openDisable(user)}
+                                                        className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <Ban size={14} />
+                                                        Disable
+                                                    </button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     disabled={
-                                                        user.id ===
-                                                        currentUserId
+                                                        user.role === 'admin' ||
+                                                        user.id === currentUserId
                                                     }
                                                     onClick={() =>
                                                         setUserToDelete(user)
@@ -473,7 +558,7 @@ export default function Users({ users, filters }) {
                 title="Delete this user?"
                 message={
                     userToDelete
-                        ? `${userToDelete.name} and their related property records will be permanently removed.`
+                        ? `${userToDelete.name} will no longer be able to sign in. Their tenants, leases and payment history are kept for your records.`
                         : ''
                 }
                 confirmLabel="Yes, Delete"
@@ -482,6 +567,69 @@ export default function Users({ users, filters }) {
                 onConfirm={deleteUser}
                 onCancel={() => {
                     if (!processing) setUserToDelete(null);
+                }}
+            />
+
+            {userToDisable && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+                        <h3 className="font-[Sora] text-lg font-bold text-gray-800">
+                            Disable this account?
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                            {userToDisable.name} will be blocked at sign in. Their data stays
+                            untouched and you can re-enable them at any time.
+                        </p>
+
+                        <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-gray-400">
+                            Reason (optional)
+                        </label>
+                        <input
+                            type="text"
+                            value={disableReason}
+                            maxLength={255}
+                            onChange={(e) => setDisableReason(e.target.value)}
+                            placeholder="e.g. Unpaid subscription"
+                            className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
+                        />
+
+                        <div className="mt-4 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!processing) setUserToDisable(null);
+                                }}
+                                disabled={processing}
+                                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={disableUser}
+                                disabled={processing}
+                                className="flex-1 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+                            >
+                                {processing ? 'Please wait...' : 'Disable account'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ConfirmActionModal
+                open={!!userToEnable}
+                title="Re-enable this account?"
+                message={
+                    userToEnable
+                        ? `${userToEnable.name} will be restored to their previous status and can sign in again.`
+                        : ''
+                }
+                confirmLabel="Yes, Enable"
+                processing={processing}
+                onConfirm={enableUser}
+                onCancel={() => {
+                    if (!processing) setUserToEnable(null);
                 }}
             />
 

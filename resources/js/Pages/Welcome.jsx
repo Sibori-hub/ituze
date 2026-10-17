@@ -2,6 +2,7 @@ import { Head, InfiniteScroll, Link, router, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import BrandLockup from '@/Components/BrandLockup';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
+import LegalModal from '@/Components/LegalModal';
 import {
     ArrowRight,
     Building2,
@@ -12,6 +13,7 @@ import {
     Lock,
     Loader2,
     MapPin,
+    Megaphone,
     Menu,
     MessageCircle,
     Phone,
@@ -45,6 +47,11 @@ const heroSlides = [
         location: 'Kigali, Rwanda',
         image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1800&q=88',
     },
+];
+
+const ACCOUNT_TYPES = [
+    { value: 'owner', label: 'Property Owner', description: 'Manage properties, units, tenants, leases and rent payments.', Icon: Building2 },
+    { value: 'advertiser', label: 'Advertiser', description: 'Promote your brand to people browsing properties on the platform.', Icon: Megaphone },
 ];
 
 const categories = [
@@ -257,15 +264,17 @@ function LoginPanel({ onClose, canRegister }) {
     );
 }
 
-function RegisterPanel({ onClose }) {
+function RegisterPanel({ onClose, onOpenLegal }) {
     const { t } = useTranslation();
     const form = useForm({
+        role: 'owner',
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
         password: '',
         password_confirmation: '',
+        terms: false,
     });
 
     const submit = (event) => {
@@ -296,6 +305,25 @@ function RegisterPanel({ onClose }) {
                         <p className="mt-1 text-sm text-gray-500">{t('Join ITUZE GREEN PLATFORM to manage your property listings.')}</p>
                     </div>
                     <form onSubmit={submit} className="mt-7 space-y-4">
+                        <fieldset>
+                            <legend className="mb-2 block text-sm font-medium text-gray-700">{t('Register as')}</legend>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {ACCOUNT_TYPES.map(({ value, label, description, Icon }) => {
+                                    const selected = form.data.role === value;
+                                    return (
+                                        <label key={value} className={`relative flex cursor-pointer gap-3 rounded-xl border p-3 transition-all ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.04] ring-2 ring-[#0E3B2E]/15' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'}`}>
+                                            <input type="radio" name="role" value={value} checked={selected} disabled={form.processing} onChange={() => form.setData('role', value)} className="sr-only" />
+                                            <Icon size={19} className={`mt-0.5 shrink-0 ${selected ? 'text-[#0E3B2E]' : 'text-gray-400'}`} aria-hidden="true" />
+                                            <span>
+                                                <span className="block text-sm font-semibold text-gray-800">{t(label)}</span>
+                                                <span className="mt-0.5 block text-xs leading-5 text-gray-500">{t(description)}</span>
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            <InputError message={form.errors.role} className="mt-1" />
+                        </fieldset>
                         <div className="grid gap-4 sm:grid-cols-2">
                             {fields.map(([name, label, type, placeholder]) => (
                                 <div key={name}>
@@ -317,6 +345,18 @@ function RegisterPanel({ onClose }) {
                                 <InputError message={form.errors.password_confirmation} className="mt-1" />
                             </div>
                         </div>
+                        <div>
+                            <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50/50 p-3">
+                                <input id="welcome-register-terms" type="checkbox" name="terms" checked={form.data.terms} disabled={form.processing} onChange={(event) => form.setData('terms', event.target.checked)} required className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]/30" />
+                                <span className="text-xs leading-5 text-gray-600">
+                                    <label htmlFor="welcome-register-terms" className="cursor-pointer">{t('I have read and agree to the')}</label>{' '}
+                                    <button type="button" onClick={() => onOpenLegal('terms')} className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] underline-offset-2">{t('Terms and Conditions')}</button>{' '}
+                                    <label htmlFor="welcome-register-terms" className="cursor-pointer">{t('and the')}</label>{' '}
+                                    <button type="button" onClick={() => onOpenLegal('privacy')} className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] underline-offset-2">{t('Privacy Policy')}</button>.
+                                </span>
+                            </div>
+                            <InputError message={form.errors.terms} className="mt-1" />
+                        </div>
                         <button type="submit" disabled={form.processing} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] py-3 text-sm font-semibold text-white transition hover:bg-[#0a2e23] disabled:cursor-not-allowed disabled:opacity-70">{form.processing ? 'Creating account...' : 'Create account'} <ArrowRight size={16} /></button>
                         <p className="text-center text-xs text-gray-500">Your account will be reviewed before property management access is enabled.</p>
                     </form>
@@ -333,6 +373,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     const [inquiryOpen, setInquiryOpen] = useState(false);
     const [loginOpen, setLoginOpen] = useState(false);
     const [registerOpen, setRegisterOpen] = useState(false);
+    const [legalDoc, setLegalDoc] = useState(null);
     const [partnerContactSent, setPartnerContactSent] = useState(false);
     const [searchForm, setSearchForm] = useState({
         search: searchFilters.search || '',
@@ -646,7 +687,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <button type="button" className="block transition hover:text-white" onClick={() => setLoginOpen(true)}>{t('Owner login')}</button>}</div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:hello@ituze.rw`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> hello@ituze.rw</a></div></div>
                         </div>
-                        <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><span>{t('Trusted property listings in Rwanda.')}</span></div>
+                        <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
                     </div>
                     <a href={`https://web.whatsapp.com/send?phone=${companyPhone.replace('+', '')}&text=${encodeURIComponent(t('Hello Ituze, I am interested in finding a property for rent.'))}`} target="_blank" rel="noreferrer" aria-label={t('Chat with Ituze on WhatsApp Web')} className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-xl shadow-black/20 transition hover:scale-105 hover:bg-[#1fba59] sm:bottom-8 sm:right-10">
                         <MessageCircle size={27} />
@@ -655,7 +696,8 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
             </div>
             {inquiryOpen && <InquiryPanel onClose={() => setInquiryOpen(false)} />}
             {loginOpen && <LoginPanel canRegister={canRegister} onClose={() => setLoginOpen(false)} />}
-            {registerOpen && <RegisterPanel onClose={() => setRegisterOpen(false)} />}
+            {registerOpen && <RegisterPanel onClose={() => setRegisterOpen(false)} onOpenLegal={setLegalDoc} />}
+            {legalDoc && <LegalModal document={legalDoc} onClose={() => setLegalDoc(null)} />}
         </>
     );
 }

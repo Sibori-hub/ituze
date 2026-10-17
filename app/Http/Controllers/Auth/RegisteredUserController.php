@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\OtpService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,11 +20,23 @@ use Inertia\Response;
 class RegisteredUserController extends Controller
 {
     /**
+     * The account types a visitor may sign up as. Administrators are never self-service.
+     */
+    public const SELF_SERVICE_ROLES = ['owner', 'advertiser'];
+
+    public function __construct(protected OtpService $otp)
+    {
+    }
+
+    /**
      * Display the registration view.
      */
     public function create(): Response
     {
-        return Inertia::render('Auth/Register');
+        return Inertia::render('Auth/Register', [
+            'termsVersion' => config('legal.terms_version'),
+            'termsUpdatedAt' => config('legal.terms_updated_at'),
+        ]);
     }
 
     /**
@@ -36,43 +49,34 @@ class RegisteredUserController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', 'unique:'.User::class],
+            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+            'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', 'unique:' . User::class],
+            'role' => ['nullable', 'in:' . implode(',', self::SELF_SERVICE_ROLES)],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'terms' => ['accepted'],
             'device_name' => ['nullable', 'string', 'max:80'],
         ], [
             'phone.regex' => 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).',
+            'terms.accepted' => 'You must accept the Terms and Conditions and the Privacy Policy to create an account.',
         ]);
 
-        $validator->after(function ($validator) use ($request) {
-            $email = (string) ($request->input('email') ?? '');
-            $password = (string) ($request->input('password') ?? '');
-            $confirmation = (string) ($request->input('password_confirmation') ?? '');
-            $phone = (string) ($request->input('phone') ?? '');
-
-            if (
-                $email !== ''
-                && ! filter_var($email, FILTER_VALIDATE_EMAIL)
-                && $password !== ''
-                && $password !== $confirmation
-                && preg_match('/^079\d{7}$/', $phone) === 1
-            ) {
-                $validator->errors()->add('phone', 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).');
-            }
-        });
-
         $validator->validate();
+
+        $role = $request->input('role') ?: 'owner';
 
         $user = User::create([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
-            'name' => $request->first_name.' '.$request->last_name,
+            'name' => $request->first_name . ' ' . $request->last_name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'role' => 'owner',
+            'role' => $role,
             'status' => 'pending',
             'expires_at' => null,
             'profile_completed' => false,
+            'terms_accepted_at' => now(),
+            'terms_version' => config('legal.terms_version'),
+            'terms_accepted_ip' => $request->ip(),
             'password' => Hash::make($request->password),
         ]);
 
@@ -82,24 +86,22 @@ class RegisteredUserController extends Controller
             $user->markEmailAsVerified();
         }
 
+        // Verify the phone number over WhatsApp as well.
+        $this->otp->sendPhoneOtp($user);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'token' => $user->createToken($request->input('device_name', 'ituze-mobile'))->plainTextToken,
                 'user' => MobileAuthController::userData($user),
                 'verification_required' => ! $user->hasVerifiedEmail(),
+                'phone_verification_required' => ! $user->isPhoneVerified(),
             ], 201);
         }
-
-        // TODO: Re-enable admin notification after queue worker is set up
-        // $admins = User::where('role', 'admin')->get();
-        // if ($admins->isNotEmpty()) {
-        //     Notification::send($admins, new NewOwnerRegistered($user));
-        // }
 
         Auth::login($user);
 
         return config('auth.email_otp_enabled')
             ? redirect()->route('verification.notice')
-            : redirect()->route('profile.complete');
+            : redirect()->route('phone.notice');
     }
 }

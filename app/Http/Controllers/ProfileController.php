@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Sector;
+use App\Services\OtpService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,10 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    public function __construct(protected OtpService $otp)
+    {
+    }
+
     /**
      * Display the user's profile form.
      */
@@ -48,6 +53,13 @@ class ProfileController extends Controller
             $user->email_verified_at = config('auth.email_otp_enabled') ? null : now();
         }
 
+        // A new number is a new login identifier and code destination: prove it first.
+        $phoneChanged = $user->isDirty('phone');
+
+        if ($phoneChanged) {
+            $user->phone_verified_at = null;
+        }
+
         if ($profilePhoto) {
             $user->profile_photo = $profilePhoto->store('profile-photos', 'public');
         }
@@ -56,6 +68,13 @@ class ProfileController extends Controller
 
         if ($profilePhoto && $previousPhoto && $previousPhoto !== $user->profile_photo) {
             Storage::disk('public')->delete($previousPhoto);
+        }
+
+        if ($phoneChanged) {
+            $this->otp->sendPhoneOtp($user);
+
+            return Redirect::route('phone.notice')
+                ->with('status', 'We sent a verification code to your new WhatsApp number.');
         }
 
         return Redirect::route('profile.edit');
@@ -74,6 +93,7 @@ class ProfileController extends Controller
 
         Auth::logout();
 
+        $user->endAllSessions();
         $user->delete();
 
         $request->session()->invalidate();

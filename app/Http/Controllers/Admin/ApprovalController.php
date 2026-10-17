@@ -11,9 +11,15 @@ use Inertia\Response;
 
 class ApprovalController extends Controller
 {
+    /**
+     * Account types an administrator reviews.
+     */
+    public const REVIEWABLE_ROLES = ['owner', 'advertiser'];
+
     public function index(): Response
     {
-        $pending = User::where('role', 'owner')
+        $pending = User::query()
+            ->whereIn('role', self::REVIEWABLE_ROLES)
             ->where('status', 'pending')
             ->where('profile_completed', true)
             ->whereNotNull('email_verified_at')
@@ -28,25 +34,26 @@ class ApprovalController extends Controller
 
     public function approve(Request $request, User $user): RedirectResponse
     {
-        abort_unless($user->role === 'owner', 404);
+        abort_unless(in_array($user->role, self::REVIEWABLE_ROLES, true), 404);
+
+        $user->refresh();
+
         $request->validate([
             'payment_verified' => ['required', 'accepted'],
         ]);
 
-        abort_unless($user->status === 'pending', 409, 'This owner is no longer pending approval.');
-        abort_unless($user->hasVerifiedEmail() && $user->profile_completed, 422, 'The owner must verify their email and complete their profile before approval.');
+        abort_unless($user->status === 'pending', 409, 'This account is no longer pending approval.');
+        abort_unless($user->hasVerifiedEmail() && $user->profile_completed, 422, 'The account must verify their email and complete their profile before approval.');
 
-        $user->update([
-            'status' => 'approved',
-            'expires_at' => now()->addYear(),
-        ]);
+        $user->approveAccount();
 
-        return back()->with('status', 'Owner account approved. The one-year subscription starts today.');
+        return back()->with('status', $user->roleLabel().' account approved.');
     }
 
     public function reject(User $user): RedirectResponse
     {
-        abort_unless($user->role === 'owner', 404);
+        abort_unless(in_array($user->role, self::REVIEWABLE_ROLES, true), 404);
+
         $user->update(['status' => 'rejected']);
 
         return back()->with('status', 'Account rejected.');

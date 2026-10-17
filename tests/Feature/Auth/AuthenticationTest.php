@@ -32,6 +32,8 @@ class AuthenticationTest extends TestCase
 
     public function test_unverified_users_skip_email_otp_when_the_feature_is_disabled(): void
     {
+        config(['auth.email_otp_enabled' => false]);
+
         $user = User::factory()->unverified()->create();
 
         $this->post('/login', [

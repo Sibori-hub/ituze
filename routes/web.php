@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\ProfileController;
@@ -14,6 +15,10 @@ use App\Http\Controllers\PublicPropertyController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+// Public legal documents (linked from registration and the site footer).
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
 
 Route::get('/', function (\Illuminate\Http\Request $request) {
     $filters = $request->validate([
@@ -111,13 +116,15 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
 
 Route::get('/spaces/{property}', [PublicPropertyController::class, 'show'])->name('public.properties.show');
 Route::get('/spaces/{property}/units/{unit}', [PublicPropertyController::class, 'showUnit'])->name('public.units.show');
-Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'inquire'])->name('public.properties.inquiries.store');
+Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'inquire'])
+    ->middleware('throttle:5,1')
+    ->name('public.properties.inquiries.store');
 Route::post('/inquiries/{inquiry}/read', [PublicPropertyController::class, 'markRead'])
-    ->middleware(['auth', 'verified', 'profile.complete', 'owner.approved'])
+    ->middleware(['auth', 'verified', 'profile.complete', 'owner.approved:owner'])
     ->name('inquiries.read');
 
 Route::get('/account/status', function (\Illuminate\Http\Request $request) {
-    abort_unless($request->user()->role === 'owner', 404);
+    abort_unless(in_array($request->user()->role, ['owner', 'advertiser'], true), 404);
 
     return Inertia::render('Account/Status', [
         'status' => $request->user()->status,
@@ -127,6 +134,15 @@ Route::get('/account/status', function (\Illuminate\Http\Request $request) {
 
 Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
+
+    if ($user->isAdvertiser()) {
+        return Inertia::render('Advertiser/Dashboard', [
+            'status' => $user->status,
+            'adUnitPrice' => config('legal.ad_unit_price_rwf'),
+            'welcomeBonusUnits' => config('legal.ad_welcome_bonus_units'),
+        ]);
+    }
+
     if ($user->isAdmin()) {
         $chartStart = now()->startOfMonth()->subMonths(5);
         $owners = \App\Models\User::query()->where('role', 'owner');
@@ -236,7 +252,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
         'recentTenancies' => $recentTenancies,
         'recentInquiries' => $recentInquiries,
     ]);
-})->middleware(['auth', 'verified', 'profile.complete', 'owner.approved'])->name('dashboard');
+})->middleware(['auth', 'verified', 'phone.verified', 'profile.complete', 'owner.approved'])->name('dashboard');
 
 Route::middleware(['auth', 'profile.complete'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -254,9 +270,9 @@ Route::middleware('auth')->group(function () {
                 'sectors' => \App\Models\Sector::query()->orderBy('name')->get(['id', 'name', 'district_id']),
             ],
         ]);
-    })->middleware('verified')->name('profile.complete');
+    })->middleware(['verified', 'phone.verified'])->name('profile.complete');
     Route::post('/complete-profile', [ProfileCompletionController::class, 'store'])
-        ->middleware('verified')
+        ->middleware(['verified', 'phone.verified'])
         ->name('profile.complete.store');
 
     Route::get('/api/provinces', [LocationController::class, 'provinces'])->name('api.provinces');
@@ -272,7 +288,7 @@ Route::middleware('auth')->group(function () {
     })->name('api.property-types');
 
     // Property management routes (requires verified email and completed profile)
-    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->prefix('properties')->name('properties.')->group(function () {
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->prefix('properties')->name('properties.')->group(function () {
         Route::get('/', [PropertyController::class, 'index'])->name('index');
         Route::get('/create', [PropertyController::class, 'create'])->name('create');
         Route::post('/', [PropertyController::class, 'store'])->name('store');
@@ -305,17 +321,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/{property}/tenants', [TenancyController::class, 'storeTenant'])->name('tenants.store');
     });
 
-    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
-    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
-    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
-    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->put('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
-    Route::middleware(['verified', 'profile.complete', 'owner.approved'])->group(function () {
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->put('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->group(function () {
         Route::get('/leases', [ManagementController::class, 'leases'])->name('leases.index');
         Route::get('/payments', [ManagementController::class, 'payments'])->name('payments.index');
         Route::get('/reports', [ManagementController::class, 'reports'])->name('reports.index');
     });
 
-    Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])->name('api.ai.generate-property-description');
+    Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])
+        ->middleware(['verified', 'profile.complete', 'owner.approved:owner', 'throttle:10,1'])
+        ->name('api.ai.generate-property-description');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -325,6 +343,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('/users', [AdminUserController::class, 'index'])->name('users');
     Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan'])->name('users.plan');
+    Route::post('/users/{user}/disable', [AdminUserController::class, 'disable'])->name('users.disable');
+    Route::post('/users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');
     Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
     Route::get('/users/export/excel', [AdminUserController::class, 'exportExcel'])->name('users.export.excel');
     Route::get('/users/export/pdf', [AdminUserController::class, 'exportPdf'])->name('users.export.pdf');

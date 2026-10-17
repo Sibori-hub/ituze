@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class VerifyEmailOtpController extends Controller
 {
+    public function __construct(protected OtpService $otp)
+    {
+    }
+
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         $request->validate([
@@ -25,33 +30,22 @@ class VerifyEmailOtpController extends Controller
             return redirect()->route($user->profile_completed ? 'dashboard' : 'profile.complete');
         }
 
-        if (! $user->email_otp || $user->email_otp !== $request->otp) {
+        $result = $this->otp->verifyEmailOtp($user, $request->input('otp'));
+
+        if ($result !== OtpService::VALID) {
+            $message = $result === OtpService::INVALID
+                ? 'The code you entered is incorrect.'
+                : OtpService::failureMessage($result);
+
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'The code you entered is incorrect.',
-                    'errors' => ['otp' => ['The code you entered is incorrect.']],
+                    'message' => $message,
+                    'errors' => ['otp' => [$message]],
                 ], 422);
             }
 
-            return back()->withErrors(['otp' => 'The code you entered is incorrect.']);
+            return back()->withErrors(['otp' => $message]);
         }
-
-        if (! $user->email_otp_expires_at || $user->email_otp_expires_at->isPast()) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'This code has expired. Please request a new one.',
-                    'errors' => ['otp' => ['This code has expired. Please request a new one.']],
-                ], 422);
-            }
-
-            return back()->withErrors(['otp' => 'This code has expired. Please request a new one.']);
-        }
-
-        $user->forceFill([
-            'email_verified_at' => now(),
-            'email_otp' => null,
-            'email_otp_expires_at' => null,
-        ])->save();
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Email verified successfully.']);

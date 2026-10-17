@@ -20,9 +20,7 @@ class EmailVerificationPromptController extends Controller
                     : Inertia::render('Auth/VerifyEmail', [
                         'status' => session('status'),
                         'devMode' => app()->environment('local'),
-                        'devOtp' => app()->environment('local')
-                            ? $request->user()->email_otp
-                            : null,
+                        'devOtp' => \App\Services\OtpService::developmentCode('email_otp'),
                     ]);
     }
 }

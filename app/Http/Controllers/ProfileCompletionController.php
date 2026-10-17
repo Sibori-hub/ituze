@@ -10,8 +10,8 @@ class ProfileCompletionController extends Controller
 {
     public function store(Request $request)
     {
-        abort_unless($request->user()->role === 'owner', 403);
-        abort_if($request->user()->status === 'rejected', 403, 'This owner account has been rejected.');
+        abort_unless($request->user()->isAccountHolder(), 403);
+        abort_if($request->user()->status === 'rejected', 403, 'This account has been rejected.');
         abort_unless($request->user()->hasVerifiedEmail(), 403, 'Verify your email before completing your profile.');
 
         try {
@@ -86,7 +86,7 @@ class ProfileCompletionController extends Controller
             }
 
             return back()
-                ->with('error', '❌ Something went wrong while saving your profile: ' . $e->getMessage())
+                ->with('error', '❌ Something went wrong while saving your profile. Please try again or contact support.')
                 ->withInput();
         }
     }

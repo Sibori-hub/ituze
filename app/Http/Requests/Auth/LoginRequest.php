@@ -28,8 +28,31 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
+        ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [
+            function ($validator) {
+                $value = $this->rawIdentifier();
+
+                if ($value === '') {
+                    return;
+                }
+
+                if (!$this->looksLikeEmail($value) && !$this->looksLikePhone($value)) {
+                    $validator->errors()->add(
+                        'email',
+                        'Enter the email address or Rwanda mobile number linked to your account.'
+                    );
+                }
+            },
         ];
     }
 
@@ -42,7 +65,12 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credentials = [
+            $this->identifierType() === 'phone' ? 'phone' : 'email' => $this->identifier(),
+            'password' => (string) $this->string('password'),
+        ];
+
+        if (!Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -50,7 +78,38 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+
+        if ($user && $user->isDisabled()) {
+            Auth::guard('web')->logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'This account has been disabled. Please contact support if you believe this is a mistake.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
+    }
+
+    /**
+     * Whether the visitor signed in with an email address or a phone number.
+     */
+    public function identifierType(): string
+    {
+        return str_contains($this->rawIdentifier(), '@') ? 'email' : 'phone';
+    }
+
+    /**
+     * The normalised value used to look the account up.
+     */
+    public function identifier(): string
+    {
+        $value = $this->rawIdentifier();
+
+        return $this->identifierType() === 'phone'
+            ? $this->normalizePhone($value)
+            : Str::lower($value);
     }
 
     /**
@@ -60,7 +119,7 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
@@ -81,6 +140,41 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->rawIdentifier()) . '|' . $this->ip());
+    }
+
+    protected function rawIdentifier(): string
+    {
+        return trim((string) $this->string('email'));
+    }
+
+    protected function looksLikeEmail(string $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    protected function looksLikePhone(string $value): bool
+    {
+        $digits = preg_replace('/[\s\-()]/', '', $value) ?? '';
+
+        return preg_match('/^(?:\+?250|0)?7[2389]\d{7}$/', $digits) === 1;
+    }
+
+    /**
+     * Reduce +250781234567 / 250781234567 / 0781234567 to the stored local form.
+     */
+    protected function normalizePhone(string $value): string
+    {
+        $digits = preg_replace('/\D/', '', $value) ?? '';
+
+        if (str_starts_with($digits, '250')) {
+            $digits = substr($digits, 3);
+        }
+
+        if (str_starts_with($digits, '0')) {
+            return $digits;
+        }
+
+        return '0' . $digits;
     }
 }

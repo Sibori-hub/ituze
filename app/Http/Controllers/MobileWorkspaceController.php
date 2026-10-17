@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Admin\ApprovalController;
+use App\Http\Controllers\Auth\MobileAuthController;
 use App\Models\Lease;
 use App\Models\Cell;
 use App\Models\Property;
@@ -387,7 +389,7 @@ class MobileWorkspaceController extends Controller
 
         return response()->json([
             'data' => User::query()
-                ->where('role', 'owner')
+                ->whereIn('role', ApprovalController::REVIEWABLE_ROLES)
                 ->where('status', 'pending')
                 ->where('profile_completed', true)
                 ->whereNotNull('email_verified_at')
@@ -397,10 +399,30 @@ class MobileWorkspaceController extends Controller
         ]);
     }
 
+    public function approveOwner(Request $request, User $user): JsonResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        abort_unless(in_array($user->role, ApprovalController::REVIEWABLE_ROLES, true), 404);
+
+        $request->validate([
+            'payment_verified' => ['required', 'accepted'],
+        ]);
+
+        abort_unless($user->status === 'pending', 409, 'This account is no longer pending approval.');
+        abort_unless($user->hasVerifiedEmail() && $user->profile_completed, 422, 'The account must verify their email and complete their profile before approval.');
+
+        $user->approveAccount();
+
+        return response()->json([
+            'message' => $user->roleLabel().' account approved.',
+            'user' => MobileAuthController::userData($user->fresh()),
+        ]);
+    }
+
     public function rejectOwner(Request $request, User $user): JsonResponse
     {
         abort_unless($request->user()->isAdmin(), 403);
-        abort_unless($user->role === 'owner', 404);
+        abort_unless(in_array($user->role, ApprovalController::REVIEWABLE_ROLES, true), 404);
 
         $user->update(['status' => 'rejected']);
 
@@ -411,6 +433,7 @@ class MobileWorkspaceController extends Controller
     {
         abort_unless(in_array($user->role, ['admin', 'owner'], true), 403);
         abort_unless($user->hasVerifiedEmail(), 403, 'Verify your email before opening management tools.');
+        abort_if($user->awaitingPhoneVerification(), 403, 'Verify your phone number before opening management tools.');
         abort_unless($user->isAdmin() || $user->profile_completed, 403, 'Complete your profile before opening management tools.');
 
         if (! $user->isAdmin()) {

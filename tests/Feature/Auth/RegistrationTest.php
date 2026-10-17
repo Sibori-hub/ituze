@@ -21,17 +21,20 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        config(['auth.email_otp_enabled' => false]);
+
         $response = $this->post('/register', [
             'first_name' => 'Test',
             'last_name' => 'User',
             'email' => 'test@example.com',
             'phone' => '0781234567',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'terms' => true,
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('profile.complete', absolute: false));
+        $response->assertRedirect(route('phone.notice', absolute: false));
         $this->assertDatabaseHas('users', [
             'email' => 'test@example.com',
             'role' => 'owner',
@@ -39,7 +42,11 @@ class RegistrationTest extends TestCase
             'expires_at' => null,
             'profile_completed' => false,
         ]);
-        $this->assertNotNull(User::where('email', 'test@example.com')->firstOrFail()->email_verified_at);
+
+        $user = User::where('email', 'test@example.com')->firstOrFail();
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertNotNull($user->terms_accepted_at);
+        $this->assertSame(config('legal.terms_version'), $user->terms_version);
     }
 
     public function test_email_otp_can_be_reenabled_for_registration(): void
@@ -52,8 +59,9 @@ class RegistrationTest extends TestCase
             'last_name' => 'User',
             'email' => 'test@example.com',
             'phone' => '0781234567',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'terms' => true,
         ]);
 
         $response->assertRedirect(route('verification.notice', absolute: false));

@@ -44,6 +44,15 @@ return [
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
         'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v22.0'),
+
+        // OTP delivery. Business-initiated messages need an approved template,
+        // so set WHATSAPP_OTP_TEMPLATE to the name of your authentication template.
+        // Leave it empty to fall back to a plain text message (works only inside
+        // the 24-hour customer service window).
+        'otp_template' => env('WHATSAPP_OTP_TEMPLATE'),
+        'otp_template_language' => env('WHATSAPP_OTP_TEMPLATE_LANGUAGE', 'en'),
+        'otp_template_has_button' => env('WHATSAPP_OTP_TEMPLATE_BUTTON', false),
+        'default_country_code' => env('WHATSAPP_DEFAULT_COUNTRY_CODE', '250'),
     ],
 
 ];

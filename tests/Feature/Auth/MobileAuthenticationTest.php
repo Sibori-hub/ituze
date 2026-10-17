@@ -36,10 +36,17 @@ class MobileAuthenticationTest extends TestCase
             $table->timestamp('email_verified_at')->nullable();
             $table->string('email_otp', 6)->nullable();
             $table->timestamp('email_otp_expires_at')->nullable();
+            $table->timestamp('phone_verified_at')->nullable();
+            $table->string('phone_otp', 6)->nullable();
+            $table->timestamp('phone_otp_expires_at')->nullable();
+            $table->timestamp('terms_accepted_at')->nullable();
+            $table->string('terms_version')->nullable();
+            $table->string('terms_accepted_ip')->nullable();
             $table->timestamp('expires_at')->nullable();
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('personal_access_tokens', function (Blueprint $table) {
@@ -169,8 +176,9 @@ class MobileAuthenticationTest extends TestCase
             'last_name' => 'Owner',
             'email' => 'aline@example.com',
             'phone' => '0781234567',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'terms' => true,
             'device_name' => 'test-device',
         ]);
 
@@ -187,7 +195,7 @@ class MobileAuthenticationTest extends TestCase
         $user = User::query()->where('email', 'aline@example.com')->firstOrFail();
         $this->assertSame('Aline Owner', $user->name);
         $this->assertSame('0781234567', $user->phone);
-        $this->assertNotSame('password', $user->password);
+        $this->assertNotSame('Password123!', $user->password);
         $this->assertSame('owner', $user->role);
         $this->assertSame('pending', $user->status);
         $this->assertNotNull($user->email_verified_at);
@@ -207,21 +215,28 @@ class MobileAuthenticationTest extends TestCase
             'last_name' => 'Owner',
             'email' => 'otp-owner@example.com',
             'phone' => '0781234567',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'terms' => true,
         ])->assertCreated()
             ->assertJsonPath('verification_required', true)
             ->assertJsonPath('user.email_verified', false);
 
         $user = User::query()->where('email', 'otp-owner@example.com')->firstOrFail();
-        Notification::assertSentTo($user, \App\Notifications\EmailVerificationOtp::class);
+        $code = null;
+        Notification::assertSentTo($user, \App\Notifications\EmailVerificationOtp::class, function ($notification) use (&$code) {
+            $code = $notification->code;
+
+            return true;
+        });
+        $this->assertNotSame($code, $user->email_otp, 'The code must not be stored in plain text.');
         $headers = ['Authorization' => 'Bearer '.$response->json('token')];
 
-        $this->postJson('/api/mobile/verify-email-otp', ['otp' => '000000'], $headers)
+        $this->postJson('/api/mobile/verify-email-otp', ['otp' => $code === '000000' ? '111111' : '000000'], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors('otp');
 
-        $this->postJson('/api/mobile/verify-email-otp', ['otp' => $user->email_otp], $headers)
+        $this->postJson('/api/mobile/verify-email-otp', ['otp' => $code], $headers)
             ->assertOk()
             ->assertJsonPath('message', 'Email verified successfully.');
 
@@ -235,9 +250,10 @@ class MobileAuthenticationTest extends TestCase
             'first_name' => 'Aline',
             'last_name' => 'Owner',
             'email' => 'not-an-email',
-            'phone' => '0791234567',
+            'phone' => '0811234567',
             'password' => 'password',
             'password_confirmation' => 'different',
+            'terms' => true,
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['email', 'phone', 'password']);
     }

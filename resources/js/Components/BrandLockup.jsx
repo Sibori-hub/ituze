@@ -9,7 +9,7 @@ export default function BrandLockup({
             <img
                 src="/images/logo.png"
                 alt="ITUZE GREEN PLATFORM logo"
-                className={`shrink-0 rounded-full bg-white p-0.5 object-contain ${logoClassName}`}
+                className={`shrink-0 object-contain ${logoClassName}`}
             />
             <span className="min-w-0">
                 <span className={`block font-[Sora] leading-tight tracking-tight ${nameClassName}`}>

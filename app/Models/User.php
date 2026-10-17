@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
-use App\Notifications\EmailVerificationOtp;
+use App\Services\OtpService;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -37,8 +39,12 @@ class User extends Authenticatable implements MustVerifyEmail
         'profile_completed',
         'created_by',
         'password',
-        'email_otp',
-        'email_otp_expires_at',
+        'terms_accepted_at',
+        'terms_version',
+        'terms_accepted_ip',
+        'disabled_at',
+        'disabled_reason',
+        'status_before_disabled',
     ];
 
     /**
@@ -50,6 +56,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'remember_token',
         'email_otp',
+        'phone_otp',
+        'login_otp',
     ];
 
     /**
@@ -63,6 +71,10 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'email_otp_expires_at' => 'datetime',
+            'phone_otp_expires_at' => 'datetime',
+            'login_otp_expires_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
+            'disabled_at' => 'datetime',
             'expires_at' => 'datetime',
             'profile_completed' => 'boolean',
             'password' => 'hashed',
@@ -105,7 +117,80 @@ class User extends Authenticatable implements MustVerifyEmail
             return false;
         }
 
+        // Advertiser plans are part of the advertising module; approval alone
+        // is enough to use the advertiser workspace for now.
+        if ($this->isAdvertiser()) {
+            return false;
+        }
+
         return !$this->expires_at || $this->expires_at->isPast();
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role === 'owner';
+    }
+
+    public function isAdvertiser(): bool
+    {
+        return $this->role === 'advertiser';
+    }
+
+    /**
+     * Owners and advertisers both get their own workspace; only the dashboard differs.
+     */
+    public function isAccountHolder(): bool
+    {
+        return $this->isOwner() || $this->isAdvertiser();
+    }
+
+    public function isDisabled(): bool
+    {
+        return $this->status === 'disabled' || $this->disabled_at !== null;
+    }
+
+    public function isPhoneVerified(): bool
+    {
+        return $this->phone_verified_at !== null;
+    }
+
+    /**
+     * Whether a phone code is outstanding. Accounts created before phone
+     * verification existed were never sent one and are not held back.
+     */
+    public function awaitingPhoneVerification(): bool
+    {
+        return ! $this->isAdmin() && ! $this->isPhoneVerified() && $this->phone_otp !== null;
+    }
+
+    /**
+     * Owners get a one-year subscription; advertiser billing arrives with the
+     * advertising module, so approval alone unlocks their workspace.
+     */
+    public function approveAccount(): void
+    {
+        $this->update([
+            'status' => 'approved',
+            'expires_at' => $this->isOwner() ? now()->addYear() : null,
+        ]);
+    }
+
+    /**
+     * True when the user accepted the revision of the Terms that is currently published.
+     */
+    public function hasAcceptedTerms(?string $version = null): bool
+    {
+        return $this->terms_accepted_at !== null
+            && $this->terms_version === ($version ?? config('legal.terms_version'));
+    }
+
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            'admin' => 'Administrator',
+            'advertiser' => 'Advertiser',
+            default => 'Property Owner',
+        };
     }
 
     /**
@@ -114,17 +199,18 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function sendEmailVerificationNotification(): void
     {
-        $code = (string) random_int(100000, 999999);
+        app(OtpService::class)->sendEmailVerificationOtp($this);
+    }
 
-        $this->forceFill([
-            'email_otp' => $code,
-            'email_otp_expires_at' => now()->addMinutes(10),
-        ])->save();
+    /**
+     * Sign the account out everywhere: revoke mobile tokens and drop web sessions.
+     */
+    public function endAllSessions(): void
+    {
+        $this->tokens()->delete();
 
-        try {
-            $this->notify(new EmailVerificationOtp($code));
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Verification email could not be sent: ' . $e->getMessage());
+        if (config('session.driver') === 'database') {
+            DB::table(config('session.table', 'sessions'))->where('user_id', $this->id)->delete();
         }
     }
 }

@@ -32,6 +32,10 @@ const ownerNavigation = [
     { name: 'Reports', href: 'reports.index', icon: BarChart3 },
 ];
 
+const advertiserNavigation = [
+    { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
+];
+
 const adminNavigation = [
     { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
     { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck },
@@ -53,7 +57,12 @@ export default function AuthenticatedLayout({ header, children }) {
     const [successModal, setSuccessModal] = useState(null);
     const { t } = useTranslation();
 
-    const navigation = user.role === 'admin' ? adminNavigation : ownerNavigation;
+    const navigation =
+        user.role === 'admin'
+            ? adminNavigation
+            : user.role === 'advertiser'
+              ? advertiserNavigation
+              : ownerNavigation;
 
     useEffect(() => {
         const order = ['error', 'warning', 'success', 'info', 'status'];

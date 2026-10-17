@@ -1,9 +1,25 @@
 import InputError from '@/Components/InputError';
+import LegalModal from '@/Components/LegalModal';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { User, Mail, Phone, Lock, Check, X } from 'lucide-react';
-import { useMemo } from 'react';
+import { User, Mail, Phone, Lock, Check, X, Building2, Megaphone } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from '@/localization';
+
+const ACCOUNT_TYPES = [
+    {
+        value: 'owner',
+        label: 'Property Owner',
+        description: 'Manage properties, units, tenants, leases and rent payments.',
+        Icon: Building2,
+    },
+    {
+        value: 'advertiser',
+        label: 'Advertiser',
+        description: 'Promote your brand to people browsing properties on the platform.',
+        Icon: Megaphone,
+    },
+];
 
 function getPasswordStrength(password) {
     let score = 0;
@@ -32,15 +48,18 @@ function getNetwork(phone) {
     return null;
 }
 
-export default function Register() {
+export default function Register({ termsVersion }) {
     const { t } = useTranslation();
+    const [legalDoc, setLegalDoc] = useState(null);
     const { data, setData, post, processing, errors, reset } = useForm({
+        role: 'owner',
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
         password: '',
         password_confirmation: '',
+        terms: false,
     });
 
     const strength = useMemo(
@@ -60,7 +79,7 @@ export default function Register() {
 
     const network = useMemo(() => getNetwork(data.phone), [data.phone]);
 
-    const passwordStrongEnough = data.password.length >= 8;
+    const passwordStrongEnough = data.password.length >= 10;
 
     const passwordsMatch =
         data.password_confirmation !== '' &&
@@ -72,7 +91,8 @@ export default function Register() {
         emailValid &&
         phoneValid &&
         passwordStrongEnough &&
-        passwordsMatch;
+        passwordsMatch &&
+        data.terms;
 
     const submit = (e) => {
         e.preventDefault();
@@ -102,6 +122,51 @@ export default function Register() {
             </div>
 
             <form onSubmit={submit} className="mt-7 space-y-5">
+                <fieldset>
+                    <legend className="mb-2 block text-sm font-medium text-gray-700">
+                        {t('Register as')}
+                    </legend>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {ACCOUNT_TYPES.map(({ value, label, description, Icon }) => {
+                            const selected = data.role === value;
+                            return (
+                                <label
+                                    key={value}
+                                    className={`relative flex cursor-pointer gap-3 rounded-xl border p-3.5 transition-all ${
+                                        selected
+                                            ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.04] ring-2 ring-[#0E3B2E]/15'
+                                            : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="role"
+                                        value={value}
+                                        checked={selected}
+                                        disabled={processing}
+                                        onChange={() => setData('role', value)}
+                                        className="sr-only"
+                                    />
+                                    <Icon
+                                        size={20}
+                                        className={`mt-0.5 shrink-0 ${selected ? 'text-[#0E3B2E]' : 'text-gray-400'}`}
+                                        aria-hidden="true"
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-gray-800">
+                                            {t(label)}
+                                        </span>
+                                        <span className="mt-0.5 block text-xs leading-5 text-gray-500">
+                                            {t(description)}
+                                        </span>
+                                    </span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                    <InputError message={errors.role} className="mt-1" />
+                </fieldset>
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label
@@ -343,10 +408,52 @@ export default function Register() {
                             />
                         </div>
                         <p className="mt-1.5 text-xs text-gray-400">
-                            {t('Use at least 8 characters with upper/lowercase, numbers, and symbols.')}
+                            {t('Use at least 10 characters with upper/lowercase letters, numbers, and symbols.')}
                         </p>
                     </div>
                 )}
+
+                <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3.5 transition-colors hover:border-gray-300">
+                    <input
+                        id="terms"
+                        type="checkbox"
+                        name="terms"
+                        checked={data.terms}
+                        disabled={processing}
+                        onChange={(e) => setData('terms', e.target.checked)}
+                        aria-describedby="terms-error"
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]/30"
+                    />
+                    <span className="text-xs leading-5 text-gray-600">
+                        <label htmlFor="terms" className="cursor-pointer">
+                            {t('I have read and agree to the')}
+                        </label>{' '}
+                        <button
+                            type="button"
+                            onClick={() => setLegalDoc('terms')}
+                            className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] underline-offset-2"
+                        >
+                            {t('Terms and Conditions')}
+                        </button>{' '}
+                        <label htmlFor="terms" className="cursor-pointer">
+                            {t('and the')}
+                        </label>{' '}
+                        <button
+                            type="button"
+                            onClick={() => setLegalDoc('privacy')}
+                            className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] underline-offset-2"
+                        >
+                            {t('Privacy Policy')}
+                        </button>
+                        {termsVersion && (
+                            <span className="text-gray-400"> ({t('version')} {termsVersion})</span>
+                        )}
+                        .
+                    </span>
+                </div>
+                <div id="terms-error" aria-live="polite">
+                    <InputError message={errors.terms} className="mt-1" />
+                </div>
 
                 <div>
                     <button
@@ -373,6 +480,17 @@ export default function Register() {
                     </Link>
                 </p>
             </form>
+
+            {legalDoc && (
+                <LegalModal
+                    document={legalDoc}
+                    onClose={() => setLegalDoc(null)}
+                    onAgree={() => {
+                        setData('terms', true);
+                        setLegalDoc(null);
+                    }}
+                />
+            )}
         </GuestLayout>
     );
 }
