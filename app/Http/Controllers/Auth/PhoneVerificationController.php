@@ -27,9 +27,14 @@ class PhoneVerificationController extends Controller
             return redirect()->route($this->nextRoute($user));
         }
 
+        $refreshed = $this->otp->refreshIfExpired($user, 'phone_otp');
+
         return Inertia::render('Auth/VerifyPhone', [
             'phone' => $user->phone,
-            'status' => session('status'),
+            'status' => $refreshed
+                ? 'Your previous code had expired, so we sent you a new one.'
+                : session('status'),
+            'expiresIn' => OtpService::secondsLeft($user, 'phone_otp'),
             // Local environments show the code so the flow can be tested without WhatsApp.
             'devMode' => app()->environment('local'),
             'devOtp' => OtpService::developmentCode('phone_otp'),

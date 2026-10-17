@@ -1,5 +1,4 @@
-import { Head, InfiniteScroll, Link, router, useForm } from '@inertiajs/react';
-import InputError from '@/Components/InputError';
+import { Head, InfiniteScroll, Link, router } from '@inertiajs/react';
 import BrandLockup from '@/Components/BrandLockup';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import LegalModal from '@/Components/LegalModal';
@@ -138,241 +137,11 @@ function InquiryPanel({ onClose }) {
     );
 }
 
-function LoginPanel({ onClose, canRegister }) {
-    const { t } = useTranslation();
-    const form = useForm({
-        email: '',
-        password: '',
-        remember: false,
-    });
-
-    const submit = (event) => {
-        event.preventDefault();
-        form.post(route('login'), {
-            preserveState: true,
-            preserveScroll: true,
-            onFinish: () => form.reset('password'),
-        });
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 bg-[#f3f6fb] p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-login-title">
-            <div className="relative flex min-h-full w-full overflow-hidden bg-white shadow-none sm:min-h-[calc(100vh-2rem)] sm:rounded-[28px] sm:shadow-[0_30px_80px_-30px_rgba(15,23,42,0.45)]">
-                <button type="button" onClick={onClose} aria-label="Close login" className="absolute right-5 top-5 z-20 rounded-full border border-slate-200 bg-white/90 p-2.5 text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700">
-                    <X size={18} />
-                </button>
-
-                <div className="hidden w-[42%] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#062f47] via-[#0a4b79] to-[#0f7bb5] p-8 text-white md:flex">
-                    <div className="flex items-center gap-3">
-                        <BrandLockup
-                            logoClassName="h-16 w-16"
-                            nameClassName="text-xl font-black text-white"
-                            subtitleClassName="text-[9px] font-medium text-white/75"
-                        />
-                    </div>
-
-                    <div>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-50/90">
-                            <Building2 size={14} />
-                            {t('Owner dashboard')}
-                        </div>
-                        <h2 className="mt-8 max-w-sm text-4xl font-light leading-tight tracking-[-0.04em]">
-                            {t('Manage your spaces with confidence.')}
-                        </h2>
-                        <p className="mt-4 max-w-sm text-sm leading-7 text-sky-50/80">
-                            {t('Access listings, applications, and property updates from one secure workspace designed for modern property management.')}
-                        </p>
-                    </div>
-
-                    <div className="space-y-3 text-sm text-sky-50/80">
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
-                            <CheckCircle2 size={18} className="text-cyan-200" />
-                            <span>{t('Fast account access')}</span>
-                        </div>
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
-                            <CheckCircle2 size={18} className="text-cyan-200" />
-                            <span>{t('Secure property operations')}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex w-full items-center justify-center bg-slate-50 px-5 py-10 sm:px-8 md:w-[58%] md:px-10 md:py-12">
-                    <div className="w-full max-w-md">
-                        <div className="mb-8 text-center md:text-left">
-                            <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#0a6da5]">{t('Welcome back')}</p>
-                            <h2 id="welcome-login-title" className="mt-3 text-3xl font-black tracking-[-0.04em] text-slate-900">{t('Sign in')}</h2>
-                            <p className="mt-2 text-sm text-slate-500">{t('Log in to continue')}</p>
-                        </div>
-
-                        <form onSubmit={submit} className="space-y-5">
-                            <div>
-                                <label htmlFor="welcome-login-email" className="mb-2 block text-sm font-semibold text-slate-700">{t('Email')}</label>
-                                <div className="relative">
-                                    <Mail size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input id="welcome-login-email" type="email" value={form.data.email} autoComplete="username" autoFocus disabled={form.processing} onChange={(event) => form.setData('email', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-sm transition focus:border-[#0a6da5] focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:bg-slate-100" required />
-                                </div>
-                                <InputError message={form.errors.email} className="mt-2" />
-                            </div>
-
-                            <div>
-                                <div className="mb-2 flex items-center justify-between gap-3">
-                                    <label htmlFor="welcome-login-password" className="block text-sm font-semibold text-slate-700">{t('Password')}</label>
-                                    <Link href={route('password.request')} className="text-xs font-medium text-[#0a6da5] transition hover:text-[#094f7d]">{t('Forgot password?')}</Link>
-                                </div>
-                                <div className="relative">
-                                    <Lock size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input id="welcome-login-password" type="password" value={form.data.password} autoComplete="current-password" disabled={form.processing} onChange={(event) => form.setData('password', event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-sm transition focus:border-[#0a6da5] focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:bg-slate-100" required />
-                                </div>
-                                <InputError message={form.errors.password} className="mt-2" />
-                            </div>
-
-                            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-                                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-                                    <input type="checkbox" checked={form.data.remember} disabled={form.processing} onChange={(event) => form.setData('remember', event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-[#0a6da5] focus:ring-[#0a6da5]" />
-                                    {t('Remember me')}
-                                </label>
-                                <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">{t('Secure')}</span>
-                            </div>
-
-                            <button type="submit" disabled={form.processing} className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0E3B2E] px-4 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_18px_30px_-18px_rgba(14,59,46,0.9)] transition hover:bg-[#143f35] disabled:cursor-not-allowed disabled:opacity-80">
-                                {form.processing ? (
-                                    <>
-                                        <Loader2 size={18} className="animate-spin text-[#f0c867]" />
-                                        {t('Signing you in...')}
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>{t('Log in')}</span>
-                                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-                                    </>
-                                )}
-                            </button>
-
-                            <p className="text-center text-sm text-slate-500">
-                                {t("Don't have an account?")}{' '}
-                                {canRegister ? (
-                                    <Link href={route('register')} className="font-semibold text-[#0a6da5] transition hover:text-[#094f7d]">{t('Register')}</Link>
-                                ) : (
-                                    <span className="font-semibold text-slate-400">{t('Register')}</span>
-                                )}
-                            </p>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function RegisterPanel({ onClose, onOpenLegal }) {
-    const { t } = useTranslation();
-    const form = useForm({
-        role: 'owner',
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        password: '',
-        password_confirmation: '',
-        terms: false,
-    });
-
-    const submit = (event) => {
-        event.preventDefault();
-        form.post(route('register'), {
-            onFinish: () => form.reset('password', 'password_confirmation'),
-        });
-    };
-
-    const fields = [
-        ['first_name', 'First name', 'text', 'Jean'],
-        ['last_name', 'Last name', 'text', 'Sibomana'],
-        ['email', 'Email', 'email', 'you@example.com'],
-        ['phone', 'Phone number', 'tel', '078XXXXXXX'],
-    ];
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="welcome-register-title">
-            <div className="relative my-4 w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
-                <button type="button" onClick={onClose} aria-label="Close registration" className="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><X size={19} /></button>
-                <div className="grid grid-cols-2 gap-2 p-3">
-                    <div className="rounded-lg bg-gray-100 py-2.5 text-center text-sm font-semibold text-gray-500">{t('Login')}</div>
-                    <div className="rounded-lg bg-[#0E3B2E] py-2.5 text-center text-sm font-semibold text-white shadow-sm">{t('Register')}</div>
-                </div>
-                <div className="px-6 pb-8 pt-5 sm:px-10">
-                    <div className="text-center">
-                        <h2 id="welcome-register-title" className="font-[Sora] text-xl font-bold text-gray-800">{t('Create your account')}</h2>
-                        <p className="mt-1 text-sm text-gray-500">{t('Join ITUZE GREEN PLATFORM to manage your property listings.')}</p>
-                    </div>
-                    <form onSubmit={submit} className="mt-7 space-y-4">
-                        <fieldset>
-                            <legend className="mb-2 block text-sm font-medium text-gray-700">{t('Register as')}</legend>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {ACCOUNT_TYPES.map(({ value, label, description, Icon }) => {
-                                    const selected = form.data.role === value;
-                                    return (
-                                        <label key={value} className={`relative flex cursor-pointer gap-3 rounded-xl border p-3 transition-all ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.04] ring-2 ring-[#0E3B2E]/15' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'}`}>
-                                            <input type="radio" name="role" value={value} checked={selected} disabled={form.processing} onChange={() => form.setData('role', value)} className="sr-only" />
-                                            <Icon size={19} className={`mt-0.5 shrink-0 ${selected ? 'text-[#0E3B2E]' : 'text-gray-400'}`} aria-hidden="true" />
-                                            <span>
-                                                <span className="block text-sm font-semibold text-gray-800">{t(label)}</span>
-                                                <span className="mt-0.5 block text-xs leading-5 text-gray-500">{t(description)}</span>
-                                            </span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                            <InputError message={form.errors.role} className="mt-1" />
-                        </fieldset>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            {fields.map(([name, label, type, placeholder]) => (
-                                <div key={name}>
-                                    <label htmlFor={`welcome-register-${name}`} className="mb-1 block text-sm font-medium text-gray-700">{t(label)}</label>
-                                    <input id={`welcome-register-${name}`} type={type} value={form.data[name]} placeholder={placeholder} autoComplete={name === 'email' ? 'username' : name === 'phone' ? 'tel' : name === 'first_name' ? 'given-name' : 'family-name'} onChange={(event) => form.setData(name, name === 'phone' ? event.target.value.replace(/\D/g, '') : event.target.value)} className="w-full rounded-lg border border-gray-300 py-2.5 px-3 text-sm focus:border-[#0E3B2E] focus:ring-1 focus:ring-[#0E3B2E]" required />
-                                    <InputError message={form.errors[name]} className="mt-1" />
-                                </div>
-                            ))}
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <div>
-                                <label htmlFor="welcome-register-password" className="mb-1 block text-sm font-medium text-gray-700">Password</label>
-                                <input id="welcome-register-password" type="password" value={form.data.password} autoComplete="new-password" onChange={(event) => form.setData('password', event.target.value)} className="w-full rounded-lg border border-gray-300 py-2.5 px-3 text-sm focus:border-[#0E3B2E] focus:ring-1 focus:ring-[#0E3B2E]" required />
-                                <InputError message={form.errors.password} className="mt-1" />
-                            </div>
-                            <div>
-                                <label htmlFor="welcome-register-password-confirmation" className="mb-1 block text-sm font-medium text-gray-700">Confirm password</label>
-                                <input id="welcome-register-password-confirmation" type="password" value={form.data.password_confirmation} autoComplete="new-password" onChange={(event) => form.setData('password_confirmation', event.target.value)} className="w-full rounded-lg border border-gray-300 py-2.5 px-3 text-sm focus:border-[#0E3B2E] focus:ring-1 focus:ring-[#0E3B2E]" required />
-                                <InputError message={form.errors.password_confirmation} className="mt-1" />
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50/50 p-3">
-                                <input id="welcome-register-terms" type="checkbox" name="terms" checked={form.data.terms} disabled={form.processing} onChange={(event) => form.setData('terms', event.target.checked)} required className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]/30" />
-                                <span className="text-xs leading-5 text-gray-600">
-                                    <label htmlFor="welcome-register-terms" className="cursor-pointer">{t('I have read and agree to the')}</label>{' '}
-                                    <button type="button" onClick={() => onOpenLegal('terms')} className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] underline-offset-2">{t('Terms and Conditions')}</button>{' '}
-                                    <label htmlFor="welcome-register-terms" className="cursor-pointer">{t('and the')}</label>{' '}
-                                    <button type="button" onClick={() => onOpenLegal('privacy')} className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] underline-offset-2">{t('Privacy Policy')}</button>.
-                                </span>
-                            </div>
-                            <InputError message={form.errors.terms} className="mt-1" />
-                        </div>
-                        <button type="submit" disabled={form.processing} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] py-3 text-sm font-semibold text-white transition hover:bg-[#0a2e23] disabled:cursor-not-allowed disabled:opacity-70">{form.processing ? 'Creating account...' : 'Create account'} <ArrowRight size={16} /></button>
-                        <p className="text-center text-xs text-gray-500">Your account will be reviewed before property management access is enabled.</p>
-                    </form>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 export default function Welcome({ auth, canLogin, canRegister, units, propertyCategories = [], locations = {}, searchFilters = {} }) {
     const { t } = useTranslation();
     const [slide, setSlide] = useState(0);
     const [menuOpen, setMenuOpen] = useState(false);
     const [inquiryOpen, setInquiryOpen] = useState(false);
-    const [loginOpen, setLoginOpen] = useState(false);
-    const [registerOpen, setRegisterOpen] = useState(false);
     const [legalDoc, setLegalDoc] = useState(null);
     const [partnerContactSent, setPartnerContactSent] = useState(false);
     const [searchForm, setSearchForm] = useState({
@@ -473,7 +242,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                 <Link href={route('dashboard')} className="hidden rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white sm:inline-flex sm:text-xs">{t('Dashboard')}</Link>
                             ) : (
                                 <>
-                                    {canLogin && <button type="button" onClick={() => setLoginOpen(true)} className="hidden px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 transition hover:text-[#078dcc] sm:block">{t('Log in')}</button>}
+                                    {canLogin && <Link href={route('login')} className="hidden px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 transition hover:text-[#078dcc] sm:block">{t('Log in')}</Link>}
                                     <button type="button" onClick={() => setInquiryOpen(true)} className="rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#0a9ee1] sm:text-xs">{t('Inquiry')}</button>
                                 </>
                             )}
@@ -487,7 +256,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <a className="block py-2 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
                             <a className="block py-2 font-medium text-slate-700" href="#categories">{t('Property types')}</a>
                             <a className="block py-2 font-medium text-slate-700" href="#enquiry">{t('Enquiry')}</a>
-                            {!auth?.user && canLogin && <button type="button" onClick={() => { setLoginOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-slate-700">{t('Log in')}</button>}
+                            {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-2 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
                             {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
                         </div>
                     )}
@@ -622,7 +391,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                 ))}
                             </div>
                             <div className="mt-10 text-center">
-                                <button type="button" onClick={() => setRegisterOpen(true)} className="inline-flex items-center gap-2 rounded bg-[#064b78] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#053653]">{t('Become a partner')} <ArrowRight size={16} /></button>
+                                <Link href={route('register')} className="inline-flex items-center gap-2 rounded bg-[#064b78] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#053653]">{t('Become a partner')} <ArrowRight size={16} /></Link>
                             </div>
                         </div>
                     </section>
@@ -684,7 +453,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                 </div>
                             </div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#categories">{t('Property categories')}</a><a className="block transition hover:text-white" href="#enquiry">{t('Send an enquiry')}</a></div></div>
-                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <button type="button" className="block transition hover:text-white" onClick={() => setLoginOpen(true)}>{t('Owner login')}</button>}</div></div>
+                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:hello@ituze.rw`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> hello@ituze.rw</a></div></div>
                         </div>
                         <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
@@ -695,8 +464,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                 </footer>
             </div>
             {inquiryOpen && <InquiryPanel onClose={() => setInquiryOpen(false)} />}
-            {loginOpen && <LoginPanel canRegister={canRegister} onClose={() => setLoginOpen(false)} />}
-            {registerOpen && <RegisterPanel onClose={() => setRegisterOpen(false)} onOpenLegal={setLegalDoc} />}
             {legalDoc && <LegalModal document={legalDoc} onClose={() => setLegalDoc(null)} />}
         </>
     );

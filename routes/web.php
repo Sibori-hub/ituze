@@ -342,6 +342,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/approvals/{user}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
 
     Route::get('/users', [AdminUserController::class, 'index'])->name('users');
+    Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
+    Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan'])->name('users.plan');
     Route::post('/users/{user}/disable', [AdminUserController::class, 'disable'])->name('users.disable');
     Route::post('/users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');

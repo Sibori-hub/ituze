@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Support\IdentityNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -34,9 +35,8 @@ class ProfileUpdateRequest extends FormRequest
                 'regex:/^(072|073|078|079)\d{7}$/',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'address' => ['sometimes', 'required', 'string', 'max:255'],
             'identity_document_type' => ['sometimes', 'required', 'in:nida,passport'],
-            'national_id' => ['sometimes', 'required', 'string', 'max:20'],
+            'national_id' => ['sometimes', ...IdentityNumber::rules($this->identityType())],
             'sector_id' => ['sometimes', 'required', 'exists:sectors,id'],
             'profile_photo' => ['nullable', 'image', 'max:2048'],
         ];
@@ -49,6 +49,24 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'phone.regex' => 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).',
+            ...IdentityNumber::messages(),
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('national_id')) {
+            $this->merge([
+                'national_id' => IdentityNumber::normalize($this->identityType(), $this->input('national_id')),
+            ]);
+        }
+    }
+
+    /**
+     * The document type being saved, falling back to the one already on file.
+     */
+    protected function identityType(): ?string
+    {
+        return $this->input('identity_document_type', $this->user()?->identity_document_type);
     }
 }

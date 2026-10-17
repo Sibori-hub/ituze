@@ -1,33 +1,68 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmActionModal from '@/Components/ConfirmActionModal';
+import UserAvatar from '@/Components/UserAvatar';
+import usePresence, { useLatest } from '@/hooks/usePresence';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-    Search,
-    IdCard,
-    MapPin,
+    Ban,
+    CalendarClock,
+    ChevronLeft,
+    ChevronRight,
     Download,
     FileSpreadsheet,
     FileText,
-    Trash2,
-    CalendarClock,
-    Ban,
+    IdCard,
+    Loader2,
+    MapPin,
+    Phone,
     RotateCcw,
+    Search,
+    SearchX,
+    Trash2,
+    UserCheck,
+    UserPlus,
+    UsersRound,
+    Building2,
+    X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from '@/localization';
 
+const ROLE_TABS = [
+    { value: '', label: 'All users' },
+    { value: 'owner', label: 'Owners' },
+    { value: 'advertiser', label: 'Advertisers' },
+    { value: 'admin', label: 'Admins' },
+];
+
+const SOURCE_CHIPS = [
+    { value: 'managed', label: 'Managed by Q.R.A', Icon: Building2 },
+    { value: 'self', label: 'Self-registered', Icon: UserCheck },
+];
+
+const STATUS_CHIPS = [
+    { value: 'pending', label: 'Pending', dot: 'bg-amber-400' },
+    { value: 'approved', label: 'Approved', dot: 'bg-emerald-500' },
+    { value: 'rejected', label: 'Rejected', dot: 'bg-red-500' },
+    { value: 'disabled', label: 'Disabled', dot: 'bg-gray-400' },
+];
+
 const statusStyles = {
-    approved: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
-    pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10',
-    rejected: 'bg-red-50 text-red-700 ring-1 ring-red-600/10',
-    disabled: 'bg-gray-100 text-gray-600 ring-1 ring-gray-600/10',
+    approved: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
+    pending: 'bg-amber-50 text-amber-700 ring-amber-600/15',
+    rejected: 'bg-red-50 text-red-700 ring-red-600/15',
+    disabled: 'bg-gray-100 text-gray-600 ring-gray-600/15',
 };
 
 const roleStyles = {
-    admin: 'bg-purple-50 text-purple-700 ring-1 ring-purple-600/10',
-    owner: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/10',
-    advertiser: 'bg-teal-50 text-teal-700 ring-1 ring-teal-600/10',
+    admin: 'bg-purple-50 text-purple-700 ring-purple-600/15',
+    owner: 'bg-sky-50 text-sky-700 ring-sky-600/15',
+    advertiser: 'bg-teal-50 text-teal-700 ring-teal-600/15',
 };
+
+const ROLE_LABELS = { admin: 'Admin', owner: 'Owner', advertiser: 'Advertiser' };
+const STATUS_LABELS = { approved: 'Approved', pending: 'Pending', rejected: 'Rejected', disabled: 'Disabled' };
 
 function formatDate(value, language) {
     if (!value) return '—';
@@ -39,59 +74,112 @@ function formatDate(value, language) {
         : new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
-function toInputDate(value) {
-    if (!value) return '';
-    return String(value).slice(0, 10);
-}
+const toInputDate = (value) => (value ? String(value).slice(0, 10) : '');
 
-function PlanBadge({ user }) {
-    if (user.role === 'admin' || user.role === 'advertiser') {
-        return (
-            <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500 ring-1 ring-gray-600/10">
-                Not applicable
-            </span>
-        );
-    }
-
-    if (user.status !== 'approved') {
-        return (
-            <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500 ring-1 ring-gray-600/10">
-                Not active
-            </span>
-        );
-    }
-
-    const days = user.plan_remaining_days ?? 0;
-    const expired = user.plan_is_expired;
-
-    if (expired) {
-        return (
-            <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-red-600/10">
-                Expired
-            </span>
-        );
-    }
-
-    if (days <= 30) {
-        return (
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-600/10">
-                {days === 0 ? 'Expires today' : `${days} day${days === 1 ? '' : 's'} left`}
-            </span>
-        );
-    }
-
+function Badge({ className, children }) {
     return (
-        <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-green-600/10">
-            {days} days left
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${className}`}>
+            {children}
         </span>
     );
 }
 
-export default function Users({ users, filters }) {
-    const { auth, flash, errors } = usePage().props;
-    const { language } = useTranslation();
+/** Days left on an owner's one-year plan, as a short bar. */
+function PlanCell({ user }) {
+    const { t, language } = useTranslation();
+
+    if (user.role !== 'owner') {
+        return <span className="text-xs text-gray-300">{t('Not applicable')}</span>;
+    }
+    if (user.status !== 'approved') {
+        return <span className="text-xs text-gray-400">{t('Not active')}</span>;
+    }
+
+    const days = Math.max(0, user.plan_remaining_days ?? 0);
+    const expired = user.plan_is_expired;
+    const tone = expired ? 'bg-red-500' : days <= 30 ? 'bg-amber-400' : 'bg-emerald-500';
+    const label = expired
+        ? t('Expired')
+        : days === 0
+          ? t('Expires today')
+          : t(':days days left', { days });
+
+    return (
+        <div className="w-36">
+            <div className="flex items-center justify-between text-[11px]">
+                <span className={`font-semibold ${expired ? 'text-red-600' : days <= 30 ? 'text-amber-700' : 'text-gray-700'}`}>{label}</span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                <div className={`h-full rounded-full ${tone}`} style={{ width: `${expired ? 100 : Math.min(100, (days / 365) * 100)}%` }} />
+            </div>
+            <p className="mt-1 text-[11px] text-gray-400">
+                {user.expires_at ? t('Until :date', { date: formatDate(user.expires_at, language) }) : t('No expiry date set')}
+            </p>
+        </div>
+    );
+}
+
+function IconAction({ label, onClick, disabled, tone = 'gray', children }) {
+    const tones = {
+        gray: 'text-gray-500 hover:bg-gray-100 hover:text-gray-800',
+        green: 'text-emerald-600 hover:bg-emerald-50',
+        amber: 'text-amber-600 hover:bg-amber-50',
+        red: 'text-red-500 hover:bg-red-50 hover:text-red-600',
+        brand: 'text-[#0E3B2E] hover:bg-[#0E3B2E]/5',
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            title={label}
+            aria-label={label}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent ${tones[tone]}`}
+        >
+            {children}
+        </button>
+    );
+}
+
+/** Centred dialog rendered into document.body, so the page wrapper can never offset it. */
+function DialogShell({ open, onClose, title, description, children }) {
+    const { mounted, closing } = usePresence(open);
+
+    useEffect(() => {
+        if (!open) return undefined;
+        const onKey = (event) => event.key === 'Escape' && onClose?.();
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [open, onClose]);
+
+    if (!mounted) return null;
+
+    return createPortal(
+        <div
+            className={`fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm ${
+                closing ? 'pointer-events-none animate-fade-out' : 'animate-fade-in'
+            }`}
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={(event) => event.target === event.currentTarget && onClose?.()}
+        >
+            <div className={`w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}>
+                <h3 className="font-[Sora] text-lg font-bold text-gray-900">{title}</h3>
+                {description && <p className="mt-1 text-sm leading-6 text-gray-500">{description}</p>}
+                {children}
+            </div>
+        </div>,
+        document.body,
+    );
+}
+
+export default function Users({ users, filters, counts = {} }) {
+    const { auth, errors } = usePage().props;
+    const { t, language } = useTranslation();
     const currentUserId = auth.user.id;
     const [search, setSearch] = useState(filters.search || '');
+    const [loading, setLoading] = useState(false);
     const [exportOpen, setExportOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
     const [userToDisable, setUserToDisable] = useState(null);
@@ -100,596 +188,520 @@ export default function Users({ users, filters }) {
     const [planUser, setPlanUser] = useState(null);
     const [planDate, setPlanDate] = useState('');
     const [processing, setProcessing] = useState(false);
+    const exportRef = useRef(null);
+    const disableShown = useLatest(userToDisable);
+    const planShown = useLatest(planUser);
+
+    const visit = (params) => {
+        router.get(route('admin.users'), params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onStart: () => setLoading(true),
+            onFinish: () => setLoading(false),
+        });
+    };
 
     useEffect(() => {
         const timeout = setTimeout(() => {
-            if (search !== (filters.search || '')) {
-                router.get(
-                    route('admin.users'),
-                    { ...filters, search },
-                    { preserveState: true, replace: true },
-                );
-            }
-        }, 400);
+            if (search !== (filters.search || '')) visit({ ...filters, search: search || undefined });
+        }, 350);
         return () => clearTimeout(timeout);
     }, [search]);
 
-    const updateFilter = (key, value) => {
-        router.get(
-            route('admin.users'),
-            { ...filters, [key]: value || undefined },
-            { preserveState: true, replace: true },
-        );
+    // Close the export menu on any click outside it.
+    useEffect(() => {
+        if (!exportOpen) return undefined;
+        const close = (event) => !exportRef.current?.contains(event.target) && setExportOpen(false);
+        document.addEventListener('mousedown', close);
+        return () => document.removeEventListener('mousedown', close);
+    }, [exportOpen]);
+
+    const updateFilter = (key, value) => visit({ ...filters, [key]: value || undefined, page: undefined });
+    const clearFilters = () => {
+        setSearch('');
+        visit({});
     };
+    const hasFilters = Boolean(filters.search || filters.role || filters.status || filters.source);
 
     const exportUrl = (format) => {
         const params = new URLSearchParams();
         if (filters.search) params.set('search', filters.search);
         if (filters.role) params.set('role', filters.role);
         if (filters.status) params.set('status', filters.status);
-        return route(`admin.users.export.${format}`) + '?' + params.toString();
+        if (filters.source) params.set('source', filters.source);
+        return `${route(`admin.users.export.${format}`)}?${params.toString()}`;
     };
 
-    const openPlan = (user) => {
-        setPlanUser(user);
-        setPlanDate(toInputDate(user.expires_at));
-    };
-
-    const closePlan = () => {
-        if (!processing) setPlanUser(null);
-    };
-
-    const savePlan = () => {
-        if (!planUser) return;
+    const submit = (method, url, data, done) => {
         setProcessing(true);
-        router.patch(
-            route('admin.users.plan', planUser.id),
-            { expires_at: planDate },
-            {
-                preserveScroll: true,
-                onFinish: () => {
-                    setProcessing(false);
-                    setPlanUser(null);
-                },
-            },
-        );
-    };
-
-    const renewPlan = () => {
-        if (!planUser) return;
-        setProcessing(true);
-        router.patch(
-            route('admin.users.plan', planUser.id),
-            { renew: true },
-            {
-                preserveScroll: true,
-                onFinish: () => {
-                    setProcessing(false);
-                    setPlanUser(null);
-                },
-            },
-        );
-    };
-
-    const deleteUser = () => {
-        if (!userToDelete) return;
-        setProcessing(true);
-        router.delete(route('admin.users.destroy', userToDelete.id), {
+        const options = {
             preserveScroll: true,
             onFinish: () => {
                 setProcessing(false);
-                setUserToDelete(null);
+                done();
             },
-        });
+        };
+        // router.delete(url, options) takes no data argument, unlike post/patch.
+        if (method === 'delete') router.delete(url, { ...options, data });
+        else router[method](url, data, options);
     };
 
-    const openDisable = (user) => {
-        setUserToDisable(user);
-        setDisableReason('');
-    };
+    const canManage = (user) => user.role !== 'admin' && user.id !== currentUserId;
+    const roleCount = (role) => (role ? counts.roles?.[role] ?? 0 : counts.all ?? 0);
 
-    const disableUser = () => {
-        if (!userToDisable) return;
-        setProcessing(true);
-        router.post(
-            route('admin.users.disable', userToDisable.id),
-            { disabled_reason: disableReason || undefined },
-            {
-                preserveScroll: true,
-                onFinish: () => {
-                    setProcessing(false);
-                    setUserToDisable(null);
-                },
-            },
+    const actions = (user) => (
+        <div className="flex items-center justify-end gap-0.5">
+            <IconAction
+                label={t('Update plan')}
+                tone="brand"
+                disabled={user.role !== 'owner'}
+                onClick={() => {
+                    setPlanUser(user);
+                    setPlanDate(toInputDate(user.expires_at));
+                }}
+            >
+                <CalendarClock size={16} />
+            </IconAction>
+            {user.status === 'disabled' ? (
+                <IconAction label={t('Enable')} tone="green" disabled={!canManage(user)} onClick={() => setUserToEnable(user)}>
+                    <RotateCcw size={16} />
+                </IconAction>
+            ) : (
+                <IconAction
+                    label={t('Disable')}
+                    tone="amber"
+                    disabled={!canManage(user)}
+                    onClick={() => {
+                        setUserToDisable(user);
+                        setDisableReason('');
+                    }}
+                >
+                    <Ban size={16} />
+                </IconAction>
+            )}
+            <IconAction label={t('Delete')} tone="red" disabled={!canManage(user)} onClick={() => setUserToDelete(user)}>
+                <Trash2 size={16} />
+            </IconAction>
+        </div>
+    );
+
+    const location = (user) =>
+        user.sector ? (
+            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                <MapPin size={12} className="shrink-0 text-gray-400" />
+                {user.sector.name}
+                {user.sector.district?.name ? `, ${user.sector.district.name}` : ''}
+            </span>
+        ) : (
+            <span className="text-xs text-gray-300">—</span>
         );
-    };
 
-    const enableUser = () => {
-        if (!userToEnable) return;
-        setProcessing(true);
-        router.post(
-            route('admin.users.enable', userToEnable.id),
-            {},
-            {
-                preserveScroll: true,
-                onFinish: () => {
-                    setProcessing(false);
-                    setUserToEnable(null);
-                },
-            },
-        );
-    };
+    const badges = (user) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+            <Badge className={roleStyles[user.role] || 'bg-gray-100 text-gray-600 ring-gray-600/15'}>{t(ROLE_LABELS[user.role] ?? user.role)}</Badge>
+            <Badge className={statusStyles[user.status] || 'bg-gray-100 text-gray-600 ring-gray-600/15'}>{t(STATUS_LABELS[user.status] ?? user.status)}</Badge>
+            {user.role !== 'admin' && (
+                user.created_by ? (
+                    <span title={user.creator?.name ? t('Added by :name', { name: user.creator.name }) : undefined}>
+                        <Badge className="bg-indigo-50 text-indigo-800 ring-indigo-600/20">
+                            <Building2 size={11} className="mr-1" aria-hidden="true" />
+                            {t('Managed by Q.R.A')}
+                        </Badge>
+                    </span>
+                ) : (
+                    <Badge className="bg-white text-gray-700 ring-gray-300">{t('Self-registered')}</Badge>
+                )
+            )}
+        </div>
+    );
 
     return (
         <AuthenticatedLayout header="All Users">
-            <Head title="All Users" />
+            <Head title={t('All Users')} />
 
-            {flash?.status && (
-                <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
-                    {flash.status}
-                </div>
-            )}
-            {flash?.error && (
-                <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">
-                    {flash.error}
-                </div>
-            )}
-            {errors?.user && (
-                <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">
-                    {errors.user}
-                </div>
-            )}
-
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                <div className="flex flex-col gap-3 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="relative w-full sm:max-w-xs">
-                        <Search
-                            size={16}
-                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                        <input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search name, email, phone..."
-                            className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-9 pr-3 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
-                        />
+            <div className="mx-auto max-w-7xl space-y-4">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <h1 className="font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900">{t('Users')}</h1>
+                        <p className="mt-0.5 text-sm text-gray-500">{t(':count accounts on the platform', { count: counts.all ?? users.total })}</p>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <select
-                            value={filters.role || ''}
-                            onChange={(e) =>
-                                updateFilter('role', e.target.value)
-                            }
-                            className="rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 px-3 text-sm text-gray-600 transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
+                    <div className="flex items-center gap-2">
+                    <Link
+                        href={route('admin.users.create')}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#0E3B2E]/20 bg-white px-4 text-sm font-semibold text-[#0E3B2E] shadow-sm transition hover:bg-emerald-50"
+                    >
+                        <UserPlus size={16} aria-hidden="true" />
+                        {t('Add user')}
+                    </Link>
+                    <div className="relative" ref={exportRef}>
+                        <button
+                            type="button"
+                            onClick={() => setExportOpen((open) => !open)}
+                            aria-expanded={exportOpen}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#124B3A]"
                         >
-                            <option value="">All roles</option>
-                            <option value="owner">Owner</option>
-                            <option value="advertiser">Advertiser</option>
-                            <option value="admin">Admin</option>
-                        </select>
+                            <Download size={16} />
+                            {t('Export')}
+                        </button>
+                        {exportOpen && (
+                            <div className="absolute right-0 z-20 mt-2 w-52 animate-pop-in overflow-hidden rounded-xl bg-white p-1 shadow-lg ring-1 ring-black/5">
+                                <a href={exportUrl('excel')} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                                    <FileSpreadsheet size={16} className="text-emerald-600" /> {t('Excel (.csv)')}
+                                </a>
+                                <a href={exportUrl('pdf')} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                                    <FileText size={16} className="text-red-500" /> PDF
+                                </a>
+                                {hasFilters && <p className="px-3 pb-2 pt-1 text-[11px] text-gray-400">{t('Exports follow the current filters.')}</p>}
+                            </div>
+                        )}
+                    </div>
+                    </div>
+                </div>
 
-                        <select
-                            value={filters.status || ''}
-                            onChange={(e) =>
-                                updateFilter('status', e.target.value)
-                            }
-                            className="rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 px-3 text-sm text-gray-600 transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
-                        >
-                            <option value="">All statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="disabled">Disabled</option>
-                        </select>
+                {errors?.user && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{errors.user}</div>}
 
-                        <div className="relative">
-                            <button
-                                onClick={() => setExportOpen((v) => !v)}
-                                onBlur={() =>
-                                    setTimeout(
-                                        () => setExportOpen(false),
-                                        150,
-                                    )
-                                }
-                                className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
-                            >
-                                <Download size={15} />
-                                Export
-                            </button>
-                            {exportOpen && (
-                                <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
-                                    <a
-                                        href={exportUrl('excel')}
-                                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+                <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+                    <div className="space-y-4 border-b border-gray-100 p-4 sm:p-5">
+                        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label={t('Role')}>
+                            {ROLE_TABS.map(({ value, label }) => {
+                                const active = (filters.role || '') === value;
+                                return (
+                                    <button
+                                        key={label}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={active}
+                                        onClick={() => updateFilter('role', value)}
+                                        className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
+                                            active ? 'bg-[#0E3B2E] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
                                     >
-                                        <FileSpreadsheet
-                                            size={15}
-                                            className="text-green-600"
-                                        />
-                                        Excel (.csv)
-                                    </a>
-                                    <a
-                                        href={exportUrl('pdf')}
-                                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+                                        {t(label)}
+                                        <span className={`rounded-full px-1.5 py-px text-[11px] tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                            {roleCount(value)}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="relative w-full lg:max-w-sm">
+                                <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder={t('Search name, email, phone...')}
+                                    className="w-full rounded-xl border-gray-200 bg-gray-50/60 py-2.5 pl-10 pr-10 text-sm transition focus:border-[#0E3B2E] focus:bg-white focus:ring-4 focus:ring-[#0E3B2E]/10"
+                                />
+                                {loading ? (
+                                    <Loader2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />
+                                ) : search ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearch('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                        aria-label={t('Clear search')}
                                     >
-                                        <FileText
-                                            size={15}
-                                            className="text-red-600"
-                                        />
-                                        PDF
-                                    </a>
-                                </div>
-                            )}
+                                        <X size={14} />
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                {SOURCE_CHIPS.map(({ value, label, Icon }) => {
+                                    const active = filters.source === value;
+                                    return (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => updateFilter('source', active ? '' : value)}
+                                            aria-pressed={active}
+                                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition ${
+                                                active ? 'bg-[#0E3B2E] text-white ring-[#0E3B2E]' : 'bg-white text-gray-700 ring-gray-300 hover:ring-gray-400'
+                                            }`}
+                                        >
+                                            <Icon size={13} aria-hidden="true" />
+                                            {t(label)}
+                                            <span className={`tabular-nums ${active ? 'text-white/80' : 'text-gray-500'}`}>{counts.sources?.[value] ?? 0}</span>
+                                        </button>
+                                    );
+                                })}
+                                <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block" aria-hidden="true" />
+                                {STATUS_CHIPS.map(({ value, label, dot }) => {
+                                    const active = filters.status === value;
+                                    return (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => updateFilter('status', active ? '' : value)}
+                                            aria-pressed={active}
+                                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition ${
+                                                active ? 'bg-[#0E3B2E] text-white ring-[#0E3B2E]' : 'bg-white text-gray-600 ring-gray-200 hover:ring-gray-300'
+                                            }`}
+                                        >
+                                            <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : dot}`} />
+                                            {t(label)}
+                                            <span className={`tabular-nums ${active ? 'text-white/70' : 'text-gray-400'}`}>{counts.statuses?.[value] ?? 0}</span>
+                                        </button>
+                                    );
+                                })}
+                                {hasFilters && (
+                                    <button type="button" onClick={clearFilters} className="ml-1 text-xs font-semibold text-[#0E3B2E] underline decoration-[#D9A441] decoration-2 underline-offset-4">
+                                        {t('Clear filters')}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr className="border-b border-gray-100 bg-gray-50/50 text-xs uppercase tracking-wide text-gray-400">
-                                <th className="px-5 py-3 font-semibold">
-                                    User
-                                </th>
-                                <th className="px-5 py-3 font-semibold">
-                                    Contact
-                                </th>
-                                <th className="px-5 py-3 font-semibold">
-                                    Location
-                                </th>
-                                <th className="px-5 py-3 font-semibold">
-                                    Role
-                                </th>
-                                <th className="px-5 py-3 font-semibold">
-                                    Status
-                                </th>
-                                <th className="px-5 py-3 font-semibold">
-                                    Plan
-                                </th>
-                                <th className="px-5 py-3 font-semibold">
-                                    Joined
-                                </th>
-                                <th className="px-5 py-3 font-semibold text-right">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.data.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={8}
-                                        className="px-5 py-10 text-center text-gray-400"
-                                    >
-                                        No users found.
-                                    </td>
-                                </tr>
-                            ) : (
-                                users.data.map((user) => (
-                                    <tr
-                                        key={user.id}
-                                        className="border-b border-gray-50 transition-colors last:border-0 hover:bg-[#0E3B2E]/[0.02]"
-                                    >
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-3">
-                                                {user.profile_photo ? (
-                                                    <img
-                                                        src={`/storage/${user.profile_photo}`}
-                                                        alt={user.name}
-                                                        className="h-9 w-9 rounded-full object-cover ring-2 ring-white"
-                                                    />
-                                                ) : (
-                                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0E3B2E]/10 text-xs font-semibold text-[#0E3B2E]">
-                                                        {user.name
-                                                            .charAt(0)
-                                                            .toUpperCase()}
+                    <div className={`transition-opacity duration-200 ${loading ? 'opacity-50' : ''}`}>
+                        {users.data.length === 0 ? (
+                            <div className="px-6 py-16 text-center">
+                                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
+                                    {hasFilters ? <SearchX size={24} /> : <UsersRound size={24} />}
+                                </span>
+                                <p className="mt-4 font-semibold text-gray-800">{t('No users found.')}</p>
+                                {hasFilters && (
+                                    <>
+                                        <p className="mt-1 text-sm text-gray-500">{t('Try another search or clear the filters.')}</p>
+                                        <button type="button" onClick={clearFilters} className="mt-4 rounded-lg bg-[#0E3B2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#124B3A]">
+                                            {t('Clear filters')}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                {/* Desktop table */}
+                                <table className="hidden w-full text-left text-sm md:table">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 bg-gray-50/70 text-[11px] uppercase tracking-wide text-gray-500">
+                                            <th className="px-5 py-3 font-semibold">{t('User')}</th>
+                                            <th className="px-5 py-3 font-semibold">{t('Contact')}</th>
+                                            <th className="min-w-[11.5rem] px-5 py-3 font-semibold">{t('Account')}</th>
+                                            <th className="hidden px-5 py-3 font-semibold lg:table-cell">{t('Plan')}</th>
+                                            <th className="hidden px-5 py-3 font-semibold xl:table-cell">{t('Joined')}</th>
+                                            <th className="px-5 py-3 text-right font-semibold">{t('Actions')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {users.data.map((user) => (
+                                            <tr key={user.id} className="group transition-colors hover:bg-[#0E3B2E]/[0.025]">
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        <UserAvatar user={user} size="sm" />
+                                                        <div className="min-w-0">
+                                                            <p className="truncate font-semibold text-gray-900">
+                                                                {user.name}
+                                                                {user.id === currentUserId && <span className="ml-1.5 text-xs font-medium text-gray-400">({t('you')})</span>}
+                                                            </p>
+                                                            <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                                        </div>
                                                     </div>
-                                                )}
-                                                <div>
-                                                    <p className="font-medium text-gray-800">
-                                                        {user.name}
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    <p className="inline-flex items-center gap-1 text-xs text-gray-700">
+                                                        <Phone size={12} className="text-gray-400" />
+                                                        {user.phone || '—'}
                                                     </p>
+                                                    <div className="mt-1">{location(user)}</div>
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    {badges(user)}
+                                                    {user.created_by && user.creator?.name && (
+                                                        <p className="mt-1.5 text-[11px] text-gray-500">{t('Added by :name', { name: user.creator.name })}</p>
+                                                    )}
                                                     {user.national_id && (
-                                                        <p className="flex items-center gap-1 text-xs text-gray-400">
-                                                            <IdCard
-                                                                size={11}
-                                                            />
-                                                            {
-                                                                user.national_id
-                                                            }
+                                                        <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-gray-400">
+                                                            <IdCard size={12} />
+                                                            {user.national_id}
                                                         </p>
                                                     )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-600">
-                                            <p>{user.email}</p>
-                                            <p className="text-xs text-gray-400">
-                                                {user.phone}
-                                            </p>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-600">
-                                            {user.sector ? (
-                                                <span className="flex items-center gap-1 text-xs">
-                                                    <MapPin size={12} />
-                                                    {user.sector.name},{' '}
-                                                    {
-                                                        user.sector.district
-                                                            ?.name
-                                                    }
-                                                </span>
-                                            ) : (
-                                                <span className="text-xs text-gray-300">
-                                                    —
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span
-                                                className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${roleStyles[user.role] || 'bg-gray-100 text-gray-600'}`}
-                                            >
-                                                {user.role}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span
-                                                className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusStyles[user.status] || 'bg-gray-100 text-gray-600'}`}
-                                            >
-                                                {user.status}
-                                            </span>
-                                            {user.status === 'disabled' && (
-                                                <p className="mt-1 max-w-[14rem] text-xs text-gray-400">
-                                                    {user.disabled_reason
-                                                        ? user.disabled_reason
-                                                        : formatDate(user.disabled_at, language)}
-                                                </p>
-                                            )}
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="space-y-1">
-                                                <PlanBadge user={user} />
-                                                {user.role === 'admin' || user.role === 'advertiser' ? (
-                                                    <p className="text-xs text-gray-400">Owner plan not applicable</p>
-                                                ) : (
-                                                    <p className="text-xs text-gray-400">
-                                                        {user.expires_at ? `Until ${formatDate(user.expires_at, language)}` : 'No expiry date set'}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-xs text-gray-400">
-                                            {formatDate(user.created_at, language)}
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    disabled={user.role !== 'owner'}
-                                                    onClick={() =>
-                                                        openPlan(user)
-                                                    }
-                                                    className="inline-flex items-center gap-1 rounded-lg border border-[#0E3B2E]/20 px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] transition-colors hover:bg-[#0E3B2E]/5 disabled:cursor-not-allowed disabled:opacity-40"
-                                                >
-                                                    <CalendarClock size={14} />
-                                                    Plan
-                                                </button>
-                                                {user.status === 'disabled' ? (
-                                                    <button
-                                                        type="button"
-                                                        disabled={
-                                                            user.role === 'admin' ||
-                                                            user.id === currentUserId
-                                                        }
-                                                        onClick={() => setUserToEnable(user)}
-                                                        className="inline-flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <RotateCcw size={14} />
-                                                        Enable
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        disabled={
-                                                            user.role === 'admin' ||
-                                                            user.id === currentUserId
-                                                        }
-                                                        onClick={() => openDisable(user)}
-                                                        className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <Ban size={14} />
-                                                        Disable
-                                                    </button>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    disabled={
-                                                        user.role === 'admin' ||
-                                                        user.id === currentUserId
-                                                    }
-                                                    onClick={() =>
-                                                        setUserToDelete(user)
-                                                    }
-                                                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                >
-                                                    <Trash2 size={14} />
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                                    {user.status === 'disabled' && user.disabled_reason && (
+                                                        <p className="mt-1 max-w-[14rem] text-[11px] text-gray-400">{user.disabled_reason}</p>
+                                                    )}
+                                                </td>
+                                                <td className="hidden px-5 py-3.5 lg:table-cell">
+                                                    <PlanCell user={user} />
+                                                </td>
+                                                <td className="hidden whitespace-nowrap px-5 py-3.5 text-xs text-gray-500 xl:table-cell">{formatDate(user.created_at, language)}</td>
+                                                <td className="px-5 py-3.5">{actions(user)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
 
-                {users.data.length > 0 && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/30 p-4">
-                        <p className="text-xs text-gray-400">
-                            Showing {users.from} to {users.to} of {users.total}{' '}
-                            users
-                        </p>
-                        <div className="flex gap-1">
-                            {users.links.map((link, i) => (
-                                <Link
-                                    key={i}
-                                    href={link.url || '#'}
-                                    preserveState
-                                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                                        link.active
-                                            ? 'bg-[#0E3B2E] text-white'
-                                            : link.url
-                                              ? 'text-gray-600 hover:bg-gray-100'
-                                              : 'cursor-not-allowed text-gray-300'
-                                    }`}
-                                    dangerouslySetInnerHTML={{
-                                        __html: link.label,
-                                    }}
-                                />
-                            ))}
-                        </div>
+                                {/* Phone cards */}
+                                <ul className="divide-y divide-gray-100 md:hidden">
+                                    {users.data.map((user) => (
+                                        <li key={user.id} className="p-4">
+                                            <div className="flex items-start gap-3">
+                                                <UserAvatar user={user} size="md" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate font-semibold text-gray-900">{user.name}</p>
+                                                    <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                                    <div className="mt-2">{badges(user)}</div>
+                                                </div>
+                                                {actions(user)}
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap items-end justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5">
+                                                <div className="space-y-1">
+                                                    <p className="inline-flex items-center gap-1 text-xs text-gray-700">
+                                                        <Phone size={12} className="text-gray-400" />
+                                                        {user.phone || '—'}
+                                                    </p>
+                                                    <div>{location(user)}</div>
+                                                </div>
+                                                <PlanCell user={user} />
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
                     </div>
-                )}
+
+                    {users.data.length > 0 && users.last_page > 1 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 sm:px-5">
+                            <p className="text-xs text-gray-500">{t('Showing :from–:to of :total', { from: users.from, to: users.to, total: users.total })}</p>
+                            <div className="flex items-center gap-1">
+                                {users.links.map((link, index) => {
+                                    const isPrev = index === 0;
+                                    const isNext = index === users.links.length - 1;
+                                    const content = isPrev ? <ChevronLeft size={16} /> : isNext ? <ChevronRight size={16} /> : link.label;
+                                    const className = `flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-semibold transition ${
+                                        link.active ? 'bg-[#0E3B2E] text-white' : link.url ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-300'
+                                    }`;
+
+                                    return link.url ? (
+                                        <Link
+                                            key={index}
+                                            href={link.url}
+                                            preserveState
+                                            preserveScroll
+                                            onStart={() => setLoading(true)}
+                                            onFinish={() => setLoading(false)}
+                                            className={className}
+                                            aria-label={isPrev ? t('Previous') : isNext ? t('Next') : undefined}
+                                        >
+                                            {content}
+                                        </Link>
+                                    ) : (
+                                        <span key={index} className={className}>{content}</span>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <ConfirmActionModal
                 open={!!userToDelete}
-                title="Delete this user?"
-                message={
-                    userToDelete
-                        ? `${userToDelete.name} will no longer be able to sign in. Their tenants, leases and payment history are kept for your records.`
-                        : ''
-                }
-                confirmLabel="Yes, Delete"
+                title={t('Delete this user?')}
+                message={userToDelete ? t(':name will no longer be able to sign in. Their tenants, leases and payment history are kept for your records.', { name: userToDelete.name }) : ''}
+                confirmLabel={t('Yes, Delete')}
                 tone="danger"
                 processing={processing}
-                onConfirm={deleteUser}
-                onCancel={() => {
-                    if (!processing) setUserToDelete(null);
-                }}
+                onConfirm={() => userToDelete && submit('delete', route('admin.users.destroy', userToDelete.id), {}, () => setUserToDelete(null))}
+                onCancel={() => !processing && setUserToDelete(null)}
             />
-
-            {userToDisable && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-                        <h3 className="font-[Sora] text-lg font-bold text-gray-800">
-                            Disable this account?
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {userToDisable.name} will be blocked at sign in. Their data stays
-                            untouched and you can re-enable them at any time.
-                        </p>
-
-                        <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-gray-400">
-                            Reason (optional)
-                        </label>
-                        <input
-                            type="text"
-                            value={disableReason}
-                            maxLength={255}
-                            onChange={(e) => setDisableReason(e.target.value)}
-                            placeholder="e.g. Unpaid subscription"
-                            className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
-                        />
-
-                        <div className="mt-4 flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (!processing) setUserToDisable(null);
-                                }}
-                                disabled={processing}
-                                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={disableUser}
-                                disabled={processing}
-                                className="flex-1 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-                            >
-                                {processing ? 'Please wait...' : 'Disable account'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <ConfirmActionModal
                 open={!!userToEnable}
-                title="Re-enable this account?"
-                message={
-                    userToEnable
-                        ? `${userToEnable.name} will be restored to their previous status and can sign in again.`
-                        : ''
-                }
-                confirmLabel="Yes, Enable"
+                title={t('Re-enable this account?')}
+                message={userToEnable ? t(':name will be restored to their previous status and can sign in again.', { name: userToEnable.name }) : ''}
+                confirmLabel={t('Yes, Enable')}
                 processing={processing}
-                onConfirm={enableUser}
-                onCancel={() => {
-                    if (!processing) setUserToEnable(null);
-                }}
+                onConfirm={() => userToEnable && submit('post', route('admin.users.enable', userToEnable.id), {}, () => setUserToEnable(null))}
+                onCancel={() => !processing && setUserToEnable(null)}
             />
 
-            {planUser && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-                        <h3 className="font-[Sora] text-lg font-bold text-gray-800">
-                            Update plan
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {planUser.name} — the subscription starts from
-                            approval/renewal. Remaining:{' '}
-                            {planUser.plan_is_expired
-                                ? 'expired'
-                                : `${planUser.plan_remaining_days} day${planUser.plan_remaining_days === 1 ? '' : 's'}`}
-                            .
-                        </p>
-
-                        <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-gray-400">
-                            Plan end date
-                        </label>
-                        <input
-                            type="date"
-                            value={planDate}
-                            min={new Date(Date.now() + 86400000)
-                                .toISOString()
-                                .slice(0, 10)}
-                            onChange={(e) => setPlanDate(e.target.value)}
-                            className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
-                        />
-
+            {disableShown && (
+                <DialogShell
+                    open={!!userToDisable}
+                    onClose={() => !processing && setUserToDisable(null)}
+                    title={t('Disable this account?')}
+                    description={t(':name will be signed out and blocked from signing in. Their data stays untouched and you can re-enable them at any time.', { name: disableShown.name })}
+                >
+                    <label htmlFor="disable-reason" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {t('Reason (optional)')}
+                    </label>
+                    <input
+                        id="disable-reason"
+                        type="text"
+                        value={disableReason}
+                        maxLength={255}
+                        onChange={(e) => setDisableReason(e.target.value)}
+                        placeholder={t('e.g. Unpaid subscription')}
+                        className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-50/60 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white focus:ring-4 focus:ring-[#0E3B2E]/10"
+                    />
+                    <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => !processing && setUserToDisable(null)} disabled={processing} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60">
+                            {t('Cancel')}
+                        </button>
                         <button
                             type="button"
-                            onClick={renewPlan}
+                            onClick={() => userToDisable && submit('post', route('admin.users.disable', userToDisable.id), { disabled_reason: disableReason || undefined }, () => setUserToDisable(null))}
                             disabled={processing}
-                            className="mt-3 w-full rounded-xl border border-[#0E3B2E]/20 py-2.5 text-sm font-medium text-[#0E3B2E] hover:bg-[#0E3B2E]/5 disabled:opacity-60"
+                            className="flex-1 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
                         >
-                            Renew +1 year
+                            {processing ? t('Please wait...') : t('Disable account')}
                         </button>
-
-                        <div className="mt-4 flex gap-3">
-                            <button
-                                type="button"
-                                onClick={closePlan}
-                                disabled={processing}
-                                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={savePlan}
-                                disabled={processing || !planDate}
-                                className="flex-1 rounded-xl bg-[#0E3B2E] py-2.5 text-sm font-semibold text-white hover:bg-[#0a2e23] disabled:opacity-60"
-                            >
-                                {processing ? 'Please wait...' : 'Save date'}
-                            </button>
-                        </div>
                     </div>
-                </div>
+                </DialogShell>
+            )}
+
+            {planShown && (
+                <DialogShell
+                    open={!!planUser}
+                    onClose={() => !processing && setPlanUser(null)}
+                    title={t('Update plan')}
+                    description={
+                        planShown.plan_is_expired
+                            ? t(':name — the plan has expired.', { name: planShown.name })
+                            : t(':name — :days days remaining.', { name: planShown.name, days: planShown.plan_remaining_days ?? 0 })
+                    }
+                >
+                    <button
+                        type="button"
+                        onClick={() => planUser && submit('patch', route('admin.users.plan', planUser.id), { renew: true }, () => setPlanUser(null))}
+                        disabled={processing}
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] py-2.5 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60"
+                    >
+                        <RotateCcw size={15} />
+                        {t('Renew +1 year')}
+                    </button>
+                    <div className="my-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <span className="h-px flex-1 bg-gray-200" />
+                        {t('or set a date')}
+                        <span className="h-px flex-1 bg-gray-200" />
+                    </div>
+                    <label htmlFor="plan-date" className="block text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Plan end date')}</label>
+                    <input
+                        id="plan-date"
+                        type="date"
+                        value={planDate}
+                        min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                        onChange={(e) => setPlanDate(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-50/60 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white focus:ring-4 focus:ring-[#0E3B2E]/10"
+                    />
+                    <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => !processing && setPlanUser(null)} disabled={processing} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60">
+                            {t('Cancel')}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => planUser && submit('patch', route('admin.users.plan', planUser.id), { expires_at: planDate }, () => setPlanUser(null))}
+                            disabled={processing || !planDate}
+                            className="flex-1 rounded-xl border border-[#0E3B2E]/20 py-2.5 text-sm font-semibold text-[#0E3B2E] hover:bg-[#0E3B2E]/5 disabled:opacity-60"
+                        >
+                            {processing ? t('Please wait...') : t('Save date')}
+                        </button>
+                    </div>
+                </DialogShell>
             )}
         </AuthenticatedLayout>
     );

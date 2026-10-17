@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\MobileAuthController;
+use App\Support\IdentityNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -14,20 +15,24 @@ class ProfileCompletionController extends Controller
         abort_if($request->user()->status === 'rejected', 403, 'This account has been rejected.');
         abort_unless($request->user()->hasVerifiedEmail(), 403, 'Verify your email before completing your profile.');
 
+        $request->merge([
+            'national_id' => IdentityNumber::normalize(
+                $request->input('identity_document_type'),
+                $request->input('national_id'),
+            ),
+        ]);
+
         try {
             $validated = $request->validate(
                 [
-                    'national_id'   => 'required|string|max:20',
+                    'national_id'   => IdentityNumber::rules($request->input('identity_document_type')),
                     'identity_document_type' => 'required|in:nida,passport',
-                    'address'       => 'required|string|max:255',
                     'profile_photo' => 'required|image|max:2048',
                     'sector_id'     => 'required|exists:sectors,id',
                 ],
                 // Custom user-friendly error messages instead of Laravel defaults:
                 [
-                    'national_id.required'   => 'Please enter your NIDA or passport number.',
-                    'national_id.max'        => 'The identification number must be 20 characters or fewer.',
-                    'national_id.string'     => 'The identification number must be text.',
+                    ...IdentityNumber::messages(),
 
                     'profile_photo.required' => '📸 Please upload a profile photo.',
                     'profile_photo.image'    => '📸 The file you uploaded is not a valid image. Only JPG, PNG, GIF, and WEBP are allowed.',
@@ -44,7 +49,6 @@ class ProfileCompletionController extends Controller
             $updated = $user->update([
                 'national_id'       => $validated['national_id'],
                 'identity_document_type' => $validated['identity_document_type'],
-                'address'           => $validated['address'],
                 'profile_photo'     => $path,
                 'sector_id'         => $validated['sector_id'],
                 'profile_completed' => true,

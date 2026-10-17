@@ -15,8 +15,9 @@ use Inertia\Response;
  * Second step of the sign-in flow.
  *
  * When a password checks out we do not hand over a session: the account is
- * parked in the session and a one-time code is delivered on the *other*
- * channel. Only a correct code promotes the visitor to a logged-in session.
+ * parked in the session and one code is sent to both the email address and
+ * the WhatsApp number. Only a correct code promotes the visitor to a
+ * logged-in session.
  */
 class LoginOtpController extends Controller
 {
@@ -41,12 +42,9 @@ class LoginOtpController extends Controller
             return redirect()->route('login');
         }
 
-        $channel = $this->pendingChannel($request);
-
         return Inertia::render('Auth/VerifyLoginOtp', [
-            'channel' => $channel,
-            'destination' => $this->maskedDestination($user, $channel),
-            'expiresInMinutes' => OtpService::CODE_TTL_MINUTES,
+            'destinations' => $this->destinations($user, $this->pendingChannels($request, $user)),
+            'expiresIn' => OtpService::secondsLeft($user, 'login_otp'),
             'status' => session('status'),
             // Local environments surface the code so the flow works without WhatsApp/SMTP.
             'devMode' => app()->environment('local'),
@@ -73,7 +71,7 @@ class LoginOtpController extends Controller
             $this->clearPending($request);
 
             return redirect()->route('login')->withErrors([
-                'email' => 'This account has been disabled. Please contact support if you believe this is a mistake.',
+                'email' => 'This account has been disabled. Please contact ITUZE GREEN PLATFORM for more information.',
             ]);
         }
 
@@ -93,7 +91,7 @@ class LoginOtpController extends Controller
     }
 
     /**
-     * Send a replacement code to the same channel.
+     * Send a replacement code to the email address and WhatsApp number.
      */
     public function resend(Request $request): RedirectResponse
     {
@@ -103,11 +101,10 @@ class LoginOtpController extends Controller
             return redirect()->route('login');
         }
 
-        $channel = $this->pendingChannel($request);
+        $channels = $this->otp->sendLoginOtp($user);
+        $request->session()->put(self::SESSION_CHANNEL, $channels);
 
-        $this->otp->sendLoginOtp($user, $channel);
-
-        return back()->with('status', 'We sent a new code to '.$this->maskedDestination($user, $channel).'.');
+        return back()->with('status', 'We sent a new code to your email and WhatsApp.');
     }
 
     protected function pendingUser(Request $request): ?User
@@ -117,9 +114,14 @@ class LoginOtpController extends Controller
         return $id ? User::query()->find($id) : null;
     }
 
-    protected function pendingChannel(Request $request): string
+    /**
+     * @return list<string>
+     */
+    protected function pendingChannels(Request $request, User $user): array
     {
-        return (string) $request->session()->get(self::SESSION_CHANNEL, OtpService::CHANNEL_EMAIL);
+        $channels = $request->session()->get(self::SESSION_CHANNEL);
+
+        return is_array($channels) && $channels !== [] ? $channels : $this->otp->loginOtpChannels($user);
     }
 
     protected function clearPending(Request $request): void
@@ -127,13 +129,20 @@ class LoginOtpController extends Controller
         $request->session()->forget([self::SESSION_USER, self::SESSION_CHANNEL, self::SESSION_REMEMBER]);
     }
 
-    protected function maskedDestination(User $user, string $channel): string
+    /**
+     * Where the code went, masked so a shoulder-surfer learns little.
+     *
+     * @param  list<string>  $channels
+     * @return list<array{channel: string, value: string}>
+     */
+    protected function destinations(User $user, array $channels): array
     {
-        if ($channel === OtpService::CHANNEL_WHATSAPP) {
-            return $this->maskPhone($user->phone);
-        }
-
-        return $this->maskEmail($user->email);
+        return array_map(fn (string $channel) => [
+            'channel' => $channel,
+            'value' => $channel === OtpService::CHANNEL_WHATSAPP
+                ? $this->maskPhone($user->phone)
+                : $this->maskEmail($user->email),
+        ], $channels);
     }
 
     protected function maskPhone(?string $phone): string

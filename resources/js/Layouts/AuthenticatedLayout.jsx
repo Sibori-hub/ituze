@@ -3,8 +3,10 @@ import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
 import InlineAlert from '@/Components/InlineAlert';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
+import SuccessModal from '@/Components/SuccessModal';
+import UserAvatar from '@/Components/UserAvatar';
 import { Link, usePage } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
     LayoutDashboard,
     Building2,
@@ -18,7 +20,7 @@ import {
     X,
     Bell,
     ChevronDown,
-    CheckCircle,
+    ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
@@ -48,8 +50,11 @@ const adminNavigation = [
     { name: 'Reports', href: 'reports.index', icon: BarChart3 },
 ];
 
+const ROLE_LABELS = { admin: 'Administrator', owner: 'Property Owner', advertiser: 'Advertiser' };
+
 export default function AuthenticatedLayout({ header, children }) {
-    const pageProps = usePage().props;
+    const page = usePage();
+    const pageProps = page.props;
     const user = pageProps.auth.user;
     const flash = pageProps.flash || {};
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -65,7 +70,8 @@ export default function AuthenticatedLayout({ header, children }) {
               : ownerNavigation;
 
     useEffect(() => {
-        const order = ['error', 'warning', 'success', 'info', 'status'];
+        // Success messages get the success dialog instead of a toast.
+        const order = ['error', 'warning', 'info', 'status'];
         const newToasts = [];
         order.forEach((type, i) => {
             const msg = flash[type];
@@ -77,6 +83,8 @@ export default function AuthenticatedLayout({ header, children }) {
         if (newToasts.length) setToasts(prev => [...prev, ...newToasts]);
         if (flash.success) setSuccessModal(flash.success);
     }, [flash]);
+
+    const closeSuccess = useCallback(() => setSuccessModal(null), []);
 
     const dismissToast = (id) => {
         setToasts(prev => prev.filter(t => t.id !== id));
@@ -99,24 +107,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     ))}
                 </div>
             )}
-            {successModal && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl ring-1 ring-white/30">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-                            <CheckCircle size={34} className="text-emerald-600" />
-                        </div>
-                        <h2 className="mt-5 text-xl font-bold text-gray-900">{t('Success')}</h2>
-                        <p className="mt-2 text-sm leading-6 text-gray-600">{successModal}</p>
-                        <button
-                            type="button"
-                            onClick={() => setSuccessModal(null)}
-                            className="mt-6 inline-flex min-w-32 items-center justify-center rounded-xl bg-[#0E3B2E] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0a2e23]"
-                        >
-                            {t('Continue')}
-                        </button>
-                    </div>
-                </div>
-            )}
+            <SuccessModal message={successModal} onClose={closeSuccess} />
 
             <div className="authenticated-layout-row flex min-h-0 flex-1" style={{ display: 'flex', flex: '1 1 0%', minHeight: 0 }}>
                 {sidebarOpen && (
@@ -128,7 +119,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* Sidebar */}
                 <aside
-                    className={`authenticated-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden transform bg-[#0E3B2E] transition-transform duration-200 ease-in-out lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${
+                    className={`authenticated-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden transform bg-[#0E3B2E] transition-transform duration-300 ease-out lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${
                         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
                 >
@@ -156,7 +147,9 @@ export default function AuthenticatedLayout({ header, children }) {
 
                     <nav className="authenticated-sidebar-nav flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain px-4 pt-4">
                         {navigation.map((item) => {
-                            const isActive = route().current(item.href);
+                            // Links that jump to a section of another page (an anchor) never
+                            // compete with that page's own entry for the active state.
+                            const isActive = route().current(item.href) && !item.anchor;
                             const className = `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                                 isActive
                                     ? 'bg-[#D9A441] text-[#0E3B2E] shadow-sm'
@@ -188,19 +181,25 @@ export default function AuthenticatedLayout({ header, children }) {
                         })}
                     </nav>
 
-                    <div className="shrink-0 border-t border-white/10 px-6 py-4">
-                        <p className="text-xs text-white/40">{t('Signed in as')}</p>
-                        <p className="text-sm font-medium text-white/80">
-                            {user.name}
-                        </p>
-                    </div>
+                    <Link
+                        href={route('profile.edit')}
+                        onClick={() => setSidebarOpen(false)}
+                        className="group mx-3 mb-3 mt-2 flex shrink-0 items-center gap-3 rounded-2xl bg-white/[0.06] p-3 ring-1 ring-inset ring-white/10 transition hover:bg-white/10"
+                    >
+                        <UserAvatar user={user} size="sm" className="ring-2 ring-[#D9A441]/60" />
+                        <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-white">{user.name}</span>
+                            <span className="block truncate text-[11px] text-white/50">{t(ROLE_LABELS[user.role] ?? 'Property Owner')}</span>
+                        </span>
+                        <ChevronRight size={15} className="text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white/80" />
+                    </Link>
                 </aside>
 
                 {/* Main content area */}
                 <div className="authenticated-main-column flex min-h-0 min-w-0 flex-1 flex-col" style={{ display: 'flex', flex: '1 1 0%', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
                     {/* Top bar */}
                     <header className="authenticated-main-header z-30 flex h-16 shrink-0 items-center justify-between bg-[#0E3B2E] px-4 sm:px-6" style={{ flexShrink: 0 }}>
-                        <div className="flex items-center gap-4">
+                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                             <button
                                 onClick={() => setSidebarOpen(true)}
                                 className="text-white/60 hover:text-white lg:hidden"
@@ -208,34 +207,45 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Menu size={22} />
                             </button>
                             {header && (
-                                <h1 className="font-[Sora] text-lg font-semibold text-white">
+                                <h1 className="hidden truncate font-[Sora] text-lg font-semibold text-white sm:block">
                                     {t(header)}
                                 </h1>
                             )}
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
                             <LanguageSwitcher />
 
-                            <button className="relative rounded-full p-2 text-white/60 hover:bg-white/5 hover:text-white">
-                                <Bell size={18} />
-                                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#D9A441]" />
-                            </button>
+                            {user.role !== 'advertiser' && (
+                                <Link
+                                    href={`${route('dashboard')}#visitor-inquiries`}
+                                    className="rounded-full p-2 text-white/60 transition hover:bg-white/5 hover:text-white"
+                                    aria-label={t('Visitor inquiries')}
+                                    title={t('Visitor inquiries')}
+                                >
+                                    <Bell size={18} />
+                                </Link>
+                            )}
 
                             <Dropdown>
                                 <Dropdown.Trigger>
-                                    <button className="flex items-center gap-2 rounded-full bg-white/5 py-1.5 pl-1.5 pr-3 text-sm font-medium text-white/90 hover:bg-white/10">
-                                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9A441] text-[#111827] font-semibold">
-                                            {user.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="hidden sm:inline">
-                                            {user.name}
+                                    <button className="flex items-center gap-2 rounded-full bg-white/5 p-1 text-sm sm:pr-3 font-medium text-white/90 transition hover:bg-white/10">
+                                        <UserAvatar user={user} size="xs" className="h-8 w-8 ring-2 ring-[#D9A441]/70" />
+                                        <span className="hidden max-w-[10rem] truncate sm:inline">
+                                            {user.first_name || user.name}
                                         </span>
-                                        <ChevronDown size={14} />
+                                        <ChevronDown size={14} className="hidden sm:block" />
                                     </button>
                                 </Dropdown.Trigger>
 
-                                <Dropdown.Content>
+                                <Dropdown.Content width="60">
+                                    <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+                                        <UserAvatar user={user} size="md" />
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-gray-900">{user.name}</p>
+                                            <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                        </div>
+                                    </div>
                                     <Dropdown.Link
                                         href={route('profile.edit')}
                                     >
@@ -270,7 +280,9 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <InlineAlert message={flash.info} type="info" />
                             </div>
                         )}
-                        {children}
+                        <div key={page.url.split('#')[0]} className="animate-fade-up motion-reduce:animate-none">
+                            {children}
+                        </div>
                     </main>
                     <footer className="authenticated-main-footer shrink-0 bg-[#111827] px-4 py-3 sm:px-6" style={{ flexShrink: 0 }}>
                         <p className="mx-auto max-w-7xl text-xs text-white/40">

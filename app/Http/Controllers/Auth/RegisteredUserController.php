@@ -46,6 +46,10 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): JsonResponse|RedirectResponse
     {
+        if ($request->filled('phone')) {
+            $request->merge(['phone' => self::normalizeRwandaPhone((string) $request->input('phone'))]);
+        }
+
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -103,5 +107,53 @@ class RegisteredUserController extends Controller
         return config('auth.email_otp_enabled')
             ? redirect()->route('verification.notice')
             : redirect()->route('phone.notice');
+    }
+
+    /**
+     * Tell the sign-up form whether an email or phone number is still free, so a
+     * duplicate is flagged before submit. It reveals no more than submitting the
+     * form would, and the route is rate limited.
+     */
+    public function availability(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'field' => ['required', 'in:email,phone'],
+            'value' => ['required', 'string', 'max:255'],
+        ]);
+
+        $value = $validated['field'] === 'phone'
+            ? self::normalizeRwandaPhone($validated['value'])
+            : strtolower(trim($validated['value']));
+
+        // Same scope as the unique rule on store(): deleted accounts still hold their details.
+        $taken = User::withTrashed()->where($validated['field'], $value)->exists();
+
+        return response()->json([
+            'available' => ! $taken,
+            'message' => $taken
+                ? ($validated['field'] === 'email'
+                    ? 'This email is already registered.'
+                    : 'This phone number is already registered.')
+                : null,
+        ]);
+    }
+
+    /**
+     * Accept +250 788 123 456, 250788123456 or 0788123456 and store 0788123456.
+     * Anything that is not a 9-digit mobile number is left for validation to reject.
+     */
+    public static function normalizeRwandaPhone(string $value): string
+    {
+        $digits = preg_replace('/\D/', '', $value) ?? '';
+
+        if (strlen($digits) === 12 && str_starts_with($digits, '250')) {
+            $digits = substr($digits, 3);
+        }
+
+        if (strlen($digits) === 9 && str_starts_with($digits, '7')) {
+            return '0'.$digits;
+        }
+
+        return $digits === '' ? $value : $digits;
     }
 }

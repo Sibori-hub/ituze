@@ -51,6 +51,12 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
+// Live "already registered?" hint, used by the sign-up form and by admins
+// creating accounts, so it sits outside the guest-only group.
+Route::get('register/availability', [RegisteredUserController::class, 'availability'])
+    ->middleware('throttle:30,1')
+    ->name('register.availability');
+
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');

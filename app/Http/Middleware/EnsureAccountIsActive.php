@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureAccountIsActive
 {
-    public const MESSAGE = 'This account has been disabled. Please contact support if you believe this is a mistake.';
+    public const MESSAGE = 'This account has been disabled. Please contact ITUZE GREEN PLATFORM for more information.';
 
     public function handle(Request $request, Closure $next): Response
     {

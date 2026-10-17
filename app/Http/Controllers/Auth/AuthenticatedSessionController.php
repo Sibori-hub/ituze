@@ -27,6 +27,7 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'loginOtpEnabled' => (bool) config('auth.login_otp_enabled'),
         ]);
     }
 
@@ -34,8 +35,8 @@ class AuthenticatedSessionController extends Controller
      * Handle an incoming authentication request.
      *
      * The password is only the first factor. When the account is not exempt we
-     * hand the session back and park the account until a one-time code sent on
-     * the *other* channel is confirmed.
+     * hand the session back and park the account until a one-time code, sent to
+     * both the email address and the WhatsApp number, is confirmed.
      */
     public function store(LoginRequest $request): RedirectResponse
     {
@@ -47,7 +48,7 @@ class AuthenticatedSessionController extends Controller
             $user->markEmailAsVerified();
         }
 
-        if (config('auth.login_otp_enabled') && $this->needsOtp($user, $request->identifierType())) {
+        if (config('auth.login_otp_enabled') && $this->needsOtp($user)) {
             return $this->startOtpChallenge($request, $user);
         }
 
@@ -73,26 +74,25 @@ class AuthenticatedSessionController extends Controller
     /**
      * Whether this account still has to clear the second factor.
      */
-    protected function needsOtp(User $user, string $identifierType): bool
+    protected function needsOtp(User $user): bool
     {
         if (in_array($user->role, config('auth.login_otp_exempt_roles', []), true)) {
             return false;
         }
 
-        return $this->otp->canReceiveOtp($user, $this->otp->loginOtpChannelFor($user, $identifierType));
+        return $this->otp->loginOtpChannels($user) !== [];
     }
 
     /**
-     * Send the code, drop the just-created session and park the account.
+     * Send the code to email and WhatsApp, drop the just-created session and
+     * park the account.
      */
     protected function startOtpChallenge(LoginRequest $request, User $user): RedirectResponse
     {
-        $channel = $this->otp->loginOtpChannelFor($user, $request->identifierType());
-
-        $this->otp->sendLoginOtp($user, $channel);
+        $channels = $this->otp->sendLoginOtp($user);
 
         $request->session()->put(LoginOtpController::SESSION_USER, $user->id);
-        $request->session()->put(LoginOtpController::SESSION_CHANNEL, $channel);
+        $request->session()->put(LoginOtpController::SESSION_CHANNEL, $channels);
         $request->session()->put(LoginOtpController::SESSION_REMEMBER, $request->boolean('remember'));
 
         Auth::guard('web')->logout();

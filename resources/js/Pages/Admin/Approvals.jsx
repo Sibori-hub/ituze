@@ -27,7 +27,6 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
         ['Email', user.email],
         ['Phone', user.phone],
         [user.identity_document_type === 'passport' ? 'Passport number' : 'NIDA number', user.national_id],
-        ['Address', user.address],
         ['Province', user.sector?.district?.province?.name],
         ['District', user.sector?.district?.name],
         ['Sector', user.sector?.name],
@@ -214,11 +213,6 @@ export default function Approvals({ pendingUsers }) {
                                     <p className="mt-1 text-xs font-medium text-green-700">
                                         {t('Email verified · Profile complete')}
                                     </p>
-                                    {user.address && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            {t('Address')}: {user.address}
-                                        </p>
-                                    )}
                                     <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-400">
                                         <span className="flex items-center gap-1">
                                             <IdCard size={13} />

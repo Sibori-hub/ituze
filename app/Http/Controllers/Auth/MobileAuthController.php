@@ -51,7 +51,14 @@ class MobileAuthController extends Controller
 
         if ($user->isDisabled()) {
             return response()->json([
-                'message' => 'This account has been disabled. Please contact support if you believe this is a mistake.',
+                'message' => 'This account has been disabled. Please contact ITUZE GREEN PLATFORM for more information.',
+            ], 403);
+        }
+
+        // Accounts Q.R.A manages on the owner's behalf do not sign in themselves.
+        if ($user->login_enabled === false) {
+            return response()->json([
+                'message' => 'This account is managed by ITUZE GREEN PLATFORM. Please contact us for more information.',
             ], 403);
         }
 
@@ -59,22 +66,26 @@ class MobileAuthController extends Controller
             $user->markEmailAsVerified();
         }
 
-        $channel = $this->otp->loginOtpChannelFor($user, $this->identifierType((string) $raw));
-
         if (config('auth.login_otp_enabled')
             && ! in_array($user->role, config('auth.login_otp_exempt_roles', []), true)
-            && $this->otp->canReceiveOtp($user, $channel)) {
-            $this->otp->sendLoginOtp($user, $channel);
+            && $this->otp->loginOtpChannels($user) !== []) {
+            $channels = $this->otp->sendLoginOtp($user);
 
             return response()->json([
                 'otp_required' => true,
-                'challenge' => $this->createChallenge($user, $channel),
-                'channel' => $channel,
-                'destination' => $channel === OtpService::CHANNEL_WHATSAPP ? $user->phone : $user->email,
+                'challenge' => $this->createChallenge($user, $channels),
+                'channels' => $channels,
+                'destinations' => [
+                    OtpService::CHANNEL_EMAIL => in_array(OtpService::CHANNEL_EMAIL, $channels, true) ? $user->email : null,
+                    OtpService::CHANNEL_WHATSAPP => in_array(OtpService::CHANNEL_WHATSAPP, $channels, true) ? $user->phone : null,
+                ],
+                // Kept for app versions that read a single channel.
+                'channel' => count($channels) > 1 ? 'both' : $channels[0],
+                'destination' => $user->email ?? $user->phone,
                 'expires_in_minutes' => OtpService::CODE_TTL_MINUTES,
-                'message' => $channel === OtpService::CHANNEL_WHATSAPP
-                    ? 'We sent a code to your WhatsApp number. Confirm it to finish signing in.'
-                    : 'We sent a code to your email address. Confirm it to finish signing in.',
+                'message' => count($channels) > 1
+                    ? 'We sent a code to your email and WhatsApp. Confirm it to finish signing in.'
+                    : 'We sent you a code. Confirm it to finish signing in.',
             ]);
         }
 
@@ -102,7 +113,7 @@ class MobileAuthController extends Controller
             $this->forgetChallenge($validated['challenge']);
 
             return response()->json([
-                'message' => 'This account has been disabled. Please contact support if you believe this is a mistake.',
+                'message' => 'This account has been disabled. Please contact ITUZE GREEN PLATFORM for more information.',
             ], 403);
         }
 
@@ -131,17 +142,18 @@ class MobileAuthController extends Controller
             'challenge' => ['required', 'string', 'size:64'],
         ]);
 
-        [$user, $channel] = $this->resolveChallenge($validated['challenge']);
+        [$user] = $this->resolveChallenge($validated['challenge']);
 
         if (! $user || $user->isDisabled()) {
             return $this->expiredChallengeResponse();
         }
 
-        $this->otp->sendLoginOtp($user, $channel);
+        $channels = $this->otp->sendLoginOtp($user);
 
         return response()->json([
-            'message' => 'We sent a new code.',
-            'channel' => $channel,
+            'message' => 'We sent a new code to your email and WhatsApp.',
+            'channels' => $channels,
+            'channel' => count($channels) > 1 ? 'both' : ($channels[0] ?? null),
         ]);
     }
 
@@ -161,30 +173,33 @@ class MobileAuthController extends Controller
         return response()->json(['message' => 'Logged out successfully.']);
     }
 
-    protected function createChallenge(User $user, string $channel): string
+    /**
+     * @param  list<string>  $channels
+     */
+    protected function createChallenge(User $user, array $channels): string
     {
         $challenge = Str::random(64);
 
         Cache::put($this->challengeKey($challenge), [
             'user_id' => $user->id,
-            'channel' => $channel,
+            'channels' => $channels,
         ], now()->addMinutes(OtpService::CODE_TTL_MINUTES));
 
         return $challenge;
     }
 
     /**
-     * @return array{0: ?User, 1: ?string}
+     * @return array{0: ?User, 1: list<string>}
      */
     protected function resolveChallenge(string $challenge): array
     {
         $pending = Cache::get($this->challengeKey($challenge));
 
         if (! is_array($pending)) {
-            return [null, null];
+            return [null, []];
         }
 
-        return [User::query()->find($pending['user_id']), $pending['channel']];
+        return [User::query()->find($pending['user_id']), $pending['channels'] ?? []];
     }
 
     protected function forgetChallenge(string $challenge): void
@@ -220,11 +235,6 @@ class MobileAuthController extends Controller
                 fn ($query) => $query->where('phone', $this->normalizePhone($identifier)),
             )
             ->first();
-    }
-
-    protected function identifierType(string $identifier): string
-    {
-        return str_contains($identifier, '@') ? 'email' : 'phone';
     }
 
     protected function normalizePhone(string $value): string

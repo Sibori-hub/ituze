@@ -85,7 +85,16 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => 'This account has been disabled. Please contact support if you believe this is a mistake.',
+                'email' => 'This account has been disabled. Please contact ITUZE GREEN PLATFORM for more information.',
+            ]);
+        }
+
+        // Accounts Q.R.A manages on the owner's behalf do not sign in themselves.
+        if ($user && $user->login_enabled === false) {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'This account is managed by ITUZE GREEN PLATFORM. Please contact us for more information.',
             ]);
         }
 

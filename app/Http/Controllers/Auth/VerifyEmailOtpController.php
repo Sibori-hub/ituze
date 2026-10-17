@@ -27,7 +27,7 @@ class VerifyEmailOtpController extends Controller
                 return response()->json(['message' => 'Email already verified.']);
             }
 
-            return redirect()->route($user->profile_completed ? 'dashboard' : 'profile.complete');
+            return redirect()->route($this->nextRoute($user));
         }
 
         $result = $this->otp->verifyEmailOtp($user, $request->input('otp'));
@@ -51,6 +51,19 @@ class VerifyEmailOtpController extends Controller
             return response()->json(['message' => 'Email verified successfully.']);
         }
 
-        return redirect()->route($user->profile_completed ? 'dashboard' : 'profile.complete');
+        return redirect()->route($this->nextRoute($user));
+    }
+
+    /**
+     * Send the user straight to the next onboarding step instead of letting
+     * middleware bounce them through pages they cannot open yet.
+     */
+    protected function nextRoute($user): string
+    {
+        if ($user->awaitingPhoneVerification()) {
+            return 'phone.notice';
+        }
+
+        return $user->profile_completed ? 'dashboard' : 'profile.complete';
     }
 }

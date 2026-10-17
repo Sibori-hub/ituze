@@ -122,13 +122,13 @@ return [
     |--------------------------------------------------------------------------
     |
     | When enabled, a correct email/phone + password combination does not grant
-    | access on its own: a one-time code is sent to the account's *other*
-    | channel (email sign-in codes go to the phone, phone sign-in codes go to
-    | the email) and must be entered before the dashboard opens.
+    | access on its own: one one-time code is sent to both the email address
+    | and the WhatsApp number on the account, and must be entered before the
+    | dashboard opens. Either copy works.
     |
-    | Every role, administrators included, must clear the second factor. When
-    | WhatsApp is not configured the code falls back to email, so a delivery
-    | problem cannot lock anyone out. List roles (comma separated) in
+    | Every role, administrators included, must clear the second factor.
+    | Because the code also goes to email, a WhatsApp delivery problem cannot
+    | lock anyone out. List roles (comma separated) in
     | LOGIN_OTP_EXEMPT_ROLES only as an emergency measure.
     |
     */

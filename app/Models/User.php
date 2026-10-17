@@ -33,7 +33,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'expires_at',
         'national_id',
         'identity_document_type',
-        'address',
         'sector_id',
         'profile_photo',
         'profile_completed',
@@ -77,6 +76,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'disabled_at' => 'datetime',
             'expires_at' => 'datetime',
             'profile_completed' => 'boolean',
+            'login_enabled' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -99,6 +99,23 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sector()
     {
         return $this->belongsTo(Sector::class);
+    }
+
+    /**
+     * The administrator who created this account, when Q.R.A registered it.
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by')->withTrashed();
+    }
+
+    /**
+     * Created by an administrator for an owner or advertiser that Q.R.A manages,
+     * rather than self-registered.
+     */
+    public function isManaged(): bool
+    {
+        return $this->created_by !== null;
     }
 
     public function isAdmin(): bool

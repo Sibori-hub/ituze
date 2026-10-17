@@ -15,7 +15,7 @@ export default function UpdateProfileInformation({
     const user = usePage().props.auth.user;
     const { t } = useTranslation();
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } =
+    const { data, setData, post, transform, errors, processing, recentlySuccessful } =
         useForm({
             first_name: user.first_name || '',
             last_name: user.last_name || '',
@@ -23,7 +23,6 @@ export default function UpdateProfileInformation({
             phone: user.phone || '',
             identity_document_type: user.identity_document_type || 'nida',
             national_id: user.national_id || '',
-            address: user.address || '',
             sector_id: user.sector_id || '',
             profile_photo: null,
         });
@@ -31,7 +30,10 @@ export default function UpdateProfileInformation({
     const submit = (e) => {
         e.preventDefault();
 
-        patch(route('profile.update'), { forceFormData: true });
+        // PHP only reads uploaded files from POST bodies, so the photo travels in a
+        // POST that Laravel treats as the PATCH route via _method.
+        transform((form) => ({ ...form, _method: 'patch' }));
+        post(route('profile.update'), { forceFormData: true, preserveScroll: true });
     };
 
     return (
@@ -96,12 +98,6 @@ export default function UpdateProfileInformation({
                         <TextInput id="national_id" className="mt-1 block w-full" value={data.national_id} onChange={(e) => setData('national_id', e.target.value)} required />
                         <InputError className="mt-2" message={errors.national_id} />
                     </div>
-                </div>
-
-                <div>
-                    <InputLabel htmlFor="address" value={t('Street address')} />
-                    <TextInput id="address" className="mt-1 block w-full" value={data.address} onChange={(e) => setData('address', e.target.value)} required autoComplete="street-address" />
-                    <InputError className="mt-2" message={errors.address} />
                 </div>
 
                 <div>

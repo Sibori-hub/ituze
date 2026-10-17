@@ -3,13 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Models\District;
+use App\Models\Province;
+use App\Models\Sector;
 use App\Models\User;
+use App\Support\IdentityNumber;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -21,9 +27,12 @@ class UserController extends Controller
         $search = $request->input('search');
         $role = $request->input('role');
         $status = $request->input('status');
+        $source = $request->input('source');
 
         return User::query()
-            ->with('sector.district.province')
+            ->with(['sector.district.province', 'creator:id,name'])
+            ->when($source === 'managed', fn ($query) => $query->whereNotNull('created_by'))
+            ->when($source === 'self', fn ($query) => $query->whereNull('created_by')->where('role', '!=', 'admin'))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -58,8 +67,91 @@ class UserController extends Controller
                 'search' => $request->input('search'),
                 'role' => $request->input('role'),
                 'status' => $request->input('status'),
+                'source' => $request->input('source'),
+            ],
+            // Totals for the role tabs and status chips, independent of the current filters.
+            'counts' => [
+                'all' => User::query()->count(),
+                'roles' => User::query()->selectRaw('role, COUNT(*) as total')->groupBy('role')->pluck('total', 'role'),
+                'statuses' => User::query()->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status'),
+                'sources' => [
+                    'managed' => User::query()->whereNotNull('created_by')->count(),
+                    'self' => User::query()->whereNull('created_by')->where('role', '!=', 'admin')->count(),
+                ],
             ],
         ]);
+    }
+
+    /**
+     * Form for registering an owner or advertiser that Q.R.A manages.
+     */
+    public function create(): InertiaResponse
+    {
+        return Inertia::render('Admin/CreateUser', [
+            'locations' => [
+                'provinces' => Province::query()->orderBy('name')->get(['id', 'name']),
+                'districts' => District::query()->orderBy('name')->get(['id', 'name', 'province_id']),
+                'sectors' => Sector::query()->orderBy('name')->get(['id', 'name', 'district_id']),
+            ],
+        ]);
+    }
+
+    /**
+     * Register an owner or advertiser on their behalf. The account is approved
+     * straight away, does not sign in, and keeps its email and phone only so
+     * Q.R.A can send information and updates.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->merge([
+            'phone' => $request->filled('phone')
+                ? RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone'))
+                : $request->input('phone'),
+            'national_id' => IdentityNumber::normalize($request->input('identity_document_type'), $request->input('national_id')),
+        ]);
+
+        $validated = $request->validate([
+            'role' => ['required', 'in:'.implode(',', RegisteredUserController::SELF_SERVICE_ROLES)],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', 'unique:'.User::class],
+            'identity_document_type' => ['required', 'in:nida,passport'],
+            'national_id' => IdentityNumber::rules($request->input('identity_document_type')),
+            'sector_id' => ['required', 'exists:sectors,id'],
+            'profile_photo' => ['required', 'image', 'max:2048'],
+        ], [
+            'phone.regex' => 'Enter a valid Rwanda mobile number (072, 073, 078, or 079).',
+            ...IdentityNumber::messages(),
+        ]);
+
+        $user = new User([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'name' => $validated['first_name'].' '.$validated['last_name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'role' => $validated['role'],
+            'status' => 'approved',
+            'expires_at' => $validated['role'] === 'owner' ? now()->addYear() : null,
+            'national_id' => $validated['national_id'],
+            'identity_document_type' => $validated['identity_document_type'],
+            'sector_id' => $validated['sector_id'],
+            'profile_photo' => $request->file('profile_photo')->store('profile-photos', 'public'),
+            'profile_completed' => true,
+            'created_by' => $request->user()->id,
+            // Never used to sign in: the account has no login of its own.
+            'password' => Str::random(64),
+        ]);
+        // The administrator vouches for these contacts; no codes are sent.
+        $user->forceFill([
+            'login_enabled' => false,
+            'email_verified_at' => now(),
+            'phone_verified_at' => now(),
+        ])->save();
+
+        return redirect()->route('admin.users', ['source' => 'managed'])
+            ->with('success', $user->name.' was added as a '.strtolower($user->roleLabel()).' managed by ITUZE GREEN PLATFORM.');
     }
 
     public function updatePlan(Request $request, User $user): RedirectResponse
@@ -94,7 +186,7 @@ class UserController extends Controller
             return $newExpiry;
         });
 
-        return back()->with('status', 'Owner plan updated. Access is available until '.$newExpiry->toDateString().'.');
+        return back()->with('success', 'Owner plan updated. Access is available until '.$newExpiry->toDateString().'.');
     }
 
     /**
@@ -121,7 +213,7 @@ class UserController extends Controller
 
         $user->endAllSessions();
 
-        return back()->with('status', $user->name.' has been disabled and can no longer sign in.');
+        return back()->with('success', $user->name.' has been disabled and can no longer sign in.');
     }
 
     /**
@@ -142,7 +234,7 @@ class UserController extends Controller
             'disabled_reason' => null,
         ])->save();
 
-        return back()->with('status', $user->name.' has been re-enabled.');
+        return back()->with('success', $user->name.' has been re-enabled.');
     }
 
     /**
@@ -156,7 +248,7 @@ class UserController extends Controller
         $user->endAllSessions();
         $user->delete();
 
-        return back()->with('status', $user->name.' was deleted. Their tenant, lease and payment records were kept.');
+        return back()->with('success', $user->name.' was deleted. Their tenant, lease and payment records were kept.');
     }
 
     /**
@@ -183,7 +275,7 @@ class UserController extends Controller
 
         $callback = function () use ($users) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Name', 'Email', 'Phone', 'Role', 'Status', 'National ID', 'Location', 'Joined', 'Expires']);
+            fputcsv($handle, ['Name', 'Email', 'Phone', 'Role', 'Status', 'Source', 'National ID', 'Location', 'Joined', 'Expires']);
 
             foreach ($users as $user) {
                 $location = $user->sector
@@ -196,6 +288,7 @@ class UserController extends Controller
                     $user->phone,
                     $user->role,
                     $user->status,
+                    $user->isManaged() ? 'Managed by Q.R.A' : ($user->isAdmin() ? 'Administrator' : 'Self-registered'),
                     $user->national_id,
                     $location,
                     $user->created_at->format('Y-m-d'),

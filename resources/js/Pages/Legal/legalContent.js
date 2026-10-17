@@ -128,7 +128,7 @@ export const privacySections = [
         heading: 'Data We Collect',
         list: [
             'Account data: your first and last name, email address, phone number, password (stored only as a secure hash), and the account type you choose (Property Owner or Advertiser).',
-            'Identity and verification data: national ID, identity document type, profile photo, and address, collected when an Owner completes their profile.',
+            'Identity and verification data: national ID, identity document type, profile photo, and location (province, district and sector), collected when an Owner completes their profile.',
             'Verification codes: one-time codes we send to your email address or phone number to confirm that they belong to you.',
             'Property and tenancy data: the properties, units, tenants, leases, and rent payment records that an Owner enters on the platform.',
             'Technical data: IP address, browser information, and session data needed to keep your account secure.',

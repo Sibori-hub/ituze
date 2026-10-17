@@ -55,6 +55,8 @@ const Content = ({
 
     if (width === '48') {
         widthClasses = 'w-48';
+    } else if (width === '60') {
+        widthClasses = 'w-60';
     }
 
     return (

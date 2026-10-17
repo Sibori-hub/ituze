@@ -7,6 +7,7 @@ use App\Notifications\EmailVerificationOtp;
 use App\Notifications\OtpCodeMail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class OtpService
 {
@@ -114,17 +115,29 @@ class OtpService
      | Login second factor
      * ------------------------------------------------------------------- */
 
-    public function sendLoginOtp(User $user, string $channel): void
+    /**
+     * Send one sign-in code to the email address and the WhatsApp number on
+     * the account, so the visitor can use whichever arrives first.
+     *
+     * @return list<string> the channels the code was sent to
+     */
+    public function sendLoginOtp(User $user): array
     {
-        $code = $this->issue($user, 'login_otp', ['login_otp_channel' => $channel]);
+        $channels = $this->loginOtpChannels($user);
 
-        if ($channel === self::CHANNEL_EMAIL) {
+        $code = $this->issue($user, 'login_otp', [
+            'login_otp_channel' => count($channels) > 1 ? 'both' : ($channels[0] ?? null),
+        ]);
+
+        if (in_array(self::CHANNEL_EMAIL, $channels, true)) {
             $this->deliverToEmail($user, $code, 'login');
-
-            return;
         }
 
-        $this->deliverToPhone($user, $code, 'login');
+        if (in_array(self::CHANNEL_WHATSAPP, $channels, true)) {
+            $this->deliverToPhone($user, $code, 'login');
+        }
+
+        return $channels;
     }
 
     public function verifyLoginOtp(User $user, ?string $code): string
@@ -139,30 +152,54 @@ class OtpService
     }
 
     /**
-     * The channel a sign-in code goes to: the *other* channel from the one used
-     * to sign in. When WhatsApp is not set up the code falls back to email, so
-     * an account can never be locked out by a missing integration.
+     * Every channel a sign-in code can reach for this account: email first,
+     * then WhatsApp.
+     *
+     * @return list<string>
      */
-    public function loginOtpChannelFor(User $user, string $identifierType): string
+    public function loginOtpChannels(User $user): array
     {
-        if ($identifierType === 'phone') {
-            return self::CHANNEL_EMAIL;
-        }
-
-        if ($user->phone && $this->whatsapp->isConfigured()) {
-            return self::CHANNEL_WHATSAPP;
-        }
-
-        return self::CHANNEL_EMAIL;
+        return array_values(array_filter([
+            $user->email ? self::CHANNEL_EMAIL : null,
+            $user->phone ? self::CHANNEL_WHATSAPP : null,
+        ]));
     }
 
-    public function canReceiveOtp(User $user, string $channel): bool
+    /**
+     * Issue a fresh verification code when the current one is missing or expired.
+     *
+     * Codes are created at registration, but the phone step only comes after
+     * the email step, so the first code can run out before the visitor gets
+     * there. At most one automatic code per minute, so reloads cannot flood the
+     * inbox or WhatsApp.
+     */
+    public function refreshIfExpired(User $user, string $field): bool
     {
-        if ($channel === self::CHANNEL_EMAIL) {
-            return (bool) $user->email;
+        $expiresAt = $user->{"{$field}_expires_at"};
+
+        if ($user->{$field} && $expiresAt && $expiresAt->isFuture()) {
+            return false;
         }
 
-        return (bool) $user->phone;
+        if (! RateLimiter::attempt("otp-auto:{$field}:{$user->id}", 1, fn () => true, 60)) {
+            return false;
+        }
+
+        $field === 'phone_otp'
+            ? $this->sendPhoneOtp($user)
+            : $this->sendEmailVerificationOtp($user);
+
+        return true;
+    }
+
+    /**
+     * Whole seconds until the code in the given column expires (0 when expired).
+     */
+    public static function secondsLeft(User $user, string $field): int
+    {
+        $expiresAt = $user->{"{$field}_expires_at"};
+
+        return $expiresAt && $expiresAt->isFuture() ? (int) now()->diffInSeconds($expiresAt) : 0;
     }
 
     /**
