@@ -883,7 +883,7 @@ class RentalLifecycleTest extends TestCase
             ->assertSessionHasErrors('identity_number');
 
         $payload['identity_number'] = '1234567890123456';
-        $payload['phone'] = '0790123456';
+        $payload['phone'] = '0750123456'; // 075 is not a Rwandan mobile prefix (079 is MTN and allowed)
         $this->post(route('tenants.store'), $payload)
             ->assertSessionHasErrors('phone');
 
@@ -1580,6 +1580,125 @@ class RentalLifecycleTest extends TestCase
                 ])
                 ->assertSessionHasErrors('payment_reference');
         }
+    }
+
+    public function test_admin_runs_the_whole_flow_for_an_owner_property_unit_tenant_and_lease(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $admin = User::create([
+            'name' => 'Platform Admin',
+            'email' => 'flow-admin@example.com',
+            'password' => 'password',
+            'role' => 'admin',
+            'profile_completed' => true,
+        ]);
+        $admin->markEmailAsVerified();
+        $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'expires_at' => now()->addYear()]);
+        $cellId = \Illuminate\Support\Facades\DB::table('cells')->insertGetId(['name' => 'Kiyovu', 'created_at' => now(), 'updated_at' => now()]);
+        $officeType = UnitType::create(['name' => 'Office']);
+
+        // 1. Property created by the admin, owned by the owner.
+        $this->actingAs($admin)->post(route('properties.store'), [
+            'owner_id' => $owner->id,
+            'name' => 'Managed Plaza',
+            'address' => 'KN 3 Rd',
+            'cell_id' => $cellId,
+        ])->assertSessionHasNoErrors();
+        $property = Property::query()->where('name', 'Managed Plaza')->firstOrFail();
+        $this->assertSame($owner->id, $property->owner_id);
+
+        // 2. Unit added to that property.
+        $this->post(route('properties.units.store', $property), [
+            'unit_type_id' => $officeType->id,
+            'unit_number' => 'OF-101',
+            'rent_amount' => 300000,
+            'rent_frequency' => 'monthly',
+            'status' => 'available',
+        ])->assertSessionHasNoErrors();
+        $unit = Unit::query()->where('unit_number', 'OF-101')->firstOrFail();
+
+        // 3. Tenant created by the admin (no owner involved), with an MTN 079 number.
+        $this->post(route('tenants.store'), [
+            'type' => 'individual',
+            'first_name' => 'Eric',
+            'last_name' => 'Habimana',
+            'identity_type' => 'national_id',
+            'identity_number' => '1199080012345678',
+            'email' => 'eric.tenant@example.com',
+            'phone' => '0791234567',
+            ...$this->tenantLocationData(),
+        ])->assertSessionHasNoErrors();
+        $tenant = Tenant::query()->where('email', 'eric.tenant@example.com')->firstOrFail();
+        $this->assertSame($admin->id, $tenant->created_by);
+
+        // Before the tenant rents anything, the owner has no link to them.
+        $this->actingAs($owner)->get(route('tenants.show', $tenant))->assertNotFound();
+        $this->actingAs($admin);
+
+        // 4. Tenant assigned to the unit with a signed lease.
+        $this->post(route('properties.units.tenancy.store', [$property, $unit]), [
+            'tenant_id' => $tenant->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'monthly_rent' => '300000.00',
+            'rent_frequency' => 'monthly',
+            'deposit_amount' => '300000.00',
+            'payment_method' => 'bank_transfer',
+            'payment_reference' => 'BK-DEP-0001',
+            'lease' => UploadedFile::fake()->create('lease.pdf', 40, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+
+        $tenancy = Tenancy::query()->where('tenant_id', $tenant->id)->firstOrFail();
+        $this->assertSame($unit->id, $tenancy->unit_id);
+        $this->assertSame('occupied', $unit->fresh()->status);
+        $this->assertSame(1, $tenancy->leases()->count());
+        $this->assertSame(12, $tenancy->rentCharges()->where('charge_type', 'rent')->count());
+
+        // The owner sees the property, the tenant and the lease in their own workspace.
+        $this->actingAs($owner)->get(route('tenants.show', $tenant))->assertOk();
+        $this->actingAs($owner)->get(route('leases.index'))
+            ->assertInertia(fn (Assert $page) => $page->has('leases.data', 1));
+    }
+
+    public function test_a_tenant_the_admin_adds_while_assigning_a_unit_reaches_the_owner_through_the_property(): void
+    {
+        Storage::fake('local');
+        [$property, $owner, $unit] = $this->makeUnitAndTenant();
+        $unit->update(['status' => 'available']);
+        $admin = User::create([
+            'name' => 'Platform Admin',
+            'email' => 'inline-admin@example.com',
+            'password' => 'password',
+            'role' => 'admin',
+            'profile_completed' => true,
+        ]);
+        $admin->markEmailAsVerified();
+
+        $this->actingAs($admin)->post(route('properties.units.tenancy.store', [$property, $unit]), [
+            'tenant_type' => 'individual',
+            'first_name' => 'Claudine',
+            'last_name' => 'Uwera',
+            'identity_type' => 'national_id',
+            'identity_number' => '1199270012345678',
+            'email' => 'claudine@example.com',
+            'phone' => '0799000111',
+            ...$this->tenantLocationData(),
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'monthly_rent' => '450.00',
+            'rent_frequency' => 'monthly',
+            'payment_method' => 'cash',
+            'lease' => UploadedFile::fake()->create('lease.pdf', 30, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+
+        $tenant = Tenant::query()->where('email', 'claudine@example.com')->firstOrFail();
+        $this->assertSame($admin->id, $tenant->created_by);
+
+        // No direct tenant-owner link, yet the owner sees the tenant living in their property.
+        $this->actingAs($owner)->get(route('tenants.show', $tenant))->assertOk();
+        $this->actingAs($owner)->get(route('tenants.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('tenants.data', fn ($tenants) => collect($tenants)->contains('email', 'claudine@example.com')));
     }
 
     private function tenantLocationData(): array

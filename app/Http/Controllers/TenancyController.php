@@ -51,7 +51,7 @@ class TenancyController extends Controller
             'tax_identification_number' => ['nullable', 'required_if:type,company', 'string', 'max:100'],
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'regex:/^(078|072|073)[0-9]{7}$/'],
+            'phone' => ['required', 'regex:/^(078|079|072|073)[0-9]{7}$/'],
         ]);
 
         Tenant::create([
@@ -93,7 +93,7 @@ class TenancyController extends Controller
             'first_name' => [$requiredForNewTenant('individual'), 'nullable', 'string', 'max:255'],
             'last_name' => [$requiredForNewTenant('individual'), 'nullable', 'string', 'max:255'],
             'email' => [$hasExistingTenant ? 'nullable' : 'required', 'email', 'max:255'],
-            'phone' => [$hasExistingTenant ? 'nullable' : 'required', 'regex:/^(078|072|073)[0-9]{7}$/'],
+            'phone' => [$hasExistingTenant ? 'nullable' : 'required', 'regex:/^(078|079|072|073)[0-9]{7}$/'],
             'identity_type' => [$hasExistingTenant ? 'nullable' : 'required', 'in:national_id,passport'],
             'identity_number' => [
                 $hasExistingTenant ? 'nullable' : 'required',

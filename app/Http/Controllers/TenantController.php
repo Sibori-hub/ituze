@@ -20,11 +20,6 @@ class TenantController extends Controller
         abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
         $data = $request->validate([
             ...app(TenantLocationService::class)->validationRules($request),
-            'owner_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner')),
-            ],
             'type' => ['required', 'in:individual,company'],
             'first_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
             'last_name' => ['required_if:type,individual', 'nullable', 'string', 'max:255'],
@@ -34,7 +29,7 @@ class TenantController extends Controller
             'tax_identification_number' => ['required_if:type,company', 'nullable', 'string', 'max:100'],
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'regex:/^(078|072|073)[0-9]{7}$/'],
+            'phone' => ['required', 'regex:/^(078|079|072|073)[0-9]{7}$/'],
         ]);
 
         $tenant = Tenant::create($data + [
@@ -42,7 +37,9 @@ class TenantController extends Controller
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
             'registration_number' => null,
             'address' => app(TenantLocationService::class)->address($data),
-            'created_by' => $user->isAdmin() ? ($data['owner_id'] ?? $user->id) : $user->id,
+            // Who added the record. Owners reach tenants through their properties,
+            // so an admin never links a tenant to an owner directly.
+            'created_by' => $user->id,
             'status' => 'active',
         ]);
 
@@ -70,7 +67,7 @@ class TenantController extends Controller
             'tax_identification_number' => ['required_if:type,company', 'nullable', 'string', 'max:100'],
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'regex:/^(078|072|073)[0-9]{7}$/'],
+            'phone' => ['required', 'regex:/^(078|079|072|073)[0-9]{7}$/'],
         ]);
 
         $tenant->update([

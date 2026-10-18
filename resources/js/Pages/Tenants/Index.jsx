@@ -11,7 +11,6 @@ export default function TenantsIndex({ tenants, filters = {}, isAdmin = false, o
     const first = useRef(true);
     const [showCreate, setShowCreate] = useState(false);
     const form = useForm({
-        owner_id: filters.owner_id || '',
         type: 'individual',
         first_name: '',
         last_name: '',
@@ -144,14 +143,6 @@ export default function TenantsIndex({ tenants, filters = {}, isAdmin = false, o
                             <button type="button" onClick={() => setShowCreate(false)} aria-label="Close"><X size={20} /></button>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {isAdmin && (
-                                <label className="text-sm font-medium text-gray-700">{t('Owner account (optional)')}
-                                    <select value={form.data.owner_id} onChange={event => form.setData('owner_id', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200">
-                                        <option value="">{t('No owner selected')}</option>
-                                        {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
-                                    </select>
-                                </label>
-                            )}
                             <label className="text-sm font-medium text-gray-700">{t('Type')}
                                 <select value={form.data.type} onChange={event => form.setData('type', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">{t('Individual')}</option><option value="company">{t('Company')}</option></select>
                             </label>
@@ -168,7 +159,7 @@ export default function TenantsIndex({ tenants, filters = {}, isAdmin = false, o
                             </label>
                             <label className="text-sm font-medium text-gray-700">{t(form.data.identity_type === 'national_id' ? 'National ID number' : 'Passport number')}<input required value={form.data.identity_number} maxLength={form.data.identity_type === 'national_id' ? 16 : 100} inputMode={form.data.identity_type === 'national_id' ? 'numeric' : 'text'} pattern={form.data.identity_type === 'national_id' ? '[0-9]{16}' : undefined} onChange={event => form.setData('identity_number', form.data.identity_type === 'national_id' ? event.target.value.replace(/\D/g, '').slice(0, 16) : event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
                             <label className="text-sm font-medium text-gray-700">{t('Email')}<input required type="email" value={form.data.email} onChange={event => form.setData('email', event.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>
-                            <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required type="tel" value={form.data.phone} maxLength={10} inputMode="numeric" pattern="(078|072|073)[0-9]{7}" onChange={event => form.setData('phone', event.target.value.replace(/\D/g, '').slice(0, 10))} className="mt-1 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Enter 10 digits starting with 078, 072, or 073.')}</span></label>
+                            <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required type="tel" value={form.data.phone} maxLength={10} inputMode="numeric" pattern="(078|079|072|073)[0-9]{7}" onChange={event => form.setData('phone', event.target.value.replace(/\D/g, '').slice(0, 10))} className="mt-1 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Enter 10 digits starting with 078, 079, 072, or 073.')}</span></label>
                             <TenantLocationFields data={form.data} setData={form.setData} errors={form.errors} t={t} />
                         </div>
                         {Object.values(form.errors).length > 0 && <p className="mt-4 text-sm text-red-700">{Object.values(form.errors)[0]}</p>}
