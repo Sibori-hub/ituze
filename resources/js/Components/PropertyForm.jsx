@@ -7,6 +7,7 @@ import {
     Waves, Wifi, Wine, X, Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { checkDescriptionResponse, descriptionErrorMessage } from '@/lib/descriptionRequest';
 
 export const AMENITIES = [
     { key: 'wifi', label: 'WiFi', icon: Wifi },
@@ -253,12 +254,13 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                     proximity: data.proximity,
                 }),
             });
-            const json = res.ok ? await res.json() : null;
+            checkDescriptionResponse(res);
+            const json = await res.json();
             if (!json?.description) throw new Error('empty');
             setData('description', json.description);
             setAi({ busy: false, message: t('Description written. Read it and change anything you like.'), tone: 'info' });
-        } catch {
-            setAi({ busy: false, message: t('The description could not be written right now. You can type it yourself.'), tone: 'warning' });
+        } catch (error) {
+            setAi({ busy: false, message: descriptionErrorMessage(error, t), tone: 'warning' });
         }
     };
 

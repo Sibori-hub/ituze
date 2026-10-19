@@ -1,6 +1,7 @@
 import { useTranslation } from '@/localization';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { checkDescriptionResponse, descriptionErrorMessage } from '@/lib/descriptionRequest';
 
 const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
     || decodeURIComponent(document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/)?.[2] || '');
@@ -36,12 +37,13 @@ export default function RoomDescriptionField({ property, data, setData, error })
                     bathrooms: data.bathrooms === '' ? null : data.bathrooms,
                 }),
             });
-            const json = res.ok ? await res.json() : null;
+            checkDescriptionResponse(res);
+            const json = await res.json();
             if (!json?.description) throw new Error('empty');
             setData('description', json.description);
             setState({ busy: false, message: t('Description written. Read it and change anything you like.'), tone: 'info' });
-        } catch {
-            setState({ busy: false, message: t('The description could not be written right now. You can type it yourself.'), tone: 'warning' });
+        } catch (error) {
+            setState({ busy: false, message: descriptionErrorMessage(error, t), tone: 'warning' });
         }
     };
 

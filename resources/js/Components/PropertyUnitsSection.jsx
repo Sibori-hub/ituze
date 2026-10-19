@@ -7,6 +7,7 @@ import { Link, router, useForm } from '@inertiajs/react';
 import { Building2, ChevronRight, ChevronsDownUp, ChevronsUpDown, DoorOpen, Edit, Layers, Loader2, Plus, Search, Sparkles, Trash2, User, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { checkDescriptionResponse, descriptionErrorMessage } from '@/lib/descriptionRequest';
 
 const inputClass = 'mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm transition-all focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15';
 
@@ -467,12 +468,13 @@ function UnitDialog({ open, property, floorNumbers, unit, initialFloor, onClose 
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token, 'X-XSRF-TOKEN': token },
                 body: JSON.stringify({ category_name: data.category_name.trim(), floor_number: data.floor_number }),
             });
-            const json = res.ok ? await res.json() : null;
+            checkDescriptionResponse(res);
+            const json = await res.json();
             if (!json?.description) throw new Error('empty');
             setData('description', json.description);
             setAi({ busy: false, message: t('Description written. Read it and change anything you like.'), tone: 'info' });
-        } catch {
-            setAi({ busy: false, message: t('The description could not be written right now. You can type it yourself.'), tone: 'warning' });
+        } catch (error) {
+            setAi({ busy: false, message: descriptionErrorMessage(error, t), tone: 'warning' });
         }
     };
 
