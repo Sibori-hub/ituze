@@ -203,6 +203,48 @@ body:has(.authenticated-app-shell) {
     body[data-print-target="payments-finance-report"] #payments-finance-report .screen-only {
         display: none !important;
     }
+
+    /* Reports page: print only the open tab. */
+    body[data-print-target="report-print"] #report-print,
+    body[data-print-target="report-print"] #report-print * {
+        visibility: visible !important;
+    }
+
+    body[data-print-target="report-print"] #report-print {
+        page: finance-report;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        margin: 0;
+    }
+
+    body[data-print-target="report-print"] #report-print .print-only {
+        display: block !important;
+    }
+
+    body[data-print-target="report-print"] #report-print .screen-only {
+        display: none !important;
+    }
+
+    body[data-print-target="report-print"] #report-print .overflow-x-auto {
+        overflow: visible !important;
+    }
+
+    body[data-print-target="report-print"] #report-print table {
+        min-width: 0 !important;
+        font-size: 8pt;
+    }
+
+    body[data-print-target="report-print"] #report-print tr,
+    body[data-print-target="report-print"] #report-print section,
+    body[data-print-target="report-print"] #report-print article > dl {
+        break-inside: avoid;
+    }
+
+    body[data-print-target="report-print"] #report-print * {
+        box-shadow: none !important;
+    }
 }
 
 /* Option cards hide their radio/checkbox visually (sr-only). Keep it inside its

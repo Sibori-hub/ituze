@@ -339,6 +339,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/leases', [ManagementController::class, 'leases'])->name('leases.index');
         Route::get('/payments', [ManagementController::class, 'payments'])->name('payments.index');
         Route::get('/reports', [ManagementController::class, 'reports'])->name('reports.index');
+        Route::get('/reports/export', [ManagementController::class, 'exportReport'])->middleware('throttle:20,1')->name('reports.export');
     });
 
     Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])

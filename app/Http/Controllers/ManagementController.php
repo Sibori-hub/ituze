@@ -8,18 +8,23 @@ use App\Models\RentCharge;
 use App\Models\RentPayment;
 use App\Models\Tenancy;
 use App\Models\User;
+use App\Services\PortfolioReport;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ManagementController extends Controller
 {
     /** Days before the end date when a lease counts as "ending soon". */
     public const ENDING_SOON_DAYS = 60;
+
+    public const REPORT_TABS = ['overview', 'arrears', 'owners', 'occupancy'];
 
     public function leases(Request $request): Response
     {
@@ -364,10 +369,35 @@ class ManagementController extends Controller
         ]);
     }
 
+    /**
+     * Tab and period chosen on the Reports page. A custom period may span at
+     * most three years.
+     *
+     * @return array{tab: string, period: array{preset: string, from: CarbonImmutable, to: CarbonImmutable}}
+     */
+    private function reportFilters(Request $request): array
+    {
+        $validated = $request->validate([
+            'tab' => ['nullable', Rule::in(self::REPORT_TABS)],
+            'period' => ['nullable', Rule::in(PortfolioReport::PRESETS)],
+            'from' => ['nullable', 'required_if:period,custom', 'date'],
+            'to' => ['nullable', 'required_if:period,custom', 'date', 'after_or_equal:from'],
+        ]);
+        $period = PortfolioReport::period($validated['period'] ?? null, $validated['from'] ?? null, $validated['to'] ?? null);
+
+        if ($period['from']->addYears(3)->lt($period['to'])) {
+            throw ValidationException::withMessages(['to' => __('Choose a period of three years or less.')]);
+        }
+
+        return ['tab' => $validated['tab'] ?? 'overview', 'period' => $period];
+    }
+
     public function reports(Request $request): JsonResponse|Response
     {
         $user = $request->user();
         $ownerId = $this->ownerFilter($request, $user);
+        ['tab' => $tab, 'period' => $period] = $this->reportFilters($request);
+        $portfolio = new PortfolioReport($user, $ownerId);
         $propertyScope = fn ($query) => $query
             ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
             ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId));
@@ -414,6 +444,8 @@ class ManagementController extends Controller
                         'rent' => $unit->activeTenancy->monthly_rent,
                     ])
                     ->values(),
+                // Monthly rent lost to rooms standing empty.
+                'vacant_rent' => round((float) $property->units->where('status', 'available')->sum('rent_amount'), 2),
             ])
             ->values();
 
@@ -421,7 +453,10 @@ class ManagementController extends Controller
             ->whereMonth('paid_at', now()->month)
             ->whereYear('paid_at', now()->year)
             ->sum('amount');
-        $agreementReports = $this->agreementFinanceReports($user, $ownerId);
+        // Per-lease finance detail is heavy; only the overview and the mobile app use it.
+        $agreementReports = $tab === 'overview' || $request->expectsJson()
+            ? $this->agreementFinanceReports($user, $ownerId)
+            : [];
 
         $report = [
             'summary' => [
@@ -448,14 +483,25 @@ class ManagementController extends Controller
                     - (float) (clone $chargePaymentsQuery)->whereHas('charge', fn ($query) => $query->whereDate('due_date', '<', today()))->sum('amount'),
                 ),
                 'collected_this_month' => $collectedThisMonth,
+                'deposits_held' => round(collect($agreementReports)->sum(fn ($agreement) => (float) ($agreement['deposit_credit'] ?? 0)), 2),
+                'vacant_rent' => round($properties->sum('vacant_rent'), 2),
             ],
             'properties' => $properties,
             'agreementReports' => $agreementReports,
             'managementFee' => $this->managementFeeReport($user, $ownerId),
             'isAdmin' => $user->isAdmin(),
             'owners' => $this->ownerOptions($user),
-            'filters' => ['owner_id' => $ownerId],
+            'filters' => [
+                'owner_id' => $ownerId,
+                'tab' => $tab,
+                'period' => $period['preset'],
+                'from' => $period['from']->toDateString(),
+                'to' => $period['to']->toDateString(),
+            ],
             'vatRate' => config('finance.rwanda_vat_rate'),
+            'overview' => $tab === 'overview' ? $portfolio->overview($period['from'], $period['to']) : null,
+            'arrears' => $tab === 'arrears' ? $portfolio->arrears() : null,
+            'statements' => $tab === 'owners' ? $portfolio->ownerStatements($period['from'], $period['to']) : null,
         ];
 
         if ($request->expectsJson()) {
@@ -463,6 +509,121 @@ class ManagementController extends Controller
         }
 
         return Inertia::render('Reports/Index', $report);
+    }
+
+    /**
+     * The open Reports tab as a CSV file (opens in Excel), using the same
+     * owner and period filters as the page.
+     */
+    public function exportReport(Request $request): StreamedResponse
+    {
+        $user = $request->user();
+        $ownerId = $this->ownerFilter($request, $user);
+        ['tab' => $tab, 'period' => $period] = $this->reportFilters($request);
+        $portfolio = new PortfolioReport($user, $ownerId);
+        $from = $period['from'];
+        $to = $period['to'];
+
+        $rows = match ($tab) {
+            'arrears' => $this->arrearsCsvRows($portfolio),
+            'owners' => $this->ownersCsvRows($portfolio, $from, $to),
+            'occupancy' => $this->occupancyCsvRows($user, $ownerId),
+            default => $this->overviewCsvRows($portfolio, $from, $to),
+        };
+        $filename = sprintf('ituze-%s-report-%s-to-%s.csv', $tab, $from->toDateString(), $to->toDateString());
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // byte-order mark so Excel reads accents correctly
+            foreach ($rows as $row) {
+                // A leading = + - @ would run as a formula in Excel.
+                fputcsv($out, array_map(fn ($value) => is_string($value) && preg_match('/^[=+\-@]/', $value) ? "'".$value : $value, $row));
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function overviewCsvRows(PortfolioReport $portfolio, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $overview = $portfolio->overview($from, $to);
+        $rows = [
+            ['Period', $from->toDateString().' to '.$to->toDateString()],
+            ['Rent collected (RWF)', $overview['rent_collected']],
+            ['Security deposits received (RWF)', $overview['deposits_received']],
+            ['Other charges collected (RWF)', $overview['other_collected']],
+            ['Total received (RWF)', $overview['total_received']],
+            ['VAT on rent (RWF)', $overview['vat']],
+            ['Q.R.A commission (RWF)', $overview['commission']],
+            ['Rent due in period (RWF)', $overview['rent_expected']],
+            ['Collection rate (%)', $overview['collection_rate'] ?? ''],
+            ['Overdue today (RWF)', $overview['arrears']],
+            [],
+            ['Month', 'Rent due (RWF)', 'Rent collected (RWF)'],
+        ];
+        foreach ($overview['months'] as $month) {
+            $rows[] = [$month['month'], $month['expected'], $month['collected']];
+        }
+
+        return $rows;
+    }
+
+    private function arrearsCsvRows(PortfolioReport $portfolio): array
+    {
+        $rows = [['Tenant', 'Phone', 'Email', 'Property', 'Room', 'Oldest due date', 'Days late', '1-30 days', '31-60 days', '61-90 days', 'Over 90 days', 'Total owed (RWF)']];
+        foreach ($portfolio->arrears()['rows'] as $row) {
+            $rows[] = [
+                $row['tenant']['name'], $row['tenant']['phone'], $row['tenant']['email'], $row['property']['name'], $row['unit']['unit_number'],
+                $row['oldest_due'], $row['days_late'], $row['buckets']['d30'], $row['buckets']['d60'], $row['buckets']['d90'], $row['buckets']['over90'], $row['total'],
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function ownersCsvRows(PortfolioReport $portfolio, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $statements = $portfolio->ownerStatements($from, $to);
+        $rows = [
+            ['Period', $from->toDateString().' to '.$to->toDateString()],
+            [],
+            ['Owner', 'Properties', 'Rent collected (RWF)', 'VAT (RWF)', 'Commission rate (%)', 'Q.R.A commission (RWF)', 'Payout to owner (RWF)', 'Deposits received (RWF)'],
+        ];
+        foreach ($statements['rows'] as $row) {
+            $rows[] = [$row['owner']['name'], $row['properties'], $row['rent_collected'], $row['vat'], $row['commission_rate'] ?? 0, $row['commission'], $row['payout'], $row['deposits_received']];
+        }
+        if ($statements['lines']) {
+            $rows[] = [];
+            $rows[] = ['Date paid', 'Receipt', 'Tenant', 'Property', 'Room', 'Months', 'From', 'To', 'Method', 'Amount (RWF)'];
+            foreach ($statements['lines'] as $line) {
+                $rows[] = [$line['paid_at'], $line['receipt_number'], $line['tenant'], $line['property'], $line['unit'], $line['months'], $line['period_start'], $line['period_end'], $line['method'], $line['amount']];
+            }
+        }
+
+        return $rows;
+    }
+
+    private function occupancyCsvRows(User $user, ?int $ownerId): array
+    {
+        $rows = [['Property', 'Rooms', 'Occupied', 'Available', 'Occupancy (%)', 'Monthly rent of empty rooms (RWF)']];
+        Property::query()
+            ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+            ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId))
+            ->withCount([
+                'units',
+                'units as occupied_units_count' => fn ($query) => $query->where('status', 'occupied'),
+                'units as available_units_count' => fn ($query) => $query->where('status', 'available'),
+            ])
+            ->withSum(['units as vacant_rent' => fn ($query) => $query->where('status', 'available')], 'rent_amount')
+            ->orderBy('name')
+            ->each(function (Property $property) use (&$rows) {
+                $rows[] = [
+                    $property->name, $property->units_count, $property->occupied_units_count, $property->available_units_count,
+                    $property->units_count ? round($property->occupied_units_count / $property->units_count * 100) : 0,
+                    round((float) $property->vacant_rent, 2),
+                ];
+            });
+
+        return $rows;
     }
 
     /**

@@ -178,6 +178,57 @@ class LeaseManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('payments.data.0.commission', null));
     }
 
+    public function test_reports_show_period_money_arrears_owner_statement_and_export(): void
+    {
+        app(RentScheduleService::class)->createCharges($this->tenancy);
+        $this->owner->update(['created_by' => $this->admin->id, 'management_fee_percent' => 10]);
+        // Rent paid on time up to August; September and October are unpaid.
+        $this->tenancy->rentCharges()->where('charge_type', 'rent')->whereDate('due_date', '<', '2026-09-01')->get()
+            ->each(fn ($charge) => \App\Models\RentPayment::create([
+                'rent_charge_id' => $charge->id, 'transaction_id' => (string) \Illuminate\Support\Str::uuid(), 'recorded_by' => $this->admin->id,
+                'amount' => 300000, 'vat_amount' => 54000, 'method' => 'bank_transfer', 'reference' => 'SLIP', 'paid_at' => $charge->due_date->copy()->setTime(10, 0),
+            ]));
+
+        $period = ['period' => 'custom', 'from' => '2026-01-01', 'to' => '2026-08-31'];
+        $this->actingAs($this->admin)->get(route('reports.index', $period))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Reports/Index')
+                ->where('overview.rent_collected', 2400000)
+                ->where('overview.rent_expected', 2400000)
+                ->where('overview.collection_rate', 100)
+                ->where('overview.commission', 240000)
+                ->where('overview.vat', 432000)
+                ->where('overview.arrears', 600000)
+                ->has('overview.months', 12)
+                ->where('arrears', null));
+
+        $this->get(route('reports.index', ['tab' => 'arrears']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('arrears.totals.total', 600000)
+                ->where('arrears.totals.d30', 300000)
+                ->where('arrears.totals.d60', 300000)
+                ->where('arrears.rows.0.tenant.name', 'Lease Tenant')
+                ->where('arrears.rows.0.days_late', 36));
+
+        $this->get(route('reports.index', ['tab' => 'owners', 'owner_id' => $this->owner->id, ...$period]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('statements.rows.0.commission', 240000)
+                ->where('statements.rows.0.payout', 2160000)
+                ->has('statements.lines', 8));
+
+        $csv = $this->get(route('reports.export', ['tab' => 'arrears']))->assertOk();
+        $this->assertStringContainsString('text/csv', $csv->headers->get('Content-Type'));
+        $this->assertStringContainsString('Lease Tenant', $csv->streamedContent());
+
+        $this->get(route('reports.index', ['period' => 'custom', 'from' => '2026-05-01', 'to' => '2026-04-01']))
+            ->assertSessionHasErrors('to');
+
+        // Another owner sees none of it.
+        $other = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'expires_at' => now()->addYear(), 'phone' => '0788000003']);
+        $this->actingAs($other)->get(route('reports.index', ['tab' => 'arrears']))
+            ->assertInertia(fn (Assert $page) => $page->where('arrears.totals.total', 0));
+    }
+
     public function test_ending_soon_tab_and_search(): void
     {
         $this->actingAs($this->admin)->get(route('leases.index', ['status' => 'ending_soon', 'search' => 'Lease Tenant']))
