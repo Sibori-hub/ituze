@@ -1,0 +1,30 @@
+kind: wasmer.io/App.v0
+name: ituze
+owner: siboriwanjye
+app_id: da_nBBIbtXU3rjQ
+enableDatabase: true
+enable_email: true
+env:
+  PHPIX_PHP_THREADS: '4'
+jobs:
+- name: after_deploy
+  trigger: post-deployment
+  action:
+    execute:
+      command: after_deploy
+annotations:
+  anybuild.run/config:
+    composer_build_script: post-update-cmd
+    composer_enable: true
+    name: out
+    node_build_command: npm run build
+    node_install_inputs:
+    - package.json
+    node_package_manager: npm
+    npm_version: '11'
+    php_framework: laravel
+    php_public_dir: public
+    phpix: true
+  anybuild.run/provider: laravel
+  anybuild.run/version: 0.33.0
+  wasmer.io/version: 7.5.0
