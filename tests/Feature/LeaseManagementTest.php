@@ -229,6 +229,29 @@ class LeaseManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('arrears.totals.total', 0));
     }
 
+    public function test_owner_dashboard_shows_this_months_money_payout_and_leases_ending(): void
+    {
+        $this->owner->update(['created_by' => $this->admin->id, 'management_fee_percent' => 10, 'profile_completed' => true, 'email_verified_at' => now(), 'phone_verified_at' => now()]);
+        $charge = \App\Models\RentCharge::create([
+            'tenancy_id' => $this->tenancy->id, 'charge_type' => 'rent', 'period_start' => '2026-10-12', 'period_end' => '2026-11-11', 'due_date' => '2026-10-12', 'amount' => 300000,
+        ]);
+        \App\Models\RentPayment::create([
+            'rent_charge_id' => $charge->id, 'transaction_id' => (string) \Illuminate\Support\Str::uuid(), 'recorded_by' => $this->admin->id,
+            'amount' => 300000, 'method' => 'bank_transfer', 'reference' => 'SLIP', 'paid_at' => now(),
+        ]);
+
+        $this->actingAs($this->owner->fresh())->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('ownerReport.managed', true)
+                ->where('ownerReport.month.rent_collected', 300000)
+                ->where('ownerReport.month.commission', 30000)
+                ->where('ownerReport.month.payout', 270000)
+                ->where('ownerReport.ending_soon.0.tenant.name', 'Lease Tenant')
+                ->has('ownerReport.recent_payments', 1)
+                ->has('ownerReport.months', 6));
+    }
+
     public function test_ending_soon_tab_and_search(): void
     {
         $this->actingAs($this->admin)->get(route('leases.index', ['status' => 'ending_soon', 'search' => 'Lease Tenant']))

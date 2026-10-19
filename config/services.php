@@ -68,6 +68,21 @@ return [
         ],
     ],
 
+    // SMS alerts (new inquiries). "log" only writes to the log until a provider is set up.
+    'sms' => [
+        'driver' => env('SMS_DRIVER', 'log'),
+        'default_country_code' => env('SMS_DEFAULT_COUNTRY_CODE', '250'),
+        'pindo' => [
+            'token' => env('PINDO_API_TOKEN'),
+            'sender' => env('PINDO_SENDER', 'PindoTest'),
+        ],
+        'africastalking' => [
+            'username' => env('AFRICASTALKING_USERNAME'),
+            'api_key' => env('AFRICASTALKING_API_KEY'),
+            'sender' => env('AFRICASTALKING_SENDER'),
+        ],
+    ],
+
     'whatsapp' => [
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'access_token' => env('WHATSAPP_ACCESS_TOKEN'),

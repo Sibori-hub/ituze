@@ -40,6 +40,7 @@ class PublicPropertyInquiryTest extends TestCase
             $table->string('password');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('remember_token')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
 
@@ -147,6 +148,49 @@ class PublicPropertyInquiryTest extends TestCase
             'visitor_phone' => '+250783000111',
             'status' => 'new',
         ]);
+    }
+
+    public function test_new_inquiry_alerts_owner_and_admins_by_email_and_sms(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+        [$owner, $property, $unit] = $this->makeListing();
+        $owner->update(['phone' => '0788111222']);
+        $admin = User::create(['name' => 'Admin', 'email' => 'admin@example.com', 'phone' => '0788999000', 'role' => 'admin', 'status' => 'approved', 'password' => bcrypt('password')]);
+        $otherOwner = User::create(['name' => 'Other', 'email' => 'other@example.com', 'phone' => '0788555666', 'role' => 'owner', 'status' => 'approved', 'password' => bcrypt('password')]);
+
+        $this->post(route('public.properties.inquiries.store', $property), $this->inquiryData($unit))->assertSessionHasNoErrors();
+
+        foreach ([$owner, $admin] as $user) {
+            \Illuminate\Support\Facades\Notification::assertSentTo($user, \App\Notifications\NewPropertyInquiry::class, function ($notification, array $channels) use ($user) {
+                $sms = $notification->toSms($user);
+
+                return in_array('mail', $channels, true)
+                    && in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true)
+                    && str_contains($sms, '+250783000111')
+                    && str_contains($notification->toMail($user)->subject, 'New inquiry');
+            });
+        }
+        \Illuminate\Support\Facades\Notification::assertNotSentTo($otherOwner, \App\Notifications\NewPropertyInquiry::class);
+    }
+
+    public function test_sms_service_sends_through_pindo_or_africastalking_and_only_logs_by_default(): void
+    {
+        \Illuminate\Support\Facades\Http::fake(['*' => \Illuminate\Support\Facades\Http::response(['ok' => true], 201)]);
+        $sms = app(\App\Services\SmsService::class);
+
+        config(['services.sms.driver' => 'log']);
+        $sms->send('0788 123 456', 'Hello');
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+
+        config(['services.sms.driver' => 'pindo', 'services.sms.pindo.token' => 'test-token', 'services.sms.pindo.sender' => 'ITUZE']);
+        $sms->send('0788 123 456', 'Hello');
+        \Illuminate\Support\Facades\Http::assertSent(fn ($request) => $request->url() === 'https://api.pindo.io/v1/sms/'
+            && $request['to'] === '+250788123456' && $request['sender'] === 'ITUZE' && $request->hasHeader('Authorization', 'Bearer test-token'));
+
+        config(['services.sms.driver' => 'africastalking', 'services.sms.africastalking.username' => 'sandbox', 'services.sms.africastalking.api_key' => 'k']);
+        $sms->send('788123456', 'Hi');
+        \Illuminate\Support\Facades\Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://api.sandbox.africastalking.com/')
+            && $request['to'] === '+250788123456' && $request['username'] === 'sandbox' && $request->hasHeader('apiKey', 'k'));
     }
 
     public function test_mobile_inquiry_endpoint_returns_json_and_preserves_duplicate_protection(): void

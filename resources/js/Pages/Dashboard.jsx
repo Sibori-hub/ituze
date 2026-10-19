@@ -532,7 +532,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
     );
 }
 
-export default function Dashboard({ summary, recentProperties = [], recentTenancies = [], recentInquiries = [], adminOverview }) {
+export default function Dashboard({ summary, recentProperties = [], recentTenancies = [], recentInquiries = [], adminOverview, ownerReport }) {
     const { auth } = usePage().props;
     const { t, language } = useTranslation();
     const user = auth.user;
@@ -546,27 +546,45 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
         return <AdminDashboard overview={adminOverview} inquiries={recentInquiries} user={user} language={language} />;
     }
 
-    const firstName = user.first_name || user.name?.split(' ')[0];
-    const today = new Intl.DateTimeFormat(localeForLanguage(language), { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
-    const daysLeft = user.expires_at ? Math.ceil((new Date(user.expires_at) - new Date()) / 86400000) : null;
+    return <OwnerDashboard {...{ user, language, summary, recentProperties, recentTenancies, recentInquiries, ownerReport }} />;
+}
+
+/**
+ * Owner home: a reporting view of their buildings. Money this month, what is
+ * owed, occupancy, leases ending and recent payments. Managed owners only
+ * read; Q.R.A does the work.
+ */
+function OwnerDashboard({ user, language, summary, recentProperties, recentTenancies, recentInquiries, ownerReport }) {
+    const { t } = useTranslation();
     const canEdit = useCanEdit();
-    const quickActions = [
-        ...(canEdit ? [{ label: 'Add property', href: route('properties.create'), icon: Plus, primary: true }] : []),
-        { label: 'Tenants', href: route('tenants.index'), icon: UsersRound },
-        { label: 'Payments', href: route('payments.index'), icon: CreditCard },
-        { label: 'Reports', href: route('reports.index'), icon: BarChart3 },
-    ];
-    const statCards = [
-        { key: 'properties', label: 'Properties', icon: Building2, tone: 'from-emerald-500/15 to-emerald-500/5 text-emerald-700', route: 'properties.index' },
-        { key: 'units', label: 'Total units', icon: DoorOpen, tone: 'from-sky-500/15 to-sky-500/5 text-sky-700', route: 'properties.index' },
-        { key: 'occupiedUnits', label: 'Occupied units', icon: Users, tone: 'from-violet-500/15 to-violet-500/5 text-violet-700', route: 'tenants.index', of: 'units' },
-        { key: 'availableUnits', label: 'Available units', icon: Home, tone: 'from-amber-500/20 to-amber-500/5 text-amber-700', route: 'properties.index', of: 'units' },
+    const locale = localeForLanguage(language);
+    const money = (value) => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
+    const short = (value) => (value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${Math.round(value / 1000)}k` : `${Math.round(value)}`);
+    const monthName = (value, style = 'short') => new Intl.DateTimeFormat(locale, { month: style, ...(style === 'long' ? { year: 'numeric' } : {}) }).format(new Date(`${value.slice(0, 7)}-01T12:00:00`));
+    const firstName = user.first_name || user.name?.split(' ')[0];
+    const today = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+    const daysLeft = user.expires_at ? Math.ceil((new Date(user.expires_at) - new Date()) / 86400000) : null;
+    const report = ownerReport || { month: {}, months: [], arrears: { rows: [] }, ending_soon: [], recent_payments: [] };
+    const month = report.month;
+    const thisMonth = month.from ? monthName(month.from, 'long') : '';
+    const rate = month.collection_rate;
+    const chartMax = Math.max(1, ...report.months.flatMap((item) => [item.expected, item.collected]));
+    const statementHref = route('reports.index', { tab: 'owners' });
+    const lastMonthStatementHref = route('reports.index', { tab: 'owners', period: 'last_month' });
+    const daysUntil = (date) => Math.max(0, Math.ceil((new Date(`${String(date).slice(0, 10)}T12:00:00`) - new Date()) / 86400000));
+
+    const moneyCards = [
+        { label: 'Rent collected', value: month.rent_collected, note: t('Received in :month', { month: thisMonth }), icon: CreditCard, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100' },
+        ...(report.managed ? [{ label: 'Q.R.A management fee', value: month.commission, note: t(':rate% of rent collected', { rate: Number(report.fee_rate) }), icon: BadgeCheck, tone: 'bg-amber-50 text-amber-800 ring-amber-100' }] : []),
+        { label: report.managed ? 'Your payout' : 'Your income', value: month.payout, note: report.managed ? t('Rent collected less the management fee') : t('Rent collected this month'), icon: TrendingUp, tone: 'bg-[#0E3B2E] text-white ring-[#0E3B2E]', highlight: true },
+        { label: 'Deposits held for tenants', value: month.deposits_received, note: t('Refundable — not part of your payout'), icon: ShieldCheck, tone: 'bg-violet-50 text-violet-800 ring-violet-100' },
     ];
 
     return (
         <AuthenticatedLayout header="Dashboard">
             <Head title={t('Dashboard')} />
             <div className="mx-auto max-w-7xl space-y-5">
+                {/* Greeting */}
                 <section className="relative overflow-hidden rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-7">
                     <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#D9A441]/15 blur-3xl" />
                     <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
@@ -574,79 +592,109 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
                         <div className="flex items-center gap-4 sm:gap-5">
                             <Link href={route('profile.edit')} className="group relative shrink-0 rounded-full" title={t('Edit profile')}>
                                 <UserAvatar user={user} size="xl" className="ring-4 ring-white shadow-lg shadow-[#0E3B2E]/15 transition group-hover:scale-[1.03]" />
-                                <span className="absolute bottom-0.5 right-0.5 h-4 w-4 rounded-full bg-emerald-500 ring-[3px] ring-white" aria-hidden="true" />
                             </Link>
                             <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b58632]">{today}</p>
-                                <h1 className="mt-1 font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900 sm:text-[1.7rem]">
-                                    {t(greetingFor(new Date().getHours()), { name: firstName })}
-                                </h1>
-                                <p className="mt-1 text-sm text-gray-500">{t('Here’s what’s happening across your portfolio.')}</p>
-                                {daysLeft !== null && (
-                                    <span
-                                        className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
-                                            daysLeft > 30 ? 'bg-emerald-50 text-emerald-700 ring-emerald-100' : 'bg-amber-50 text-amber-700 ring-amber-100'
-                                        }`}
-                                    >
-                                        <BadgeCheck size={13} />
-                                        {t('Plan active · :days days left', { days: Math.max(0, daysLeft) })}
-                                    </span>
-                                )}
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8a6420]">{today}</p>
+                                <h1 className="mt-1 font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900 sm:text-[1.7rem]">{t(greetingFor(new Date().getHours()), { name: firstName })}</h1>
+                                <p className="mt-1 text-sm text-gray-600">
+                                    {report.managed ? t('Q.R.A manages your buildings. Here is how they are doing.') : t('Here’s what’s happening across your portfolio.')}
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {report.managed && (
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-200">
+                                            <ShieldCheck size={13} aria-hidden="true" /> {t('Managed by Q.R.A · :rate% fee', { rate: Number(report.fee_rate) })}
+                                        </span>
+                                    )}
+                                    {!report.managed && daysLeft !== null && (
+                                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${daysLeft > 30 ? 'bg-emerald-50 text-emerald-800 ring-emerald-100' : 'bg-amber-50 text-amber-800 ring-amber-100'}`}>
+                                            <BadgeCheck size={13} aria-hidden="true" /> {t('Plan active · :days days left', { days: Math.max(0, daysLeft) })}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
-                            {quickActions.map(({ label, href, icon: Icon, primary }) => (
-                                <Link
-                                    key={label}
-                                    href={href}
-                                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] ${
-                                        primary
-                                            ? 'bg-[#0E3B2E] text-white shadow-[0_10px_24px_-12px_rgba(14,59,46,0.8)] hover:bg-[#124B3A]'
-                                            : 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-white hover:text-[#0E3B2E] hover:ring-[#0E3B2E]/20'
-                                    }`}
-                                >
-                                    <Icon size={16} />
-                                    {t(label)}
+                            <Link href={statementHref} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgba(14,59,46,0.8)] transition hover:bg-[#124B3A]">
+                                <FileText size={16} aria-hidden="true" /> {t('My statement')}
+                            </Link>
+                            <Link href={route('reports.index')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-800 ring-1 ring-inset ring-gray-200 transition hover:bg-white hover:text-[#0E3B2E]">
+                                <BarChart3 size={16} aria-hidden="true" /> {t('Reports')}
+                            </Link>
+                            {canEdit && (
+                                <Link href={route('properties.create')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-800 ring-1 ring-inset ring-gray-200 transition hover:bg-white hover:text-[#0E3B2E]">
+                                    <Plus size={16} aria-hidden="true" /> {t('Add property')}
                                 </Link>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </section>
 
-                <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label={t('Overview')}>
-                    {statCards.map(({ key, label, icon: Icon, tone, route: destination, of }) => {
-                        const value = summary?.[key] ?? 0;
-                        const total = of ? summary?.[of] ?? 0 : null;
-                        return (
-                            <Link
-                                key={key}
-                                href={route(destination)}
-                                className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.04] transition duration-200 hover:-translate-y-0.5 sm:p-5 hover:shadow-md hover:ring-[#0E3B2E]/15"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${tone}`}><Icon size={20} /></span>
-                                    <ArrowUpRight size={17} className="text-gray-300 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#0E3B2E]" />
+                {/* Money this month */}
+                <section aria-labelledby="owner-money-title">
+                    <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                        <h2 id="owner-money-title" className="font-[Sora] text-lg font-bold text-gray-900">{t('Your money in :month', { month: thisMonth })}</h2>
+                        <Link href={lastMonthStatementHref} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Last month’s statement')} →</Link>
+                    </div>
+                    <div className={`grid gap-3 sm:grid-cols-2 ${moneyCards.length === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+                        {moneyCards.map(({ label, value, note, icon: Icon, tone, highlight }) => (
+                            <div key={label} className={`rounded-2xl p-5 shadow-sm ring-1 ${highlight ? 'bg-gradient-to-br from-[#0E3B2E] to-[#145240] text-white ring-[#0E3B2E]' : 'bg-white ring-black/[0.04]'}`}>
+                                <div className="flex items-start justify-between gap-3">
+                                    <p className={`text-xs font-semibold uppercase tracking-wide ${highlight ? 'text-emerald-100' : 'text-gray-600'}`}>{t(label)}</p>
+                                    <span className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ring-1 ${highlight ? 'bg-white/10 text-[#F2C46D] ring-white/20' : tone}`} aria-hidden="true"><Icon size={17} /></span>
                                 </div>
-                                <p className="mt-3 font-[Sora] text-2xl font-bold tracking-tight text-gray-900 sm:mt-4 sm:text-3xl"><CountUp value={value} /></p>
-                                <p className="mt-1 text-sm font-medium text-gray-500">{t(label)}</p>
-                                {total !== null && (
-                                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                                        <div className="h-full rounded-full bg-gradient-to-r from-[#1F7A5A] to-[#D9A441] transition-all duration-700" style={{ width: `${total ? (value / total) * 100 : 0}%` }} />
-                                    </div>
-                                )}
-                            </Link>
-                        );
-                    })}
+                                <p className={`mt-3 font-[Sora] text-2xl font-bold tabular-nums ${highlight ? 'text-white' : 'text-gray-900'}`}><CountUp value={Math.round(value || 0)} /> <span className="text-base font-semibold">RWF</span></p>
+                                <p className={`mt-1 text-xs ${highlight ? 'text-emerald-100' : 'text-gray-600'}`}>{note}</p>
+                            </div>
+                        ))}
+                    </div>
                 </section>
 
                 <div className="grid gap-5 lg:grid-cols-3">
-                    <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/[0.04]">
-                        <div className="flex items-start justify-between gap-3">
+                    {/* Collection chart */}
+                    <section aria-labelledby="owner-chart-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-2">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <h2 className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Activity size={17} className="text-[#1F7A5A]" />{t('Portfolio occupancy')}</h2>
-                                <p className="mt-1 text-xs text-gray-500">{t('Unit status across your properties')}</p>
+                                <h2 id="owner-chart-title" className="font-[Sora] font-semibold text-gray-900">{t('Rent due vs collected')}</h2>
+                                <p className="mt-1 text-xs text-gray-600">{t('Last six months')}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-3 text-xs font-medium text-gray-700">
+                                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-200 ring-1 ring-emerald-400" />{t('Rent due')}</span>
+                                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#0E3B2E]" />{t('Rent collected')}</span>
                             </div>
                         </div>
+                        <svg viewBox="0 0 600 220" role="img" aria-label={t('Rent due vs collected')} className="mt-4 h-52 w-full">
+                            {[0, 0.5, 1].map((step) => (
+                                <g key={step}>
+                                    <line x1="44" x2="592" y1={186 - step * 160} y2={186 - step * 160} stroke="#e5e7eb" strokeDasharray={step ? '4 5' : undefined} />
+                                    <text x="38" y={190 - step * 160} textAnchor="end" fontSize="10" fill="#6b7280">{short(chartMax * step)}</text>
+                                </g>
+                            ))}
+                            {report.months.map((item, index) => {
+                                const x = 64 + index * 88;
+                                const due = (item.expected / chartMax) * 160;
+                                const got = (item.collected / chartMax) * 160;
+                                return (
+                                    <g key={item.month}>
+                                        <rect x={x} y={186 - due} width="26" height={due} rx="5" fill="#a7f3d0" stroke="#34d399"><title>{`${monthName(item.month, 'long')} — ${t('Rent due')}: ${money(item.expected)}`}</title></rect>
+                                        <rect x={x + 30} y={186 - got} width="26" height={got} rx="5" fill="#0E3B2E"><title>{`${monthName(item.month, 'long')} — ${t('Rent collected')}: ${money(item.collected)}`}</title></rect>
+                                        <text x={x + 28} y="206" textAnchor="middle" fontSize="11" fill="#4b5563">{monthName(item.month)}</text>
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                        <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm">
+                            <span className="font-semibold text-gray-800">{t('Collection rate this month')}</span>
+                            <div className="h-2 min-w-24 flex-1 overflow-hidden rounded-full bg-gray-200" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={rate ?? 0} aria-label={t('Collection rate')}>
+                                <div className={`h-full rounded-full ${rate === null || rate >= 90 ? 'bg-emerald-600' : rate >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${rate ?? 0}%` }} />
+                            </div>
+                            <span className="font-[Sora] font-bold text-gray-900">{rate === null ? '—' : `${rate}%`}</span>
+                        </div>
+                    </section>
+
+                    {/* Occupancy */}
+                    <section aria-labelledby="owner-occupancy-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6">
+                        <h2 id="owner-occupancy-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Activity size={17} className="text-[#1F7A5A]" aria-hidden="true" />{t('Occupancy')}</h2>
+                        <p className="mt-1 text-xs text-gray-600">{t(':occupied of :total rooms rented', { occupied: summary?.occupiedUnits ?? 0, total: summary?.units ?? 0 })}</p>
                         <div className="mt-5 flex items-center gap-5">
                             <OccupancyRing
                                 occupied={summary?.occupiedUnits ?? 0}
@@ -656,97 +704,146 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
                             />
                             <ul className="flex-1 space-y-2.5 text-sm">
                                 {[
-                                    ['Occupied', summary?.occupiedUnits ?? 0, 'bg-[#0E3B2E]'],
-                                    ['Available', summary?.availableUnits ?? 0, 'bg-[#D9A441]'],
+                                    ['Rented', summary?.occupiedUnits ?? 0, 'bg-[#0E3B2E]'],
+                                    ['Empty', summary?.availableUnits ?? 0, 'bg-[#D9A441]'],
                                     ['Maintenance', summary?.maintenanceUnits ?? 0, 'bg-slate-400'],
                                 ].map(([label, value, color]) => (
                                     <li key={label} className="flex items-center justify-between gap-2">
-                                        <span className="flex items-center gap-2 text-gray-600"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{t(label)}</span>
+                                        <span className="flex items-center gap-2 text-gray-700"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{t(label)}</span>
                                         <span className="font-[Sora] font-bold tabular-nums text-gray-900">{value}</span>
                                     </li>
                                 ))}
                             </ul>
                         </div>
-                    </section>
-
-                    <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/[0.04] lg:col-span-2">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="font-[Sora] font-semibold text-gray-900">{t('Recent properties')}</h2>
-                            <Link href={route('properties.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('View all')}</Link>
-                        </div>
-                        {recentProperties.length ? (
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {recentProperties.map((property) => {
-                                    const coverPath = property.images?.find((img) => img.is_cover)?.image_path || property.images?.[0]?.image_path;
-                                    const units = property.units_count ?? 0;
-                                    const occupied = property.occupied_units_count ?? 0;
-                                    return (
-                                        <Link
-                                            key={property.id}
-                                            href={route('properties.show', property.id)}
-                                            className="group flex gap-3 overflow-hidden rounded-xl p-2 ring-1 ring-gray-100 transition hover:ring-[#D9A441]/60 hover:shadow-sm"
-                                        >
-                                            <div className="h-20 w-24 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-[#0E3B2E]/10 to-[#D9A441]/10">
-                                                {coverPath ? (
-                                                    <img src={imageSource(coverPath)} alt={property.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                                                ) : (
-                                                    <span className="flex h-full items-center justify-center"><Building2 size={22} className="text-[#0E3B2E]/50" /></span>
-                                                )}
-                                            </div>
-                                            <div className="flex min-w-0 flex-1 flex-col justify-center pr-1">
-                                                <p className="truncate text-sm font-semibold text-gray-900 group-hover:text-[#0E3B2E]">{property.name}</p>
-                                                <p className="mt-0.5 text-xs text-gray-500">{t(':units units · :occupied occupied', { units, occupied })}</p>
-                                                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                                                    <div className="h-full rounded-full bg-[#0E3B2E]" style={{ width: `${units ? (occupied / units) * 100 : 0}%` }} />
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
-                                <Building2 size={26} className="mx-auto text-gray-300" />
-                                <p className="mt-2 text-sm text-gray-500">{t('No properties yet.')}</p>
-                                {canEdit && <Link href={route('properties.create')} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0E3B2E] px-3 py-2 text-xs font-semibold text-white hover:bg-[#124B3A]"><Plus size={14} /> {t('Add your first property')}</Link>}
-                            </div>
+                        {Number(report.vacant_rent) > 0 && (
+                            <p className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-900 ring-1 ring-amber-100">
+                                {t('Empty rooms could bring :amount more per month.', { amount: money(report.vacant_rent) })}
+                            </p>
                         )}
                     </section>
                 </div>
 
-                <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-6">
-                        <div><h2 className="font-[Sora] font-semibold text-gray-900">{t('Tenants & active leases')}</h2><p className="mt-1 text-xs text-gray-500">{t('Current occupants, lease terms, and direct tenant records.')}</p></div>
-                        <Link href={route('tenants.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Open tenant directory')}</Link>
+                <div className="grid gap-5 lg:grid-cols-2">
+                    {/* Who owes */}
+                    <section aria-labelledby="owner-arrears-title" className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+                        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+                            <h2 id="owner-arrears-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Clock3 size={17} className="text-red-600" aria-hidden="true" />{t('Overdue rent')}</h2>
+                            <span className={`font-[Sora] font-bold ${Number(report.arrears.total) > 0 ? 'text-red-700' : 'text-emerald-700'}`}>{money(report.arrears.total)}</span>
+                        </div>
+                        {report.arrears.rows.length ? (
+                            <ul className="divide-y divide-gray-100">
+                                {report.arrears.rows.map((row) => (
+                                    <li key={row.tenancy_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                                        <div className="min-w-0">
+                                            <p className="truncate font-semibold text-gray-900">{row.tenant.name}</p>
+                                            <p className="text-xs text-gray-600">{row.property.name} · {t('Room :number', { number: row.unit.unit_number })} · <span className="font-semibold text-red-700">{t(':days days late', { days: row.days_late })}</span></p>
+                                        </div>
+                                        <span className="shrink-0 font-semibold tabular-nums text-red-700">{money(row.total)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="flex items-center gap-2 px-5 py-6 text-sm text-gray-700"><CheckCircle2 size={18} className="text-emerald-600" aria-hidden="true" />{t('Nobody is late with rent')}</p>
+                        )}
+                        {report.arrears.tenants > report.arrears.rows.length && (
+                            <Link href={route('reports.index', { tab: 'arrears' })} className="block border-t border-gray-100 px-5 py-3 text-sm font-semibold text-[#0E3B2E] hover:bg-gray-50">{t('See all :count late tenants', { count: report.arrears.tenants })} →</Link>
+                        )}
+                    </section>
+
+                    {/* Leases ending */}
+                    <section aria-labelledby="owner-ending-title" className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+                        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+                            <h2 id="owner-ending-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><CalendarDays size={17} className="text-amber-700" aria-hidden="true" />{t('Leases ending soon')}</h2>
+                            <span className="text-xs text-gray-600">{t('Next 60 days')}</span>
+                        </div>
+                        {report.ending_soon.length ? (
+                            <ul className="divide-y divide-gray-100">
+                                {report.ending_soon.map((tenancy) => (
+                                    <li key={tenancy.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                                        <div className="min-w-0">
+                                            <p className="truncate font-semibold text-gray-900">{tenancy.tenant?.name}</p>
+                                            <p className="text-xs text-gray-600">{tenancy.unit?.property?.name} · {t('Room :number', { number: tenancy.unit?.unit_number })} · {formatDate(tenancy.end_date, language)}</p>
+                                        </div>
+                                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${daysUntil(tenancy.end_date) <= 7 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}>{t('in :days days', { days: daysUntil(tenancy.end_date) })}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="flex items-center gap-2 px-5 py-6 text-sm text-gray-700"><CheckCircle2 size={18} className="text-emerald-600" aria-hidden="true" />{t('No lease ends in the next 60 days')}</p>
+                        )}
+                    </section>
+                </div>
+
+                {/* Recent payments */}
+                <section aria-labelledby="owner-payments-title" className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+                        <h2 id="owner-payments-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><CreditCard size={17} className="text-[#1F7A5A]" aria-hidden="true" />{t('Recent rent payments')}</h2>
+                        <Link href={route('payments.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('View all')}</Link>
                     </div>
-                    {recentTenancies.length ? (
+                    {report.recent_payments.length ? (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[760px] text-left text-sm">
-                                <thead className="bg-gray-50/80 text-[11px] uppercase tracking-wide text-gray-500"><tr><th className="px-6 py-3 font-semibold">{t('Tenant')}</th><th className="px-6 py-3 font-semibold">{t('Property / unit')}</th><th className="px-6 py-3 font-semibold">{t('Lease term')}</th><th className="px-6 py-3 font-semibold">{t('Rent')}</th><th className="px-6 py-3 font-semibold">{t('Status')}</th><th className="px-6 py-3 font-semibold">{t('Details')}</th></tr></thead>
+                            <table className="w-full min-w-[620px] text-left text-sm">
+                                <caption className="sr-only">{t('Recent rent payments')}</caption>
+                                <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-600">
+                                    <tr>
+                                        <th scope="col" className="px-5 py-3 font-semibold">{t('Date paid')}</th>
+                                        <th scope="col" className="px-5 py-3 font-semibold">{t('Tenant')}</th>
+                                        <th scope="col" className="px-5 py-3 font-semibold">{t('Months covered')}</th>
+                                        <th scope="col" className="px-5 py-3 text-right font-semibold">{t('Amount')}</th>
+                                    </tr>
+                                </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {recentTenancies.map((tenancy) => (
-                                        <tr key={tenancy.id} className="transition hover:bg-gray-50/70">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <UserAvatar user={{ name: tenancy.tenant?.name }} size="sm" className="from-[#0E3B2E]/10 to-[#0E3B2E]/5" />
-                                                    <div className="min-w-0">
-                                                        <Link href={route('tenants.show', tenancy.tenant?.id)} className="font-semibold text-gray-900 hover:text-[#0E3B2E] hover:underline">{tenancy.tenant?.name || t('Tenant')}</Link>
-                                                        <p className="mt-0.5 text-xs text-gray-500">{tenancy.tenant?.phone || tenancy.tenant?.email || '—'}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4"><p className="font-medium text-gray-800">{tenancy.unit?.property?.name || t('Property')}</p><p className="mt-1 text-xs text-gray-500">{t('Unit')} {tenancy.unit?.unit_number || '—'}</p></td>
-                                            <td className="px-6 py-4 text-xs text-gray-600">{formatDate(tenancy.start_date, language)} – {tenancy.end_date ? formatDate(tenancy.end_date, language) : t('Ongoing')}</td>
-                                            <td className="px-6 py-4 font-medium text-gray-800">{Number(tenancy.monthly_rent || 0).toLocaleString()} RWF <span className="text-xs font-normal text-gray-500">/{t(tenancy.rent_frequency || 'monthly')}</span></td>
-                                            <td className="px-6 py-4"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"><CheckCircle2 size={13} /> {t('Active')}</span></td>
-                                            <td className="px-6 py-4"><Link href={route('properties.units.show', [tenancy.unit?.property_id, tenancy.unit?.id])} className="inline-flex items-center gap-1 font-semibold text-[#0E3B2E] hover:underline">{t('Open unit')} <ArrowUpRight size={14} /></Link></td>
+                                    {report.recent_payments.map((payment) => (
+                                        <tr key={payment.id}>
+                                            <td className="px-5 py-3"><p className="text-gray-900">{formatDate(payment.paid_at, language)}</p>{payment.receipt_number && <p className="font-mono text-[11px] text-gray-500">{payment.receipt_number}</p>}</td>
+                                            <td className="px-5 py-3"><p className="font-semibold text-gray-900">{payment.tenant}</p><p className="text-xs text-gray-600">{payment.property} · {t('Room :number', { number: payment.unit })}</p></td>
+                                            <td className="px-5 py-3 text-gray-700">{t(payment.months === 1 ? '1 month' : ':count months', { count: payment.months })}</td>
+                                            <td className="px-5 py-3 text-right font-semibold tabular-nums text-gray-900">{money(payment.amount)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                    ) : <p className="p-6 text-sm text-gray-500">{t('No active tenants yet. Add a lease from a unit or assign a tenant from the tenant directory.')}</p>}
+                    ) : <p className="px-5 py-6 text-sm text-gray-700">{t('No rent payments in the last three months.')}</p>}
                 </section>
+
+                {/* Buildings */}
+                <section aria-labelledby="owner-properties-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6">
+                    <div className="mb-4 flex items-center justify-between">
+                        <h2 id="owner-properties-title" className="font-[Sora] font-semibold text-gray-900">{t('Your buildings')}</h2>
+                        <Link href={route('properties.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('View all')}</Link>
+                    </div>
+                    {recentProperties.length ? (
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            {recentProperties.map((property) => {
+                                const coverPath = property.images?.find((img) => img.is_cover)?.image_path || property.images?.[0]?.image_path;
+                                const units = property.units_count ?? 0;
+                                const occupied = property.occupied_units_count ?? 0;
+                                return (
+                                    <Link key={property.id} href={route('properties.show', property.id)} className="group overflow-hidden rounded-xl ring-1 ring-gray-100 transition hover:shadow-md hover:ring-[#D9A441]/60">
+                                        <div className="h-28 overflow-hidden bg-gradient-to-br from-[#0E3B2E]/10 to-[#D9A441]/10">
+                                            {coverPath
+                                                ? <img src={imageSource(coverPath)} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                                                : <span className="flex h-full items-center justify-center"><Building2 size={26} className="text-[#0E3B2E]/50" aria-hidden="true" /></span>}
+                                        </div>
+                                        <div className="p-3">
+                                            <p className="truncate text-sm font-semibold text-gray-900 group-hover:text-[#0E3B2E]">{property.name}</p>
+                                            <p className="mt-0.5 text-xs text-gray-600">{t(':occupied of :total rooms rented', { occupied, total: units })}</p>
+                                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-[#0E3B2E]" style={{ width: `${units ? (occupied / units) * 100 : 0}%` }} /></div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
+                            <Building2 size={26} className="mx-auto text-gray-300" aria-hidden="true" />
+                            <p className="mt-2 text-sm text-gray-600">{t('No properties yet.')}</p>
+                            {canEdit && <Link href={route('properties.create')} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0E3B2E] px-3 py-2 text-xs font-semibold text-white hover:bg-[#124B3A]"><Plus size={14} /> {t('Add your first property')}</Link>}
+                        </div>
+                    )}
+                </section>
+
                 <VisitorInquiries inquiries={recentInquiries} />
             </div>
         </AuthenticatedLayout>

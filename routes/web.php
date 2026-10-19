@@ -232,7 +232,44 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $totalUnits = $properties->sum('units_count');
     $occupiedUnits = $properties->sum('occupied_units_count');
 
+    // The owner's figures for this month, from the same source as Reports.
+    $portfolio = new \App\Services\PortfolioReport($user);
+    $thisMonth = \App\Services\PortfolioReport::period('this_month');
+    $overview = $portfolio->overview($thisMonth['from'], $thisMonth['to']);
+    $arrears = $portfolio->arrears();
+    $recentPayments = $portfolio->ownerStatements(now()->subMonthsNoOverflow(3)->startOfDay()->toImmutable(), today()->toImmutable())['lines'] ?? [];
+
     return Inertia::render('Dashboard', [
+        'ownerReport' => [
+            'managed' => $user->managementFeeRate() > 0,
+            'fee_rate' => $user->managementFeeRate(),
+            'month' => [
+                'from' => $thisMonth['from']->toDateString(),
+                'rent_collected' => $overview['rent_collected'],
+                'commission' => $overview['commission'],
+                'payout' => round($overview['rent_collected'] - $overview['commission'], 2),
+                'deposits_received' => $overview['deposits_received'],
+                'rent_expected' => $overview['rent_expected'],
+                'collection_rate' => $overview['collection_rate'],
+            ],
+            'months' => array_slice($overview['months'], -6),
+            'arrears' => ['total' => $arrears['totals']['total'], 'tenants' => $arrears['totals']['tenants'], 'rows' => array_slice($arrears['rows'], 0, 5)],
+            'vacant_rent' => round((float) \App\Models\Unit::query()
+                ->whereIn('property_id', $properties->pluck('id'))
+                ->where('status', 'available')
+                ->sum('rent_amount'), 2),
+            'ending_soon' => \App\Models\Tenancy::query()
+                ->with(['tenant:id,name', 'unit:id,property_id,unit_number', 'unit.property:id,name'])
+                ->where('status', 'active')
+                ->whereNotNull('end_date')
+                ->whereBetween('end_date', [today(), today()->addDays(\App\Http\Controllers\ManagementController::ENDING_SOON_DAYS)])
+                ->whereHas('unit.property', fn ($property) => $property->where('owner_id', $user->id))
+                ->orderBy('end_date')
+                ->take(5)
+                ->get(['id', 'tenant_id', 'unit_id', 'end_date', 'monthly_rent']),
+            'recent_payments' => array_slice(array_reverse($recentPayments), 0, 5),
+        ],
+
         'summary' => [
             'properties' => $properties->count(),
             'units' => $totalUnits,

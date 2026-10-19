@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Property;
 use App\Models\PropertyInquiry;
 use App\Models\Unit;
+use App\Models\User;
+use App\Notifications\NewPropertyInquiry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -127,6 +130,12 @@ class PublicPropertyController extends Controller
                 'We already have your inquiry for this property. The owner will review it shortly. You can send another inquiry after the owner marks this one as read.',
             );
         }
+
+        // Tell the owner and every admin straight away, by email and SMS.
+        $recipients = User::query()
+            ->where(fn ($query) => $query->where('role', 'admin')->orWhere('id', $created->owner_id))
+            ->get();
+        Notification::send($recipients, new NewPropertyInquiry($created));
 
         if ($request->expectsJson()) {
             return response()->json([
