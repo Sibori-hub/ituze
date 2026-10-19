@@ -2,6 +2,7 @@ kind: wasmer.io/App.v0
 name: ituze
 owner: siboriwanjye
 app_id: da_nBBIbtXU3rjQ
+package: .
 enableDatabase: true
 enable_email: true
 env:

@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
+        "build": "vite build && node -e \"process.env.CI === 'true' && require('fs').rmSync('node_modules', { recursive: true, force: true })\"",
         "dev": "vite"
     },
     "devDependencies": {
