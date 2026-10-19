@@ -179,7 +179,7 @@ class ManagerAccessTest extends TestCase
         $this->actingAs($manager)->get(route('dashboard'))->assertOk();
 
         // Owner's subscription ends: the manager is paused too.
-        $this->owner->forceFill(['expires_at' => now()->subDay()])->save();
+        $this->owner->forceFill(['expires_at' => now()->subDays(8)])->save(); // past the 7-day grace
         $this->actingAs($manager->fresh())->get(route('properties.index'))->assertRedirect(route('account.status'));
         $this->get(route('account.status'))->assertInertia(fn (Assert $page) => $page->where('managerPaused', true));
 

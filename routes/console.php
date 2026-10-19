@@ -12,3 +12,4 @@ Schedule::command('tenancies:activate-scheduled')->everyFiveMinutes()->withoutOv
 Schedule::command('tenancies:complete-apartment-stays')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('rent:generate-charges')->dailyAt('00:10')->withoutOverlapping();
 Schedule::command('leases:send-reminders')->dailyAt('08:00')->withoutOverlapping();
+Schedule::command('subscriptions:send-reminders')->dailyAt('08:05')->withoutOverlapping();

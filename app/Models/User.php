@@ -305,7 +305,29 @@ class User extends Authenticatable implements MustVerifyEmail
             return false;
         }
 
-        return !$this->expires_at || $this->expires_at->isPast();
+        // Blocked only once the grace days after the paid-until date have passed.
+        return ! $this->expires_at || $this->subscriptionGraceEndsAt()->isPast();
+    }
+
+    /** Self-registered owners pay a monthly subscription. */
+    public function paysSubscription(): bool
+    {
+        return $this->isOwner() && ! $this->isManaged();
+    }
+
+    /** Last moment of access: the paid-until date plus the grace days. */
+    public function subscriptionGraceEndsAt(): ?\Illuminate\Support\Carbon
+    {
+        return $this->expires_at?->copy()->addDays((int) config('legal.owner_subscription_grace_days', 7));
+    }
+
+    /** Paid-until date has passed but the grace days have not. */
+    public function inSubscriptionGrace(): bool
+    {
+        return $this->paysSubscription()
+            && $this->expires_at !== null
+            && $this->expires_at->isPast()
+            && ! $this->subscriptionGraceEndsAt()->isPast();
     }
 
     public function isOwner(): bool

@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { Clock3, ShieldCheck, XCircle } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
-export default function Status({ status, expired, managerPaused = false, employerName = null }) {
+export default function Status({ status, expired, managerPaused = false, employerName = null, canPay = false }) {
     const { t } = useTranslation();
     const rejected = status === 'rejected';
     const isExpired = expired && status === 'approved' && !managerPaused;
@@ -20,7 +20,7 @@ export default function Status({ status, expired, managerPaused = false, employe
         : rejected
         ? 'Please contact ITUZE GREEN PLATFORM for help with your account.'
         : isExpired
-          ? 'Your owner subscription has ended. Please contact ITUZE GREEN PLATFORM to renew access.'
+          ? (canPay ? 'Your subscription has ended and your account is paused. Your data is safe: pay by MoMo or bank to continue straight away.' : 'Your owner subscription has ended. Please contact ITUZE GREEN PLATFORM to renew access.')
           : 'Welcome to ITUZE GREEN PLATFORM web app. Our team is checking and your account will be available in less than 5 minutes.';
 
     return (
@@ -40,6 +40,11 @@ export default function Status({ status, expired, managerPaused = false, employe
                     <p className="mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
                         {t('Your one-year subscription begins on the day an administrator approves your account.')}
                     </p>
+                )}
+                {isExpired && canPay && (
+                    <Link href={route('subscription.show')} className="mr-3 mt-7 inline-block rounded-xl bg-[#D9A441] px-5 py-3 text-sm font-semibold text-[#0E3B2E] transition hover:bg-[#c99535]">
+                        {t('Pay my subscription')}
+                    </Link>
                 )}
                 <Link
                     href={route('logout')}

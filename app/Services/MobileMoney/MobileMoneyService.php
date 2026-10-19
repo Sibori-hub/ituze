@@ -36,15 +36,15 @@ class MobileMoneyService
         return preg_match('/^7[2389]\d{7}$/', $digits) ? '250'.$digits : null;
     }
 
-    public function start(User $user, Tenant $tenant, Unit $unit, string $phone, float $amount, string $message, string $purpose = 'assignment'): MobileMoneyRequest
+    public function start(User $user, ?Tenant $tenant, ?Unit $unit, string $phone, float $amount, string $message, string $purpose = 'assignment'): MobileMoneyRequest
     {
         $gateway = $this->gateway();
         $request = MobileMoneyRequest::create([
             'reference' => (string) Str::uuid(),
             'provider' => $gateway->name(),
             'purpose' => $purpose,
-            'tenant_id' => $tenant->id,
-            'unit_id' => $unit->id,
+            'tenant_id' => $tenant?->id,
+            'unit_id' => $unit?->id,
             'requested_by' => $user->id,
             'phone' => $phone,
             'amount' => $amount,
@@ -71,6 +71,18 @@ class MobileMoneyService
      * trigger this check; the provider's own answer is what is trusted.
      */
     public function refresh(MobileMoneyRequest $request): MobileMoneyRequest
+    {
+        $result = $this->checkWithProvider($request);
+
+        // A subscription is applied (or marked failed) as soon as the result is known.
+        if ($result->purpose === 'subscription' && ! $result->isPending()) {
+            app(\App\Services\SubscriptionService::class)->syncMobileMoney($result);
+        }
+
+        return $result;
+    }
+
+    private function checkWithProvider(MobileMoneyRequest $request): MobileMoneyRequest
     {
         if (! $request->isPending()) {
             return $request;
@@ -99,7 +111,7 @@ class MobileMoneyService
             } elseif ($locked->created_at->diffInSeconds(now(), true) > (int) config('services.mobile_money.timeout_seconds', 180)) {
                 $locked->update([
                     'status' => MobileMoneyRequest::EXPIRED,
-                    'failure_reason' => 'The tenant did not approve in time.',
+                    'failure_reason' => 'The payment was not approved on the phone in time.',
                     'completed_at' => now(),
                 ]);
             }

@@ -22,12 +22,19 @@ class UserSubscriptionTest extends TestCase
         $this->assertTrue($owner->isExpired());
     }
 
-    public function test_owner_is_expired_after_the_plan_end_time(): void
+    public function test_owner_keeps_working_for_seven_grace_days_after_the_plan_end(): void
     {
-        Carbon::setTestNow('2026-09-26 12:00:00');
         $owner = new User(['role' => 'owner', 'expires_at' => '2026-09-26 11:59:59']);
 
+        // Just after the end: grace, still working.
+        Carbon::setTestNow('2026-09-26 12:00:00');
+        $this->assertFalse($owner->isExpired());
+        $this->assertTrue($owner->inSubscriptionGrace());
+
+        // Seven days later: paused.
+        Carbon::setTestNow('2026-10-03 12:00:00');
         $this->assertTrue($owner->isExpired());
+        $this->assertFalse($owner->inSubscriptionGrace());
     }
 
     public function test_owner_with_an_active_plan_is_not_expired(): void

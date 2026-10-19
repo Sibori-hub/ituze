@@ -38,6 +38,10 @@ class HandleInertiaRequests extends Middleware
                 // Self-registered owners can add managers; a manager sees who they work for.
                 'canHireManagers' => (bool) $request->user()?->canHireManagers(),
                 'employer' => $request->user()?->isManager() ? $request->user()->employer?->only(['id', 'name']) : null,
+                // Paid-until status for self-registered owners (reminder banner, menu).
+                'subscription' => $request->user()?->paysSubscription() && $request->user()->status === 'approved'
+                    ? \App\Http\Controllers\SubscriptionController::statusFor($request->user())
+                    : null,
             ],
             // Read-only legal metadata so the Terms/Privacy dialog can show the
             // same version and contact details as the full pages.

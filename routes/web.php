@@ -125,6 +125,7 @@ Route::get('/account/status', function (\Illuminate\Http\Request $request) {
         // A manager is paused while the owner they work for is inactive or unpaid.
         'managerPaused' => $request->user()->isManager() && ! $request->user()->employerWorkspaceIsActive(),
         'employerName' => $request->user()->isManager() ? $request->user()->employer?->name : null,
+        'canPay' => $request->user()->paysSubscription() && $request->user()->status === 'approved',
     ]);
 })->middleware(['auth', 'verified'])->name('account.status');
 
@@ -400,7 +401,19 @@ Route::middleware('auth')->group(function () {
         ->name('api.ai.generate-property-description');
 });
 
+// Self-registered owners pay here; open even while the account is paused for non-payment.
+Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete'])->group(function () {
+    Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'show'])->name('subscription.show');
+    Route::post('/subscription/transfer', [\App\Http\Controllers\SubscriptionController::class, 'storeTransfer'])->middleware('throttle:10,1')->name('subscription.transfer');
+    Route::post('/subscription/mobile-money', [\App\Http\Controllers\SubscriptionController::class, 'startMobileMoney'])->middleware('throttle:6,1')->name('subscription.momo.start');
+    Route::get('/subscription/mobile-money/{payment}', [\App\Http\Controllers\SubscriptionController::class, 'mobileMoneyStatus'])->middleware('throttle:60,1')->name('subscription.momo.status');
+    Route::get('/subscription/payments/{payment}/proof', [\App\Http\Controllers\SubscriptionController::class, 'proof'])->name('subscription.proof');
+});
+
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/subscriptions', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'index'])->name('subscriptions');
+    Route::post('/subscriptions/{payment}/approve', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'approve'])->name('subscriptions.approve');
+    Route::post('/subscriptions/{payment}/reject', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'reject'])->name('subscriptions.reject');
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals');
     Route::post('/approvals/{user}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{user}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');

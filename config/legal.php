@@ -38,4 +38,10 @@ return [
     'ad_unit_price_rwf' => 25000,
     'ad_welcome_bonus_units' => 3,
 
+    // Self-registered owners: monthly subscription, paid 1, 3, 6 or 12 months at a time.
+    'owner_subscription_monthly_rwf' => (int) env('OWNER_SUBSCRIPTION_MONTHLY_RWF', 100000),
+    'owner_subscription_month_options' => [1, 3, 6, 12],
+    // Days after the paid-until date before the owner (and their managers) are blocked.
+    'owner_subscription_grace_days' => 7,
+
 ];
