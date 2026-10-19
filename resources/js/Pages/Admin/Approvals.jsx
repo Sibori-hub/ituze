@@ -274,7 +274,7 @@ export default function Approvals({ pendingUsers }) {
                         ? confirmAction.type === 'approve'
                             ? confirmAction.user.role === 'advertiser'
                                 ? t('Confirm that payment was verified outside the app. :name will then be approved as an advertiser.', { name: confirmAction.user.name })
-                                : t('Confirm that payment was verified outside the app. :name will then be approved, and their one-year subscription will start today.', { name: confirmAction.user.name })
+                                : t(':name will be approved. They can use the system after paying their first month (100,000 RWF) on their Subscription page.', { name: confirmAction.user.name })
                             : t(':name will not be able to access the dashboard. You can reconsider this later.', { name: confirmAction.user.name })
                         : ''
                 }

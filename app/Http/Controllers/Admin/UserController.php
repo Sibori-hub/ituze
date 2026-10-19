@@ -208,7 +208,7 @@ class UserController extends Controller
         ]);
 
         if (empty($validated['renew']) && !isset($validated['expires_at'])) {
-            return back()->withErrors(['plan' => 'Choose a new plan end date or renew for one year.']);
+            return back()->withErrors(['plan' => 'Choose a new plan end date or add one month.']);
         }
 
         $newExpiry = DB::transaction(function () use ($user, $validated): Carbon {
@@ -220,7 +220,7 @@ class UserController extends Controller
                 $renewalStart = $currentExpiry && $currentExpiry->isFuture()
                     ? $currentExpiry
                     : now();
-                $newExpiry = $renewalStart->copy()->addYear();
+                $newExpiry = $renewalStart->copy()->addMonthNoOverflow();
             } else {
                 $newExpiry = Carbon::parse($validated['expires_at'])->endOfDay();
             }

@@ -3,13 +3,15 @@ import { Head, Link } from '@inertiajs/react';
 import { Clock3, ShieldCheck, XCircle } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
-export default function Status({ status, expired, managerPaused = false, employerName = null, canPay = false }) {
+export default function Status({ status, expired, managerPaused = false, employerName = null, canPay = false, neverPaid = false }) {
     const { t } = useTranslation();
     const rejected = status === 'rejected';
     const isExpired = expired && status === 'approved' && !managerPaused;
     const Icon = rejected ? XCircle : isExpired ? Clock3 : ShieldCheck;
     const title = managerPaused
         ? 'Your workspace is paused'
+        : isExpired && neverPaid
+          ? 'Welcome! Pay your first month to start'
         : rejected
         ? 'Your account was not approved'
         : isExpired
@@ -17,6 +19,8 @@ export default function Status({ status, expired, managerPaused = false, employe
           : 'Welcome to ITUZE GREEN PLATFORM';
     const message = managerPaused
         ? 'The account of the owner you work for is not active right now, usually because the monthly subscription is unpaid. Please contact :owner.'
+        : isExpired && neverPaid
+          ? 'Your account is approved. Pay 100,000 RWF for your first month by mobile money or bank, and everything opens straight away.'
         : rejected
         ? 'Please contact ITUZE GREEN PLATFORM for help with your account.'
         : isExpired
@@ -38,7 +42,7 @@ export default function Status({ status, expired, managerPaused = false, employe
                 </p>
                 {!rejected && !isExpired && !managerPaused && (
                     <p className="mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                        {t('Your one-year subscription begins on the day an administrator approves your account.')}
+                        {t('After approval you pay 100,000 RWF per month to use the system, by mobile money or bank.')}
                     </p>
                 )}
                 {isExpired && canPay && (

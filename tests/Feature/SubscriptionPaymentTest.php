@@ -55,6 +55,8 @@ class SubscriptionPaymentTest extends TestCase
         $payment = SubscriptionPayment::query()->firstOrFail();
         $this->assertSame('ITZ-SUB-2026-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT), $payment->receipt_number);
         Notification::assertSentTo($this->owner, SubscriptionPaymentDecided::class);
+        // Paid by phone with no admin involved: the admins are told by email and SMS.
+        Notification::assertSentTo($this->admin, \App\Notifications\SubscriptionPaymentReceived::class, fn ($notification, array $channels) => in_array('mail', $channels, true) && in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true));
 
         // The page lists it as paid.
         $this->get(route('subscription.show'))->assertInertia(fn (Assert $page) => $page
@@ -137,6 +139,23 @@ class SubscriptionPaymentTest extends TestCase
         $this->artisan('subscriptions:send-reminders');
         Notification::assertSentTo($this->owner, SubscriptionReminder::class, fn ($notification) => $notification->kind === 'blocked');
         Notification::assertSentToTimes($this->owner, SubscriptionReminder::class, 3);
+    }
+
+    public function test_an_approved_owner_pays_the_first_month_before_using_the_system(): void
+    {
+        $this->owner->approveAccount();
+        $this->actingAs($this->owner->fresh())->get(route('properties.index'))->assertRedirect(route('account.status'));
+        $this->get(route('account.status'))->assertInertia(fn (Assert $page) => $page->where('neverPaid', true)->where('canPay', true));
+
+        $id = $this->postJson(route('subscription.momo.start'), ['months' => 1, 'phone' => '0788123456'])->json('payment.id');
+        $this->getJson(route('subscription.momo.status', $id))->assertJsonPath('payment.status', 'approved');
+        $this->assertSame('2026-11-19', $this->owner->fresh()->expires_at->toDateString());
+        $this->actingAs($this->owner->fresh())->get(route('properties.index'))->assertOk();
+
+        // The admin dashboard counts the money.
+        $this->actingAs($this->admin)->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page
+            ->where('adminOverview.subscriptionMoney.month', 100000)
+            ->where('adminOverview.subscriptionMoney.paying_owners', 1));
     }
 
     public function test_only_self_registered_owners_pay_a_subscription(): void

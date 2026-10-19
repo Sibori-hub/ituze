@@ -3,7 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Activity, ArrowUpRight, BadgeCheck, BarChart3, Building2, CalendarDays, CalendarX,
     CheckCircle2, Clock3, CreditCard, DoorOpen, FileText, Home, Mail, MessageSquare,
-    Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound, X,
+    Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound, Wallet, X,
 } from 'lucide-react';
 import UserAvatar from '@/Components/UserAvatar';
 import useCanEdit from '@/hooks/useCanEdit';
@@ -391,6 +391,38 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                         );
                     })}
                 </section>
+
+                {overview.subscriptionMoney && (
+                    <section aria-labelledby="admin-subscriptions-title" className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0E3B2E] text-white" aria-hidden="true"><Wallet size={18} /></span>
+                                <div>
+                                    <h2 id="admin-subscriptions-title" className="font-[Sora] font-semibold text-gray-900">{t('Owner subscriptions')}</h2>
+                                    <p className="text-xs text-gray-600">{t(':price per month for each self-registered owner', { price: moneyLabel(overview.subscriptionMoney.monthly_price) })}</p>
+                                </div>
+                            </div>
+                            <Link href={route('admin.subscriptions')} className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold ${overview.subscriptionMoney.to_check > 0 ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-gray-50 text-[#0E3B2E] ring-1 ring-gray-200 hover:bg-white'}`}>
+                                {overview.subscriptionMoney.to_check > 0 ? t(':count to check', { count: overview.subscriptionMoney.to_check }) : t('Open subscriptions')} <ArrowUpRight size={15} aria-hidden="true" />
+                            </Link>
+                        </div>
+                        <dl className="grid grid-cols-2 gap-px bg-gray-100 lg:grid-cols-5">
+                            {[
+                                [t('Received this month'), moneyLabel(overview.subscriptionMoney.month), t(overview.subscriptionMoney.payments_month === 1 ? '1 payment' : ':count payments', { count: overview.subscriptionMoney.payments_month }), 'text-emerald-800'],
+                                [t('Received in total'), moneyLabel(overview.subscriptionMoney.total), t('All approved payments'), 'text-gray-900'],
+                                [t('Paying owners'), overview.subscriptionMoney.paying_owners, t('Paid up today'), 'text-gray-900'],
+                                [t('Overdue (grace)'), overview.subscriptionMoney.overdue_owners, t('Will be paused if not paid'), 'text-amber-800'],
+                                [t('Not paid / paused'), overview.subscriptionMoney.unpaid_owners, t('Only see the pay page'), 'text-red-700'],
+                            ].map(([label, value, note, tone]) => (
+                                <div key={label} className="bg-white px-5 py-4">
+                                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</dt>
+                                    <dd className={`mt-1 font-[Sora] text-xl font-bold tabular-nums ${tone}`}>{value}</dd>
+                                    <dd className="text-xs text-gray-500">{note}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                    </section>
+                )}
 
                 <section aria-label={t('Platform analytics')} className="grid gap-5 xl:grid-cols-2">
                     <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">

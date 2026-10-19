@@ -126,6 +126,7 @@ Route::get('/account/status', function (\Illuminate\Http\Request $request) {
         'managerPaused' => $request->user()->isManager() && ! $request->user()->employerWorkspaceIsActive(),
         'employerName' => $request->user()->isManager() ? $request->user()->employer?->name : null,
         'canPay' => $request->user()->paysSubscription() && $request->user()->status === 'approved',
+        'neverPaid' => $request->user()->paysSubscription() && $request->user()->expires_at === null,
     ]);
 })->middleware(['auth', 'verified'])->name('account.status');
 
@@ -143,10 +144,13 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     if ($user->isAdmin()) {
         $chartStart = now()->startOfMonth()->subMonths(5);
         $owners = \App\Models\User::query()->where('role', 'owner');
-        $approvedOwners = (clone $owners)->where('status', 'approved');
+        // Only self-registered owners pay a subscription; Q.R.A-managed owners pay a fee on rent.
+        $approvedOwners = (clone $owners)->where('status', 'approved')->whereNull('created_by');
         $activeSubscriptions = (clone $approvedOwners)
             ->whereNotNull('expires_at')
             ->where('expires_at', '>', now());
+        $graceDays = (int) config('legal.owner_subscription_grace_days', 7);
+        $approvedSubscriptionPayments = \App\Models\SubscriptionPayment::query()->where('status', 'approved');
         $pendingApprovals = (clone $owners)
             ->where('status', 'pending')
             ->where('profile_completed', true)
@@ -204,6 +208,16 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                     'amount' => round((float) $rentCollectedByMonth->get($month->format('Y-m'), 0), 2),
                 ])->values(),
                 'rejectedOwners' => (clone $owners)->where('status', 'rejected')->count(),
+                'subscriptionMoney' => [
+                    'month' => (float) (clone $approvedSubscriptionPayments)->where('reviewed_at', '>=', now()->startOfMonth())->sum('amount'),
+                    'total' => (float) (clone $approvedSubscriptionPayments)->sum('amount'),
+                    'payments_month' => (clone $approvedSubscriptionPayments)->where('reviewed_at', '>=', now()->startOfMonth())->count(),
+                    'to_check' => \App\Models\SubscriptionPayment::query()->where('status', 'pending')->whereNull('mobile_money_request_id')->count(),
+                    'paying_owners' => (clone $activeSubscriptions)->count(),
+                    'overdue_owners' => (clone $approvedOwners)->whereBetween('expires_at', [now()->subDays($graceDays), now()])->count(),
+                    'unpaid_owners' => (clone $approvedOwners)->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '<', now()->subDays($graceDays)))->count(),
+                    'monthly_price' => (int) config('legal.owner_subscription_monthly_rwf', 100000),
+                ],
             ],
         ]);
     }

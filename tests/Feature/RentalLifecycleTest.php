@@ -31,7 +31,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -217,6 +217,18 @@ class RentalLifecycleTest extends TestCase
             $table->string('reference')->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('paid_at');
+            $table->timestamps();
+        });
+        // Owner subscription payments (counted on the admin dashboard).
+        Schema::create('subscription_payments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('owner_id')->constrained('users');
+            $table->unsignedTinyInteger('months');
+            $table->decimal('amount', 12, 2);
+            $table->string('method', 20);
+            $table->string('status', 20)->default('pending');
+            $table->unsignedBigInteger('mobile_money_request_id')->nullable();
+            $table->timestamp('reviewed_at')->nullable();
             $table->timestamps();
         });
         Schema::create('move_out_inspections', function (Blueprint $table) {

@@ -89,7 +89,7 @@ function Badge({ className, children }) {
     );
 }
 
-/** Days left on an owner's one-year plan, as a short bar. */
+/** Days left on an owner's paid subscription, as a short bar. */
 function PlanCell({ user }) {
     const { t, language } = useTranslation();
 
@@ -736,7 +736,7 @@ export default function Users({ users, filters, counts = {} }) {
                         className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] py-2.5 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60"
                     >
                         <RotateCcw size={15} />
-                        {t('Renew +1 year')}
+                        {t('Add 1 month')}
                     </button>
                     <div className="my-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                         <span className="h-px flex-1 bg-gray-200" />

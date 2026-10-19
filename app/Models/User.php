@@ -368,14 +368,16 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Owners get a one-year subscription; advertiser billing arrives with the
-     * advertising module, so approval alone unlocks their workspace.
+     * Approval opens the account, but an owner uses the system only once the
+     * first month (100,000 RWF) is paid on the Subscription page. Advertiser
+     * billing arrives with the advertising module, so approval alone unlocks
+     * their workspace.
      */
     public function approveAccount(): void
     {
         $this->update([
             'status' => 'approved',
-            'expires_at' => $this->isOwner() ? now()->addYear() : null,
+            'expires_at' => null,
         ]);
     }
 

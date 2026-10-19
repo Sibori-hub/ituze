@@ -48,9 +48,9 @@ class OwnerApprovalTest extends TestCase
 
         $owner->refresh();
         $this->assertSame('approved', $owner->status);
-        $this->assertNotNull($owner->expires_at);
-        $this->assertTrue($owner->expires_at->isFuture());
-        $this->assertTrue($owner->expires_at->isBetween(now()->addMonths(11), now()->addMonths(13)));
+        // No free time: the owner pays the first month before using the system.
+        $this->assertNull($owner->expires_at);
+        $this->assertTrue($owner->isExpired());
     }
 
     public function test_admin_can_access_dashboard_without_owner_approval_or_active_subscription(): void

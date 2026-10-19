@@ -272,7 +272,8 @@ class AuthSecurityTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.status', 'approved');
 
-        $this->assertTrue($pending->fresh()->expires_at->isFuture());
+        // Approved, but no free time: the first month is paid in the app.
+        $this->assertNull($pending->fresh()->expires_at);
     }
 
     public function test_public_inquiries_are_rate_limited(): void

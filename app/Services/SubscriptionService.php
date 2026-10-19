@@ -66,6 +66,10 @@ class SubscriptionService
 
         if ($approved) {
             $this->tell($approved);
+            // Paid by mobile money with no admin involved: let the admins know.
+            if ($reviewer === null) {
+                $this->tellAdmins($approved);
+            }
         }
 
         return $approved ?? $payment->fresh();
@@ -118,6 +122,15 @@ class SubscriptionService
                 'status' => SubscriptionPayment::FAILED,
                 'rejection_reason' => $request->failure_reason,
             ]);
+        }
+    }
+
+    private function tellAdmins(SubscriptionPayment $payment): void
+    {
+        try {
+            \Illuminate\Support\Facades\Notification::send(User::query()->where('role', 'admin')->get(), new \App\Notifications\SubscriptionPaymentReceived($payment));
+        } catch (Throwable $e) {
+            Log::warning('Subscription payment admin notice not sent: '.$e->getMessage(), ['payment' => $payment->id]);
         }
     }
 
