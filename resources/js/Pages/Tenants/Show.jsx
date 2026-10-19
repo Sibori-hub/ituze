@@ -1,14 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import useCanEdit from '@/hooks/useCanEdit';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Building2, CalendarDays, Edit2, FileText, Mail, MapPin, Phone, UserRound, Wallet } from 'lucide-react';
+import { ArrowLeft, Building2, CalendarDays, Edit2, FileText, KeyRound, Mail, MapPin, Phone, UserRound, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from '@/localization';
 import TenantLocationFields from '@/Components/TenantLocationFields';
-import LeaseNoteField from '@/Components/LeaseNoteField';
-import LeaseRecordFields from '@/Components/LeaseRecordFields';
+import AssignUnitForm from '@/Components/AssignUnitForm';
 import PaymentRecordDetails from '@/Components/PaymentRecordDetails';
-import { countRentPeriods } from '@/utils/rentPeriodCalculator';
-import { isApartmentUnit } from '@/utils/unitType';
 
 const today = () => {
     const now = new Date();
@@ -26,6 +24,7 @@ const formatDate = (value, language) => {
 
 export default function TenantShow({ tenant, availableUnits }) {
     const { t, language } = useTranslation();
+    const canEdit = useCanEdit();
     const [editing, setEditing] = useState(false);
     const nameParts = (tenant.name || '').trim().split(/\s+/);
     const profile = useForm({
@@ -43,53 +42,6 @@ export default function TenantShow({ tenant, availableUnits }) {
         district_id: tenant.district_id || '',
         sector_id: tenant.sector_id || '',
     });
-    const assignment = useForm({
-        tenant_id: tenant.id,
-        unit_id: '',
-        start_date: today(),
-        end_date: '',
-        monthly_rent: '',
-        rent_frequency: 'monthly',
-        check_in_time: '14:00',
-        check_out_time: '11:00',
-        deposit_amount: '0',
-        lease: null,
-        lease_notes: '',
-        payment_method: '',
-        payment_reference: '',
-    });
-
-    const selectedUnit = availableUnits.find(unit => String(unit.id) === String(assignment.data.unit_id));
-    const apartmentStay = isApartmentUnit(selectedUnit);
-    const dailyStay = apartmentStay && assignment.data.rent_frequency === 'daily';
-    const rentPeriods = countRentPeriods(assignment.data.start_date, assignment.data.end_date, assignment.data.rent_frequency);
-    const totalRent = rentPeriods > 0 && Number(assignment.data.monthly_rent) > 0
-        ? rentPeriods * Number(assignment.data.monthly_rent)
-        : '';
-
-    const assignUnit = (event) => {
-        event.preventDefault();
-        if (!selectedUnit) return;
-
-        assignment.post(route('properties.units.tenancy.store', [selectedUnit.property_id, selectedUnit.id]), {
-            forceFormData: true,
-            preserveScroll: true,
-            onSuccess: () => assignment.reset(),
-        });
-    };
-
-    const setSelectedUnit = (unitId) => {
-        const unit = availableUnits.find(item => String(item.id) === String(unitId));
-        assignment.setData(data => ({
-            ...data,
-            unit_id: unitId,
-            monthly_rent: unit?.rent_amount ?? '',
-            rent_frequency: isApartmentUnit(unit) && unit.rent_frequency === 'daily' ? 'daily' : 'monthly',
-            check_in_time: '14:00',
-            check_out_time: '11:00',
-        }));
-    };
-
     const updateTenant = (event) => {
         event.preventDefault();
         profile.put(route('tenants.update', tenant.id), {
@@ -120,14 +72,14 @@ export default function TenantShow({ tenant, availableUnits }) {
                                 <p className="mt-1 text-sm text-gray-500">{t(tenant.type === 'company' ? 'Company tenant' : 'Individual tenant')}</p>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        {canEdit && <div className="flex flex-wrap gap-2">
                             <button type="button" onClick={() => setEditing(!editing)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
                                 <Edit2 size={15} /> {editing ? t('Close editor') : t('Edit tenant details')}
                             </button>
                             <a href="#assign-unit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a2e23]">
                                 <Building2 size={16} /> {t('Assign a unit')}
                             </a>
-                        </div>
+                        </div>}
                     </div>
 
                     {editing ? (
@@ -175,97 +127,18 @@ export default function TenantShow({ tenant, availableUnits }) {
                     )}
                 </section>
 
-                <section id="assign-unit" className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                    <div className="border-b border-gray-100 p-6">
-                        <h2 className="font-[Sora] text-lg font-semibold text-gray-900">{t('Assign this tenant to a unit')}</h2>
-                        <p className="mt-1 text-sm text-gray-500">{t('Choose an available unit, confirm the lease terms, and upload the signed lease. The unit will be reserved for a future start date.')}</p>
+                {canEdit && <section id="assign-unit" className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                    <div className="flex items-start gap-4 border-b border-gray-100 bg-gradient-to-br from-[#0E3B2E]/[0.06] via-white to-amber-50/60 p-6">
+                        <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-[#0E3B2E] text-white shadow-md shadow-[#0E3B2E]/20">
+                            <KeyRound size={22} aria-hidden="true" />
+                        </span>
+                        <div>
+                            <h2 className="font-[Sora] text-xl font-bold text-gray-900">{t('Assign this tenant to a unit')}</h2>
+                            <p className="mt-1 text-sm text-gray-600">{t('Choose an available unit, confirm the lease terms, and upload the signed lease. The unit will be reserved for a future start date.')}</p>
+                        </div>
                     </div>
                     {availableUnits.length ? (
-                        <form onSubmit={assignUnit} className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
-                            <label className="text-sm font-medium text-gray-700 sm:col-span-2 lg:col-span-3">
-                                {t('Available unit')}
-                                <select required value={assignment.data.unit_id} onChange={event => setSelectedUnit(event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200">
-                                    <option value="">{t('Select a property and unit')}</option>
-                                    {availableUnits.map(unit => (
-                                        <option key={unit.id} value={unit.id}>{unit.property.name} · {t('Unit')} {unit.unit_number} · {Number(unit.rent_amount).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} RWF/{t(isApartmentUnit(unit) && unit.rent_frequency === 'daily' ? 'Daily' : 'Monthly')}</option>
-                                    ))}
-                                </select>
-                                {assignment.errors.unit_id && <span className="mt-1 block text-xs text-red-600">{assignment.errors.unit_id}</span>}
-                            </label>
-                            <label className="text-sm font-medium text-gray-700">
-                                {t(dailyStay ? 'Check-in date' : 'Lease start date')}
-                                <input type="date" required min={today()} value={assignment.data.start_date} onChange={event => assignment.setData('start_date', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
-                            </label>
-                            <label className="text-sm font-medium text-gray-700">
-                                {t(dailyStay ? 'Check-out date' : 'Lease end date')}
-                                <input type="date" required min={assignment.data.start_date} value={assignment.data.end_date} onChange={event => assignment.setData('end_date', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
-                            </label>
-                            {dailyStay && <>
-                                <label className="text-sm font-medium text-gray-700">{t('Check-in time')}<input type="time" required value={assignment.data.check_in_time} onChange={event => assignment.setData('check_in_time', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Standard check-in time is 14:00.')}</span></label>
-                                <label className="text-sm font-medium text-gray-700">{t('Check-out time')}<input type="time" required value={assignment.data.check_out_time} onChange={event => assignment.setData('check_out_time', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Standard check-out time is 11:00.')}</span></label>
-                            </>}
-                            {apartmentStay ? <label className="text-sm font-medium text-gray-700">
-                                {t('Rent frequency')}
-                                <select value={assignment.data.rent_frequency} onChange={event => assignment.setData('rent_frequency', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200">
-                                    <option value="daily">{t('Daily')}</option><option value="monthly">{t('Monthly')}</option>
-                                </select>
-                            </label> : <div className="text-sm font-medium text-gray-700">{t('Rent frequency')}<p className="mt-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm">{t('Monthly')}</p></div>}
-                            <label className="text-sm font-medium text-gray-700">
-                                {t(dailyStay ? 'Nightly rate (RWF)' : 'Monthly rent (RWF)')}
-                                <input type="number" required min="0.01" step="0.01" value={assignment.data.monthly_rent} onChange={event => assignment.setData('monthly_rent', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
-                            </label>
-                            <label className="text-sm font-medium text-gray-700">
-                                {t(dailyStay ? 'Number of nights' : 'Number of rent periods')}
-                                <input type="number" disabled value={rentPeriods || ''} className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" />
-                            </label>
-                            <label className="text-sm font-medium text-gray-700">
-                                {t('Total rent for lease (RWF)')}
-                                <input type="text" disabled value={totalRent === '' ? '' : Number(totalRent).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-100 text-gray-600" />
-                                <span className="mt-1 block text-xs font-normal text-gray-500">{t(dailyStay ? 'Rent is charged per night; check-out day is not billed.' : 'The security deposit is separate from rent.')}</span>
-                            </label>
-                            <label className="text-sm font-medium text-gray-700">
-                                {t('Security deposit (RWF)')}
-                                <input type="number" min="0" step="0.01" value={assignment.data.deposit_amount} onChange={event => assignment.setData('deposit_amount', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" />
-                            </label>
-                            <LeaseRecordFields
-                                paymentMethod={assignment.data.payment_method}
-                                onPaymentMethodChange={value => assignment.setData('payment_method', value)}
-                                paymentReference={assignment.data.payment_reference}
-                                onPaymentReferenceChange={value => assignment.setData('payment_reference', value)}
-                                errors={assignment.errors}
-                                isDepositPayment
-                            />
-                            <LeaseNoteField
-                                value={assignment.data.lease_notes}
-                                onChange={value => assignment.setData('lease_notes', value)}
-                                routeName="properties.units.tenancy.lease-notes.generate"
-                                routeParams={selectedUnit ? [selectedUnit.property_id, selectedUnit.id] : []}
-                                payload={{
-                                    start_date: assignment.data.start_date,
-                                    end_date: assignment.data.end_date,
-                                    check_in_time: dailyStay ? assignment.data.check_in_time : null,
-                                    check_out_time: dailyStay ? assignment.data.check_out_time : null,
-                                    monthly_rent: assignment.data.monthly_rent,
-                                    rent_frequency: assignment.data.rent_frequency,
-                                    deposit_amount: assignment.data.deposit_amount,
-                                }}
-                                disabled={!selectedUnit || !assignment.data.start_date || !assignment.data.end_date || !assignment.data.monthly_rent}
-                            />
-                            <label className="text-sm font-medium text-gray-700 sm:col-span-2 lg:col-span-3">
-                                {t('Signed lease document (required)')}
-                                <input type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={event => assignment.setData('lease', event.target.files[0])} className="mt-1.5 block w-full rounded-xl border border-gray-200 p-2 text-sm" />
-                                {assignment.errors.lease && <span className="mt-1 block text-xs text-red-600">{assignment.errors.lease}</span>}
-                            </label>
-                            {Object.values(assignment.errors).length > 0 && (
-                                <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 sm:col-span-2 lg:col-span-3">{Object.values(assignment.errors)[0]}</p>
-                            )}
-                            <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2 lg:col-span-3">
-                                <p className="text-xs text-gray-500">{t('Tenant identity and contact details will be reused from this profile.')}</p>
-                                <button disabled={assignment.processing || !selectedUnit} className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a2e23] disabled:opacity-50">
-                                    <Building2 size={16} /> {assignment.processing ? t('Saving tenancy…') : t('Assign unit and create lease')}
-                                </button>
-                            </div>
-                        </form>
+                        <AssignUnitForm tenant={tenant} availableUnits={availableUnits} />
                     ) : (
                         <div className="p-8 text-center">
                             <Building2 className="mx-auto text-gray-300" size={36} />
@@ -274,7 +147,7 @@ export default function TenantShow({ tenant, availableUnits }) {
                             <Link href={route('properties.index')} className="mt-4 inline-flex rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white">{t('View properties')}</Link>
                         </div>
                     )}
-                </section>
+                </section>}
 
                 <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                     <div className="border-b border-gray-100 p-6">

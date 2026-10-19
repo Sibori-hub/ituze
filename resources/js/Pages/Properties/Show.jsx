@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, MapPin, Building2, Edit, Trash2, Image as ImageIcon, Plus, DollarSign, CheckCircle, Users, Wrench } from 'lucide-react';
+import PropertyUnitsSection, { useFloorLabel } from '@/Components/PropertyUnitsSection';
+import { useTranslation } from '@/localization';
+import { ArrowLeft, MapPin, Layers, Edit, Trash2, Image as ImageIcon, CheckCircle, Users, Wrench } from 'lucide-react';
 
 const statusStyles = {
     active: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
@@ -12,7 +14,11 @@ const imageSource = (path) => {
     return /^https?:\/\//i.test(path) ? path : `/storage/${path}`;
 };
 
-export default function PropertyShow({ property, isAdmin, canEdit }) {
+export default function PropertyShow({ property, isAdmin, canEdit, floorNumbers = [] }) {
+    const { t } = useTranslation();
+    const floorLabel = useFloorLabel();
+    const upperFloors = Number(property.total_floors) || 0;
+    const basements = Number(property.basement_floors) || 0;
     const confirmDelete = () => {
         if (!canEdit) return;
         
@@ -82,9 +88,19 @@ export default function PropertyShow({ property, isAdmin, canEdit }) {
                                 <div className="flex items-center gap-3">
                                     <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
                                 </div>
-                                <p className="mt-2 flex items-center gap-1.5 text-gray-600">
-                                    <MapPin size={16} />
-                                    {property.address}
+                                {property.address && (
+                                    <p className="mt-2 flex items-center gap-1.5 text-gray-600">
+                                        <MapPin size={16} aria-hidden="true" />
+                                        {property.address}
+                                    </p>
+                                )}
+                                <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
+                                    <Layers size={15} aria-hidden="true" className="text-[#0E3B2E]" />
+                                    {[
+                                        floorLabel(0),
+                                        upperFloors > 0 ? (upperFloors === 1 ? t('1 upper floor') : t(':count upper floors', { count: upperFloors })) : null,
+                                        basements > 0 ? (basements === 1 ? t('1 basement') : t(':count basements', { count: basements })) : t('No basement'),
+                                    ].filter(Boolean).join(' · ')}
                                 </p>
                                 {property.cell && (
                                     <p className="mt-1 text-sm text-gray-500">
@@ -92,8 +108,16 @@ export default function PropertyShow({ property, isAdmin, canEdit }) {
                                     </p>
                                 )}
                                 {property.owner && (
-                                    <p className="mt-1 text-sm text-[#0E3B2E]">
-                                        Created by: {property.owner.name || `${property.owner.first_name || ''} ${property.owner.last_name || ''}`.trim()}
+                                    <p className="mt-1 text-sm text-gray-700">
+                                        <span className="font-medium text-gray-500">{t('Owner')}:</span>{' '}
+                                        <span className="font-semibold text-[#0E3B2E]">{property.owner.name}</span>
+                                    </p>
+                                )}
+                                {property.creator && property.creator.id !== property.owner?.id && (
+                                    <p className="mt-0.5 text-sm text-gray-700">
+                                        <span className="font-medium text-gray-500">{t('Added by')}:</span>{' '}
+                                        {property.creator.name}
+                                        {property.creator.role === 'admin' && <span className="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{t('Administrator')}</span>}
                                     </p>
                                 )}
                             </div>
@@ -122,10 +146,10 @@ export default function PropertyShow({ property, isAdmin, canEdit }) {
                                 <p className="text-2xl font-bold text-[#0E3B2E]">
                                     {property.units_count ?? 0}
                                 </p>
-                                <p className="text-xs text-gray-500">Created Units</p>
+                                <p className="text-xs text-gray-500">{t('Rooms')}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-xs text-gray-500">Available Units</p>
+                                <p className="text-xs text-gray-500">{t('Available rooms')}</p>
                                 <p className="text-2xl font-bold text-[#0E3B2E]">
                                     {property.units_available_count ?? 0}
                                 </p>
@@ -135,8 +159,8 @@ export default function PropertyShow({ property, isAdmin, canEdit }) {
                                 <p className="text-xs text-gray-500">Images</p>
                             </div>
                             <div className="text-center col-span-2 md:col-span-1">
-                                <p className="text-xs text-gray-500 flex items-center justify-center gap-1">
-                                    <DollarSign size={11} /> Monthly Income
+                                <p className="text-xs text-gray-500">
+                                    {t('Monthly income (RWF)')}
                                 </p>
                                 {(property.units_monthly_rent_sum && Number(property.units_monthly_rent_sum) > 0) ? (
                                     <p className="text-2xl font-bold text-[#0E3B2E]">
@@ -234,100 +258,7 @@ export default function PropertyShow({ property, isAdmin, canEdit }) {
                     </div>
                 )}
 
-                {/* Units Section */}
-                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                    <div className="flex items-center justify-between p-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Units</h3>
-                        <Link
-                            href={route('properties.units.create', property)}
-                            className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
-                        >
-                            <Plus size={16} />
-                            Add Unit
-                        </Link>
-                    </div>
-
-                    {property.units && property.units.length > 0 ? (
-                        <div className="divide-y divide-gray-100">
-                            {property.units.map((unit) => (
-                                <div key={unit.id} className="p-6 hover:bg-gray-50/50 transition-colors">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            {unit.images?.length > 0 && (
-                                                <div className="mb-3 flex gap-2">
-                                                    {unit.images.slice(0, 3).map((image) => (
-                                                        <img
-                                                            key={image.id}
-                                                            src={imageSource(image.image_path)}
-                                                            alt={`Unit ${unit.unit_number}`}
-                                                            className="h-16 w-20 rounded-lg object-cover"
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="flex items-center gap-2">
-                                                <h4 className="font-semibold text-gray-900">Unit {unit.unit_number}</h4>
-                                                {unit.unit_type && (
-                                                    <span className="rounded-full bg-[#0E3B2E]/10 px-2 py-0.5 text-xs font-medium text-[#0E3B2E]">
-                                                        {unit.unit_type.name}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="mt-1 text-sm text-gray-500">{unit.description || 'No description'}</p>
-                                            {(unit.rent_amount || (unit.size_sqm !== null && unit.size_sqm !== undefined && unit.size_sqm !== '')) && (
-                                                <div className="mt-2 flex flex-wrap items-center gap-3">
-                                                    {unit.rent_amount && (
-                                                        <div className="flex items-center gap-1 text-sm text-[#0E3B2E] font-medium">
-                                                            <DollarSign size={16} />
-                                                            {parseFloat(unit.rent_amount).toLocaleString()} / month
-                                                        </div>
-                                                    )}
-                                                    {(unit.size_sqm !== null && unit.size_sqm !== undefined && unit.size_sqm !== '') && (
-                                                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                            <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
-                                                                {Number(unit.size_sqm).toLocaleString(undefined, { maximumFractionDigits: 2 })} m²
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
-                                                unit.status === 'available'
-                                                    ? 'bg-green-50 text-green-700 ring-1 ring-green-600/10' 
-                                                    : unit.status === 'occupied'
-                                                    ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/10'
-                                                    : 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10'
-                                            }`}>
-                                                {unit.status}
-                                            </span>
-                                            <Link
-                                                href={route('properties.units.edit', [property, unit])}
-                                                className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
-                                            >
-                                                <Edit size={14} />
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="p-12 text-center">
-                            <Building2 size={48} className="mx-auto mb-4 text-gray-300" />
-                            <h3 className="text-lg font-medium text-gray-900">No units yet</h3>
-                            <p className="mt-1 text-sm text-gray-500">Get started by adding your first unit to this property</p>
-                            <Link
-                                href={route('properties.units.create', property)}
-                                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
-                            >
-                                <Plus size={15} />
-                                Add Unit
-                            </Link>
-                        </div>
-                    )}
-                </div>
+                <PropertyUnitsSection property={property} floorNumbers={floorNumbers} canEdit={canEdit} />
             </div>
         </AuthenticatedLayout>
     );

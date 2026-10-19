@@ -6,6 +6,7 @@ import {
     Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound, X,
 } from 'lucide-react';
 import UserAvatar from '@/Components/UserAvatar';
+import useCanEdit from '@/hooks/useCanEdit';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/localization';
 
@@ -105,6 +106,7 @@ const formatDate = (value, language) => {
 
 function VisitorInquiries({ inquiries }) {
     const { t, language } = useTranslation();
+    const canEdit = useCanEdit();
     const [replies, setReplies] = useState({});
     const [selectedInquiryId, setSelectedInquiryId] = useState(null);
     const selectedInquiry = inquiries.find(inquiry => inquiry.id === selectedInquiryId);
@@ -233,6 +235,7 @@ function VisitorInquiries({ inquiries }) {
                                 <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{t('Visitor inquiry')}</p>
                                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{selectedInquiry.message}</p>
                             </div>
+                            {canEdit && (<>
                             <label className="block text-sm font-semibold text-gray-800" htmlFor={`inquiry-reply-${selectedInquiry.id}`}>
                                 {t('Your reply')}
                                 <textarea
@@ -249,14 +252,18 @@ function VisitorInquiries({ inquiries }) {
                                 <p className="text-xs text-gray-500">{t('Your last reply is saved here so you can reuse or edit it.')}</p>
                             )}
                             <p className="text-xs leading-5 text-gray-500">{t('WhatsApp opens outside Ituze. The inquiry is marked as read and this reply is saved when you open WhatsApp; Ituze cannot confirm delivery or retrieve the visitor’s reply.')}</p>
+                            </>)}
+                            {!canEdit && (
+                                <p className="rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-950">{t('ITUZE GREEN PLATFORM answers visitor inquiries for your properties.')}</p>
+                            )}
                         </div>
                         <footer className="flex flex-wrap justify-end gap-2 border-t border-gray-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-                            {selectedInquiry.status !== 'read' && (
+                            {canEdit && selectedInquiry.status !== 'read' && (
                                 <button type="button" onClick={markSelectedInquiryRead} className="mr-auto inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
                                     <CheckCircle2 size={14} /> {t('Mark as read')}
                                 </button>
                             )}
-                            {whatsappHref ? (
+                            {!canEdit ? null : whatsappHref ? (
                                 <a href={whatsappHref} target="_blank" rel="noreferrer" onClick={prepareWhatsAppReply} className="inline-flex items-center gap-2 rounded-lg bg-[#168447] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#116c39]">
                                     <MessageSquare size={15} /> {t('Reply via WhatsApp')}
                                 </a>
@@ -542,8 +549,9 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
     const firstName = user.first_name || user.name?.split(' ')[0];
     const today = new Intl.DateTimeFormat(localeForLanguage(language), { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
     const daysLeft = user.expires_at ? Math.ceil((new Date(user.expires_at) - new Date()) / 86400000) : null;
+    const canEdit = useCanEdit();
     const quickActions = [
-        { label: 'Add property', href: route('properties.create'), icon: Plus, primary: true },
+        ...(canEdit ? [{ label: 'Add property', href: route('properties.create'), icon: Plus, primary: true }] : []),
         { label: 'Tenants', href: route('tenants.index'), icon: UsersRound },
         { label: 'Payments', href: route('payments.index'), icon: CreditCard },
         { label: 'Reports', href: route('reports.index'), icon: BarChart3 },
@@ -700,7 +708,7 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
                             <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
                                 <Building2 size={26} className="mx-auto text-gray-300" />
                                 <p className="mt-2 text-sm text-gray-500">{t('No properties yet.')}</p>
-                                <Link href={route('properties.create')} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0E3B2E] px-3 py-2 text-xs font-semibold text-white hover:bg-[#124B3A]"><Plus size={14} /> {t('Add your first property')}</Link>
+                                {canEdit && <Link href={route('properties.create')} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0E3B2E] px-3 py-2 text-xs font-semibold text-white hover:bg-[#124B3A]"><Plus size={14} /> {t('Add your first property')}</Link>}
                             </div>
                         )}
                     </section>

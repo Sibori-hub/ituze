@@ -31,7 +31,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -48,6 +48,7 @@ class RentalLifecycleTest extends TestCase
             $table->string('password');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('remember_token')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -79,6 +80,9 @@ class RentalLifecycleTest extends TestCase
         });
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            $table->unsignedSmallInteger('total_floors')->default(0);
+            $table->unsignedTinyInteger('basement_floors')->default(0);
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->foreignId('owner_id')->constrained('users');
             $table->unsignedBigInteger('cell_id')->nullable();
             $table->string('name');
@@ -105,8 +109,18 @@ class RentalLifecycleTest extends TestCase
             $table->string('name');
             $table->timestamps();
         });
+        Schema::create('property_units', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('property_id');
+            $table->unsignedBigInteger('unit_type_id');
+            $table->smallInteger('floor_number')->default(0);
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('units', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('property_unit_id')->nullable();
             $table->foreignId('property_id')->constrained();
             $table->foreignId('unit_type_id')->constrained();
             $table->string('unit_number');
@@ -299,8 +313,10 @@ class RentalLifecycleTest extends TestCase
             'profile_completed' => true,
         ]);
         $admin->markEmailAsVerified();
-        $owner = User::factory()->create(['role' => 'owner']);
-        $otherOwner = User::factory()->create(['role' => 'owner']);
+        // Owners the admin created (managed by Q.R.A) can be chosen; a self-registered one cannot.
+        $owner = User::factory()->create(['role' => 'owner', 'created_by' => $admin->id]);
+        $otherOwner = User::factory()->create(['role' => 'owner', 'created_by' => $admin->id]);
+        $selfRegistered = User::factory()->create(['role' => 'owner']);
         $existingProperty = Property::create([
             'owner_id' => $owner->id,
             'name' => 'Existing owner property',
@@ -334,9 +350,19 @@ class RentalLifecycleTest extends TestCase
                 ->has('owners', 2));
 
         $this->post(route('properties.store'), [
+            'owner_id' => $selfRegistered->id,
+            'name' => 'Not for a self-registered owner',
+            'total_floors' => 0,
+            'basement_floors' => 0,
+            'cell_id' => $cellId,
+        ])->assertSessionHasErrors('owner_id');
+
+        $this->post(route('properties.store'), [
             'owner_id' => $owner->id,
             'name' => 'Created on behalf',
             'address' => 'Kigali',
+            'total_floors' => 0,
+            'basement_floors' => 0,
             'description' => '',
             'cell_id' => $cellId,
             'amenities' => [],
@@ -688,7 +714,7 @@ class RentalLifecycleTest extends TestCase
                 ->has('payments.data.0.allocations', 3));
     }
 
-    public function test_payment_history_hides_deposit_transactions_without_changing_totals_or_records(): void
+    public function test_payment_history_lists_deposits_and_rent_with_separate_totals(): void
     {
         [$property, $owner, $unit, $tenant] = $this->makeUnitAndTenant();
         $tenancy = $this->makeTenancy($unit, $tenant, $owner, ['deposit_amount' => 300]);
@@ -711,6 +737,7 @@ class RentalLifecycleTest extends TestCase
         foreach ([[$rentCharge, '500.00'], [$depositCharge, '300.00']] as [$charge, $amount]) {
             RentPayment::create([
                 'rent_charge_id' => $charge->id,
+                'transaction_id' => (string) \Illuminate\Support\Str::uuid(),
                 'recorded_by' => $owner->id,
                 'amount' => $amount,
                 'method' => 'cash',
@@ -719,14 +746,26 @@ class RentalLifecycleTest extends TestCase
             ]);
         }
 
+        // Deposits are payments with their own receipt: they are listed, and the totals
+        // show everything received, the deposits and the rent separately.
         $this->actingAs($owner)
             ->get(route('payments.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Payments/Index')
+                ->has('payments.data', 2)
+                ->where('reportTotals.paid', 800)
+                ->where('reportTotals.deposits_received', 300)
+                ->where('reportTotals.rent_received', 500));
+
+        $this->get(route('payments.index', ['type' => 'rent']))
+            ->assertInertia(fn (Assert $page) => $page
                 ->has('payments.data', 1)
-                ->where('payments.data.0.charge.charge_type', 'rent')
-                ->where('reportTotals.paid', 800));
+                ->where('payments.data.0.charge.charge_type', 'rent'));
+        $this->get(route('payments.index', ['type' => 'deposit']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('payments.data', 1)
+                ->where('payments.data.0.charge.charge_type', 'deposit'));
 
         $this->assertSame(2, RentPayment::query()->count());
         $this->assertSame(300.0, (float) $depositCharge->payments()->sum('amount'));
@@ -842,22 +881,54 @@ class RentalLifecycleTest extends TestCase
         $this->assertMatchesRegularExpression('/^ITZ-LSE-2026-\d{6}$/', $tenancy->leases()->firstOrFail()->reference_number);
         $this->assertSame(12, $tenancy->rentCharges()->where('charge_type', 'rent')->count());
         $this->assertSame(1, $tenancy->rentCharges()->where('charge_type', 'deposit')->count());
+        // Monthly rule: the deposit is one month's rent (the typed 250 is ignored),
+        // held aside, and the first two months of rent are paid at assignment.
         $depositCharge = $tenancy->rentCharges()->where('charge_type', 'deposit')->firstOrFail();
+        $this->assertSame('600.00', (string) $tenancy->fresh()->deposit_amount);
         $this->assertDatabaseHas('rent_payments', [
             'rent_charge_id' => $depositCharge->id,
             'recorded_by' => $owner->id,
-            'amount' => '250.00',
+            'amount' => '600.00',
             'method' => 'mobile_money',
             'reference' => 'MOMO-INITIAL-DEPOSIT-REF',
             'taxable_amount' => null,
             'vat_rate' => null,
             'vat_amount' => null,
         ]);
+        $rentCharges = $tenancy->rentCharges()->where('charge_type', 'rent')->orderBy('due_date')->get();
+        $paidPerCharge = $rentCharges->map(fn ($charge) => (float) $charge->payments()->sum('amount'))->all();
+        $this->assertSame([600.0, 600.0], array_slice($paidPerCharge, 0, 2));
+        $this->assertSame(0.0, array_sum(array_slice($paidPerCharge, 2)));
+        $this->assertSame(1800.0, (float) RentPayment::query()->whereIn('rent_charge_id', $tenancy->rentCharges()->pluck('id'))->sum('amount'));
 
         $this->get(route('leases.index'))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('leases.data.0.payment_balance', 350)
-                ->where('leases.data.0.payment_status', 'Partially paid'));
+                ->where('leases.data.0.payment_balance', 0)
+                ->where('leases.data.0.payment_status', 'Paid'));
+
+        // A monthly lease shorter than two months is refused.
+        $unit->update(['status' => 'available']);
+        $tenancy->update(['status' => 'ended']);
+        $this->post(route('properties.units.tenancy.store', [$property, $unit]), [
+            'tenant_id' => $tenant->id,
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-04-29',
+            'monthly_rent' => '600.00',
+            'rent_frequency' => 'monthly',
+            'payment_method' => 'cash',
+            'lease' => UploadedFile::fake()->create('short-lease.pdf', 30, 'application/pdf'),
+        ])->assertSessionHasErrors('end_date');
+
+        // A cheque payment needs the cheque number, like a bank slip or MoMo transaction ID.
+        $this->post(route('properties.units.tenancy.store', [$property, $unit]), [
+            'tenant_id' => $tenant->id,
+            'start_date' => '2026-03-01',
+            'end_date' => '2027-02-28',
+            'monthly_rent' => '600.00',
+            'rent_frequency' => 'monthly',
+            'payment_method' => 'cheque',
+            'lease' => UploadedFile::fake()->create('lease.pdf', 30, 'application/pdf'),
+        ])->assertSessionHasErrors('payment_reference')->assertSessionDoesntHaveErrors('payment_method');
     }
 
     public function test_tenant_creation_validates_identity_phone_and_location_hierarchy(): void
@@ -1594,7 +1665,7 @@ class RentalLifecycleTest extends TestCase
             'profile_completed' => true,
         ]);
         $admin->markEmailAsVerified();
-        $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'expires_at' => now()->addYear()]);
+        $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'expires_at' => now()->addYear(), 'created_by' => $admin->id]);
         $cellId = \Illuminate\Support\Facades\DB::table('cells')->insertGetId(['name' => 'Kiyovu', 'created_at' => now(), 'updated_at' => now()]);
         $officeType = UnitType::create(['name' => 'Office']);
 
@@ -1603,20 +1674,88 @@ class RentalLifecycleTest extends TestCase
             'owner_id' => $owner->id,
             'name' => 'Managed Plaza',
             'address' => 'KN 3 Rd',
+            'total_floors' => 5,
+            'basement_floors' => 1,
             'cell_id' => $cellId,
         ])->assertSessionHasNoErrors();
         $property = Property::query()->where('name', 'Managed Plaza')->firstOrFail();
         $this->assertSame($owner->id, $property->owner_id);
+        $this->assertSame([-1, 0, 1, 2, 3, 4, 5], $property->floorNumbers());
 
-        // 2. Unit added to that property.
-        $this->post(route('properties.units.store', $property), [
+        // 2. Unit (a category on one floor), then a room inside it.
+        $this->post(route('properties.property-units.store', $property), [
             'unit_type_id' => $officeType->id,
+            'floor_number' => 2,
+        ])->assertSessionHasNoErrors();
+        $officeUnit = $property->propertyUnits()->firstOrFail();
+
+        // A floor the building does not have is refused, and so is the same category twice on one floor.
+        $this->post(route('properties.property-units.store', $property), ['unit_type_id' => $officeType->id, 'floor_number' => 6])
+            ->assertSessionHasErrors('floor_number');
+        $this->post(route('properties.property-units.store', $property), ['unit_type_id' => $officeType->id, 'floor_number' => 2])
+            ->assertSessionHasErrors('floor_number');
+
+        $this->post(route('properties.units.store', $property), [
+            'property_unit_id' => $officeUnit->id,
             'unit_number' => 'OF-101',
             'rent_amount' => 300000,
             'rent_frequency' => 'monthly',
             'status' => 'available',
         ])->assertSessionHasNoErrors();
         $unit = Unit::query()->where('unit_number', 'OF-101')->firstOrFail();
+        $this->assertSame($officeUnit->id, $unit->property_unit_id);
+        $this->assertSame(2, (int) $unit->floor_number);
+
+        // A unit that still has rooms cannot be deleted.
+        $this->delete(route('properties.property-units.destroy', [$property, $officeUnit]))
+            ->assertSessionHasErrors('unit');
+
+        // Categories are typed per unit: the same name in any letter case is reused,
+        // a blank one is refused, and a name no unit uses any more is removed.
+        $this->post(route('properties.property-units.store', $property), ['category_name' => 'restaurant', 'floor_number' => 0])
+            ->assertSessionHasNoErrors();
+        $this->post(route('properties.property-units.store', $property), ['category_name' => 'Restaurant', 'floor_number' => -1])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(1, UnitType::query()->whereRaw('LOWER(name) = ?', ['restaurant'])->count());
+        $this->post(route('properties.property-units.store', $property), ['category_name' => '  ', 'floor_number' => 1])
+            ->assertSessionHasErrors('category_name');
+        $property->propertyUnits()->whereIn('floor_number', [0, -1])->get()
+            ->each(fn ($restaurant) => $this->delete(route('properties.property-units.destroy', [$property, $restaurant]))->assertSessionHasNoErrors());
+        $this->assertSame(0, UnitType::query()->whereRaw('LOWER(name) = ?', ['restaurant'])->count());
+
+        // A new room always starts available, and "Ware Houses" is not an apartment, so no bedrooms.
+        $this->post(route('properties.property-units.store', $property), ['category_name' => 'Ware Houses', 'floor_number' => -1])
+            ->assertSessionHasNoErrors();
+        $warehouse = $property->propertyUnits()->where('floor_number', -1)->firstOrFail();
+        $this->post(route('properties.units.store', $property), [
+            'property_unit_id' => $warehouse->id,
+            'unit_number' => 'W-01',
+            'rent_amount' => 200000,
+            'rent_frequency' => 'monthly',
+            'status' => 'occupied',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('available', Unit::query()->where('unit_number', 'W-01')->value('status'));
+
+        // "Write with AI" for a room: a short description built from the room and its building, priced in RWF.
+        config(['services.openai.api_key' => null]);
+        $description = $this->postJson(route('properties.units.describe', $property), [
+            'property_unit_id' => $officeUnit->id,
+            'unit_number' => '005',
+            'size_sqm' => 25,
+            'rent_amount' => 300000,
+            'rent_frequency' => 'monthly',
+        ])->assertOk()->json('description');
+        $this->assertStringContainsString('Room 005', $description);
+        $this->assertStringContainsString('300,000 RWF per month', $description);
+        $this->assertStringContainsString('Managed Plaza', $description);
+        $unitDescription = $this->postJson(route('properties.property-units.describe', $property), ['category_name' => 'Offices', 'floor_number' => 0])
+            ->assertOk()->json('description');
+        $this->assertStringContainsString('Offices on the ground floor of Managed Plaza', $unitDescription);
+        $this->postJson(route('properties.property-units.describe', $property), ['category_name' => '', 'floor_number' => 9])
+            ->assertUnprocessable()->assertJsonValidationErrors(['category_name', 'floor_number']);
+        $this->actingAs($owner)->postJson(route('properties.units.describe', $property), ['property_unit_id' => $officeUnit->id])
+            ->assertForbidden();
+        $this->actingAs($admin);
 
         // 3. Tenant created by the admin (no owner involved), with an MTN 079 number.
         $this->post(route('tenants.store'), [

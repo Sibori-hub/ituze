@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ProfileCompletionController;
+use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\Auth\MobileAuthController;
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -34,8 +35,9 @@ Route::prefix('mobile')->group(function () {
         ->middleware('throttle:3,1')
         ->name('api.mobile.login-otp.resend');
 
-    Route::middleware(['auth:sanctum', 'active'])->group(function () {
+    Route::middleware(['auth:sanctum', 'active', 'password.changed', 'owner.writable'])->group(function () {
         Route::get('/me', [MobileAuthController::class, 'me'])->name('api.mobile.me');
+        Route::post('/password', [ForcedPasswordController::class, 'update'])->name('api.mobile.password');
         Route::post('/logout', [MobileAuthController::class, 'logout'])->name('api.mobile.logout');
         Route::post('/verify-email-otp', [VerifyEmailOtpController::class, 'store'])
             ->middleware('throttle:6,1')
@@ -84,3 +86,27 @@ Route::prefix('mobile')->group(function () {
         Route::get('/cells/{sector}', [LocationController::class, 'cells'])->name('api.mobile.cells');
     });
 });
+
+// Mobile money provider callbacks (MTN MoMo). Public; the status is re-checked with the provider.
+Route::post('/mobile-money/callback/{reference}', [\App\Http\Controllers\MobileMoneyController::class, 'callback'])
+    ->middleware('throttle:60,1')
+    ->whereUuid('reference')
+    ->name('api.mobile-money.callback');
+Route::put('/mobile-money/callback/{reference}', [\App\Http\Controllers\MobileMoneyController::class, 'callback'])
+    ->middleware('throttle:60,1')
+    ->whereUuid('reference');
+
+// Browser errors reported by the web app, so a blank screen on someone's computer can be diagnosed.
+Route::post('/client-errors', function (\Illuminate\Http\Request $request) {
+    $clip = fn ($value, $length) => mb_substr((string) $value, 0, $length);
+    \Illuminate\Support\Facades\Log::warning('Browser error', [
+        'message' => $clip($request->input('message'), 500),
+        'source' => $clip($request->input('source'), 300),
+        'stack' => $clip($request->input('stack'), 3000),
+        'component_stack' => $clip($request->input('component_stack'), 2000),
+        'url' => $clip($request->input('url'), 300),
+        'agent' => $clip($request->userAgent(), 300),
+    ]);
+
+    return response()->noContent();
+})->middleware('throttle:20,1')->name('api.client-errors');

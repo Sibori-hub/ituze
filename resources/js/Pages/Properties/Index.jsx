@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import useCanEdit from '@/hooks/useCanEdit';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, MapPin, Building2, Edit, Trash2, Image as ImageIcon, DollarSign, CheckCircle, Users, Wrench } from 'lucide-react';
+import { Search, Plus, MapPin, Building2, Edit, Trash2, Image as ImageIcon, CheckCircle, Users, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 
@@ -11,6 +12,7 @@ const imageSource = (path) => {
 
 export default function PropertiesIndex({ properties, filters, isAdmin, currentUserId, owners = [] }) {
     const { t, language } = useTranslation();
+    const canEdit = useCanEdit();
     const [search, setSearch] = useState(filters.search || '');
     const [propertyToDelete, setPropertyToDelete] = useState(null);
     const isFirstRender = useRef(true);
@@ -63,13 +65,13 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                             {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
                         </select>
                     )}
-                    <Link
+                    {canEdit && <Link
                         href={route('properties.create', filters.owner_id ? { owner_id: filters.owner_id } : {})}
                         className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                     >
                         <Plus size={15} />
                         {t('Add Property')}
-                    </Link>
+                    </Link>}
                 </div>
             </div>
 
@@ -81,7 +83,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                         <p className="mt-1 text-sm text-gray-500">
                             {t(search ? 'Try adjusting your search filters' : 'Get started by adding your first property')}
                         </p>
-                        {!search && (
+                        {!search && canEdit && (
                             <Link
                                 href={route('properties.create')}
                                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
@@ -154,7 +156,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                         )}
                                         {isAdmin && property.owner && (
                                             <p className="mt-1 text-xs text-[#0E3B2E]">
-                                                {t('Created by:')} {property.owner.name || `${property.owner.first_name || ''} ${property.owner.last_name || ''}`.trim()}
+                                                {t('Owner')}: {property.owner.name}
                                             </p>
                                         )}
                                         {(() => {
@@ -190,7 +192,6 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                 </div>
                                                 {property.units_monthly_rent_sum && Number(property.units_monthly_rent_sum) > 0 ? (
                                                     <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[#0E3B2E]">
-                                                        <DollarSign size={11} />
                                                         {Number(property.units_monthly_rent_sum).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} RWF/mo
                                                     </span>
                                                 ) : null}
@@ -202,7 +203,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                 >
                                                     {t('View')}
                                                 </Link>
-                                                {(isAdmin || property.owner_id === currentUserId) && (
+                                                {canEdit && (isAdmin || property.owner_id === currentUserId) && (
                                                     <>
                                                         <Link
                                                             href={route('properties.edit', property)}

@@ -20,7 +20,7 @@ class PublicPropertyController extends Controller
             'images',
             'owner:id,name,first_name,last_name,phone',
             'cell.sector.district.province',
-            'units' => fn ($query) => $query->where('status', 'available')->with(['unitType', 'images']),
+            'units' => fn ($query) => $query->publiclyListed()->with(['unitType', 'images']),
         ]);
 
         abort_if($property->units->isEmpty(), 404);
@@ -32,13 +32,13 @@ class PublicPropertyController extends Controller
 
     public function showUnit(Property $property, Unit $unit): Response
     {
-        abort_unless($unit->property_id === $property->id && $unit->status === 'available', 404);
+        abort_unless($unit->property_id === $property->id && Unit::query()->publiclyListed()->whereKey($unit->id)->exists(), 404);
 
         $property->load([
             'images',
             'owner:id,name,first_name,last_name,phone',
             'cell.sector.district.province',
-            'units' => fn ($query) => $query->where('status', 'available')->with(['unitType', 'images']),
+            'units' => fn ($query) => $query->publiclyListed()->with(['unitType', 'images']),
         ]);
         $unit->load(['unitType', 'images']);
 
@@ -72,7 +72,7 @@ class PublicPropertyController extends Controller
         $validated['visitor_phone'] = '+'.$phoneDigits;
 
         $unit = $property->units()
-            ->where('status', 'available')
+            ->publiclyListed()
             ->when($validated['unit_id'] ?? null, fn ($query, $unitId) => $query->whereKey($unitId))
             ->with('unitType')
             ->first();

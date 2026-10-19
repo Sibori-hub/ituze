@@ -24,10 +24,23 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
     const { t, language } = useTranslation();
     const receiptRef = useRef(null);
     const locale = localeForLanguage(language);
+    const typeOf = item => item.charge?.charge_type || item.charge_type || charge?.charge_type || 'rent';
+    const rentItems = payments.filter(item => typeOf(item) === 'rent');
+    const depositItems = payments.filter(item => typeOf(item) === 'deposit');
+    // VAT applies to rent only; the refundable deposit carries none.
+    const taxedItems = rentItems.length ? rentItems : payments;
     const totalAmount = payments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const totalVat = payments.reduce((sum, item) => sum + Number(item.vat_amount || 0), 0);
-    const totalTaxable = payments.reduce((sum, item) => sum + Number(item.taxable_amount || 0), 0);
+    const totalVat = taxedItems.reduce((sum, item) => sum + Number(item.vat_amount || 0), 0);
+    const totalTaxable = taxedItems.reduce((sum, item) => sum + Number(item.taxable_amount || 0), 0);
     const isCombined = payments.length > 1;
+    const formatMoney = value => `${Number(value).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF`;
+    const chargeLabel = !isCombined
+        ? t(charge.charge_type)
+        : depositItems.length && rentItems.length
+            ? t(rentItems.length === 1 ? 'Rent for 1 month + security deposit' : 'Rent for :count months + security deposit', { count: rentItems.length })
+            : rentItems.length
+                ? t('Rent for :count months', { count: rentItems.length })
+                : t('Combined rent payment');
 
     const printReceipt = () => {
         const receipt = receiptRef.current;
@@ -81,7 +94,7 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
                             [t('Received from'), tenant?.name || '—'],
                             [t('Agreement ID'), agreement?.reference || '—'],
                             [t('Property / unit'), `${property?.name || '—'} · ${t('Unit')} ${unit?.unit_number || '—'}`],
-                            [t('Charge'), isCombined ? t('Combined rent payment') : t(charge.charge_type)],
+                            [t('Charge'), chargeLabel],
                             [t('Payment method'), t(payment.method.replace(/_/g, ' ').replace(/^./, character => character.toUpperCase()))],
                             [t('External transaction reference'), payment.reference || t('No transaction reference recorded')],
                         ].map(([label, value]) => (
@@ -93,15 +106,35 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
                     </dl>
                     {isCombined && (
                         <div className="mt-5 rounded-xl bg-gray-50 px-5 py-4 text-sm">
-                            <p className="font-semibold text-gray-800">{t('Periods included')}</p>
-                            <ul className="mt-2 list-disc space-y-1 pl-5 text-gray-600">
-                                {payments.map(item => <li key={item.id}>{item.charge.period_label || t('Rent period')} — {Number(item.amount).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF</li>)}
+                            <p className="font-semibold text-gray-800">{t('This payment covers')}</p>
+                            <ul className="mt-2 divide-y divide-gray-200">
+                                {rentItems.map((item, index) => (
+                                    <li key={item.id} className="flex justify-between gap-4 py-1.5">
+                                        <span className="text-gray-700">
+                                            <span className="font-medium">{t('Month :number', { number: index + 1 })}</span>
+                                            {item.charge?.period_label && <span className="text-gray-500"> · {item.charge.period_label}</span>}
+                                        </span>
+                                        <span className="font-medium">{formatMoney(item.amount)}</span>
+                                    </li>
+                                ))}
+                                {depositItems.map(item => (
+                                    <li key={item.id} className="flex justify-between gap-4 py-1.5">
+                                        <span className="text-gray-700"><span className="font-medium">{t('Security deposit')}</span> <span className="text-gray-500">· {t('refundable at move-out')}</span></span>
+                                        <span className="font-medium">{formatMoney(item.amount)}</span>
+                                    </li>
+                                ))}
+                                {payments.filter(item => !['rent', 'deposit'].includes(typeOf(item))).map(item => (
+                                    <li key={item.id} className="flex justify-between gap-4 py-1.5">
+                                        <span className="font-medium text-gray-700">{t(typeOf(item))}</span>
+                                        <span className="font-medium">{formatMoney(item.amount)}</span>
+                                    </li>
+                                ))}
                             </ul>
                         </div>
                     )}
                     {(charge.charge_type === 'rent' || isCombined) && (
                         <dl className="mt-5 space-y-2 rounded-xl bg-gray-50 px-5 py-4 text-sm">
-                            {payments.some(item => item.vat_amount === null || item.vat_amount === undefined) ? (
+                            {taxedItems.some(item => item.vat_amount === null || item.vat_amount === undefined) ? (
                                 <p>{t('VAT breakdown not recorded')}</p>
                             ) : (
                                 <>
@@ -110,7 +143,7 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
                                         <dd className="font-medium">{totalTaxable.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF</dd>
                                     </div>
                                     <div className="flex justify-between gap-4">
-                                        <dt className="text-gray-600">{t('VAT at :rate% of amount', { rate: payment.vat_rate })}</dt>
+                                        <dt className="text-gray-600">{t('VAT at :rate% of amount', { rate: Number(taxedItems.find(item => item.vat_rate !== null && item.vat_rate !== undefined)?.vat_rate ?? payment.vat_rate) })}</dt>
                                         <dd className="font-medium">{totalVat.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF</dd>
                                     </div>
                                 </>

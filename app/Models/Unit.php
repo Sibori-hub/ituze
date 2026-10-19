@@ -11,6 +11,7 @@ class Unit extends Model
 
     protected $fillable = [
         'property_id',
+        'property_unit_id',
         'unit_type_id',
         'unit_number',
         'floor_number',
@@ -36,6 +37,14 @@ class Unit extends Model
         return $this->belongsTo(Property::class);
     }
 
+    /**
+     * The unit (category on a floor) this room belongs to.
+     */
+    public function propertyUnit()
+    {
+        return $this->belongsTo(PropertyUnit::class);
+    }
+
     public function unitType()
     {
         return $this->belongsTo(UnitType::class);
@@ -43,7 +52,7 @@ class Unit extends Model
 
     public function isApartmentAccommodation(): bool
     {
-        return in_array(strtolower($this->unitType?->name ?? ''), ['apartment', 'studio'], true);
+        return UnitType::isResidentialName($this->unitType?->name);
     }
 
     public function images()
@@ -54,6 +63,17 @@ class Unit extends Model
     public function tenancies()
     {
         return $this->hasMany(Tenancy::class);
+    }
+
+    /**
+     * Rooms shown to the public: marked available and not taken by a
+     * current or upcoming tenancy.
+     */
+    public function scopePubliclyListed($query)
+    {
+        return $query->where('status', 'available')
+            ->whereDoesntHave('activeTenancy')
+            ->whereDoesntHave('scheduledTenancy');
     }
 
     public function activeTenancy()

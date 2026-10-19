@@ -40,6 +40,34 @@ return [
         'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
     ],
 
+    /*
+     * Mobile money "request to pay": the tenant gets a prompt on their phone and
+     * approves with their PIN.
+     *
+     * driver: "fake" simulates payments locally (no account needed);
+     *         "mtn"  uses the MTN MoMo Collections API (sandbox or live).
+     * MTN sandbox: subscribe to "Collections" at https://momodeveloper.mtn.com,
+     * put the primary key in MTN_MOMO_SUBSCRIPTION_KEY, then run
+     * `php artisan momo:sandbox-user` to create the API user and key.
+     */
+    'mobile_money' => [
+        'driver' => env('MOBILE_MONEY_DRIVER', 'fake'),
+        // How long the tenant has to approve before the request is treated as expired.
+        'timeout_seconds' => (int) env('MOBILE_MONEY_TIMEOUT', 180),
+        // Fake driver: seconds before a request is approved. Numbers ending in 0000 decline.
+        'fake_delay_seconds' => (int) env('MOBILE_MONEY_FAKE_DELAY', 8),
+        'mtn' => [
+            'base_url' => env('MTN_MOMO_BASE_URL', 'https://sandbox.momodeveloper.mtn.com'),
+            // "sandbox" for testing; MTN gives the live value (e.g. "mtnrwanda") at go-live.
+            'environment' => env('MTN_MOMO_ENVIRONMENT', 'sandbox'),
+            // The sandbox only accepts EUR; live Rwanda uses RWF.
+            'currency' => env('MTN_MOMO_CURRENCY', 'EUR'),
+            'subscription_key' => env('MTN_MOMO_SUBSCRIPTION_KEY'),
+            'api_user' => env('MTN_MOMO_API_USER'),
+            'api_key' => env('MTN_MOMO_API_KEY'),
+        ],
+    ],
+
     'whatsapp' => [
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'access_token' => env('WHATSAPP_ACCESS_TOKEN'),

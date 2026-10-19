@@ -23,7 +23,7 @@ class UnitImageTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'unit_images', 'property_images', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'cells', 'sectors', 'districts', 'provinces', 'users'] as $table) {
+        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'unit_images', 'property_images', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'cells', 'sectors', 'districts', 'provinces', 'users'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -51,6 +51,9 @@ class UnitImageTest extends TestCase
 
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            $table->unsignedSmallInteger('total_floors')->default(0);
+            $table->unsignedTinyInteger('basement_floors')->default(0);
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedBigInteger('cell_id')->nullable();
             $table->string('name');
@@ -98,8 +101,18 @@ class UnitImageTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('property_units', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('property_id');
+            $table->unsignedBigInteger('unit_type_id');
+            $table->smallInteger('floor_number')->default(0);
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('units', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('property_unit_id')->nullable();
             $table->foreignId('property_id')->constrained()->cascadeOnDelete();
             $table->foreignId('unit_type_id')->constrained();
             $table->string('unit_number');
@@ -150,7 +163,7 @@ class UnitImageTest extends TestCase
                     $this->fakeImage('bedroom.png'),
                 ],
             ])
-            ->assertRedirect(route('properties.units.index', $property));
+            ->assertRedirect(route('properties.show', $property));
 
         $unit = Unit::query()->where('unit_number', 'A-101')->firstOrFail();
         $this->assertCount(2, $unit->images);
@@ -305,7 +318,7 @@ class UnitImageTest extends TestCase
                 'delete_images' => [$oldImage->id],
                 'images' => [$this->fakeImage('new-cover.png')],
             ])
-            ->assertRedirect(route('properties.units.index', $property));
+            ->assertRedirect(route('properties.show', $property));
 
         $this->assertDatabaseMissing('unit_images', ['id' => $oldImage->id]);
         Storage::disk('public')->assertMissing($oldImagePath);

@@ -83,10 +83,10 @@ class PropertyController extends Controller
 
         if ($user->isAdmin()) {
             $filters = $request->validate([
-                'owner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))],
+                'owner_id' => ['nullable', 'integer', $this->managedOwnerRule()],
             ]);
             $ownerId = $filters['owner_id'] ?? null;
-            $owners = User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name']);
+            $owners = User::query()->where('role', 'owner')->whereNotNull('created_by')->orderBy('name')->get(['id', 'name']);
         }
 
         return Inertia::render('Properties/Create', [
@@ -105,38 +105,44 @@ class PropertyController extends Controller
             $user = $request->user();
             $rules = [
                 'name' => 'required|string|max:255',
-                'address' => 'required|string|max:255',
+                'address' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
+                ...$this->floorRules($request),
                 'cell_id' => 'required|exists:cells,id',
                 'amenities' => 'nullable|array',
                 'amenities.*' => 'boolean',
                 'proximity' => 'nullable|array',
                 'proximity.*' => 'boolean',
                 'images' => 'nullable|array',
-                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ];
             if ($user->isAdmin()) {
-                $rules['owner_id'] = ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))];
+                $rules['owner_id'] = ['required', 'integer', $this->managedOwnerRule()];
             }
 
             $data = $request->validate(
                 $rules,
                 [
                     'name.required' => '❌ Please enter a property name.',
-                    'address.required' => '❌ Please enter the property address.',
+                    'owner_id.exists' => 'Choose an owner created by an administrator.',
+                    'total_floors.required' => '🏢 Enter how many floors the building has above the ground floor (0 if it is ground floor only).',
+                    'basement_floors.required' => '🏢 Enter the number of basements (0 if there is no basement).',
                     'cell_id.required' => '📍 Please select the property location (down to Cell level).',
                     'cell_id.exists' => '📍 The selected cell is not valid.',
                     'images.*.image' => '📸 One of the uploaded files is not a valid image.',
-                    'images.*.mimes' => '📸 Only JPG, JPEG, PNG, and GIF image formats are allowed.',
+                    'images.*.mimes' => '📸 Only JPG, PNG, GIF and WebP images are allowed.',
                     'images.*.max'   => '📸 One of your property images is too large. Each image must be 2 MB or smaller.',
                 ]
             );
 
             $property = Property::create([
                 'owner_id' => $user->isAdmin() ? $data['owner_id'] : $user->id,
+                'created_by' => $user->id,
                 'cell_id' => $data['cell_id'],
                 'name' => $data['name'],
-                'address' => $data['address'],
+                'address' => $data['address'] ?? null,
+                'total_floors' => $data['total_floors'] ?? 0,
+                'basement_floors' => $data['basement_floors'] ?? 0,
                 'description' => $data['description'] ?? null,
                 'amenities' => $request->input('amenities'),
                 'proximity' => $request->input('proximity'),
@@ -181,14 +187,47 @@ class PropertyController extends Controller
     }
 
     /**
+     * Admins add properties only for owners they created (managed owners);
+     * self-registered owners add their own.
+     */
+    private function managedOwnerRule()
+    {
+        return Rule::exists('users', 'id')->where(fn ($query) => $query
+            ->where('role', 'owner')
+            ->whereNotNull('created_by')
+            ->whereNull('deleted_at'));
+    }
+
+    /**
+     * Floors above ground and basements. The web form always sends them; the
+     * mobile app does not yet, so for it they are optional.
+     *
+     * @return array<string, string>
+     */
+    private function floorRules(Request $request): array
+    {
+        $presence = $request->expectsJson() ? 'sometimes' : 'required';
+
+        return [
+            'total_floors' => $presence.'|integer|min:0|max:200',
+            'basement_floors' => $presence.'|integer|min:0|max:20',
+        ];
+    }
+
+    /**
      * Display the specified property.
      */
     public function show(Request $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request->user(), $property);
 
-        $property->load(['owner', 'cell.sector.district.province', 'images', 'units.unitType', 'units.images']);
+        $property->load([
+            'owner', 'creator:id,name,role', 'cell.sector.district.province', 'images', 'units.unitType', 'units.images',
+            'propertyUnits.unitType:id,name',
+            'propertyUnits.rooms' => fn ($rooms) => $rooms->with(['images', 'activeTenancy.tenant:id,name'])->orderBy('unit_number'),
+        ]);
         $property->loadCount([
+            'units',
             'units as units_available_count' => function ($q) { $q->where('status', 'available'); },
             'units as units_occupied_count' => function ($q) { $q->where('status', 'occupied'); },
             'units as units_maintenance_count' => function ($q) { $q->where('status', 'maintenance'); },
@@ -197,8 +236,9 @@ class PropertyController extends Controller
 
         return Inertia::render('Properties/Show', [
             'property' => $property,
+            'floorNumbers' => $property->floorNumbers(),
             'isAdmin' => $request->user()->isAdmin(),
-            'canEdit' => $request->user()->isAdmin() || $property->owner_id === $request->user()->id,
+            'canEdit' => $request->user()->isAdmin() || ($property->owner_id === $request->user()->id && ! $request->user()->isReadOnly()),
         ]);
     }
 
@@ -214,7 +254,7 @@ class PropertyController extends Controller
         return Inertia::render('Properties/Edit', [
             'property' => $property,
             'isAdmin' => $request->user()->isAdmin(),
-            'canEdit' => $request->user()->isAdmin() || $property->owner_id === $request->user()->id,
+            'canEdit' => $request->user()->isAdmin() || ($property->owner_id === $request->user()->id && ! $request->user()->isReadOnly()),
         ]);
     }
 
@@ -228,31 +268,46 @@ class PropertyController extends Controller
         $request->validate(
             [
                 'name' => 'required|string|max:255',
-                'address' => 'required|string|max:255',
+                'address' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
+                ...$this->floorRules($request),
                 'cell_id' => 'required|exists:cells,id',
                 'amenities' => 'nullable|array',
                 'amenities.*' => 'boolean',
                 'proximity' => 'nullable|array',
                 'proximity.*' => 'boolean',
                 'images' => 'nullable|array',
-                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                 'delete_images' => 'nullable|array',
                 'delete_images.*' => 'exists:property_images,id',
             ],
             [
                 'name.required' => '❌ Please enter a property name.',
-                'address.required' => '❌ Please enter the property address.',
+                'total_floors.required' => '🏢 Enter how many floors the building has above the ground floor (0 if it is ground floor only).',
+                'basement_floors.required' => '🏢 Enter the number of basements (0 if there is no basement).',
                 'cell_id.required' => '📍 Please select the property location (down to Cell level).',
                 'images.*.max' => '📸 One of your property images is too large. Each image must be 2 MB or smaller.',
-                'images.*.mimes' => '📸 Only JPG, JPEG, PNG, and GIF image formats are allowed.',
+                'images.*.mimes' => '📸 Only JPG, PNG, GIF and WebP images are allowed.',
             ]
         );
+
+        $totalFloors = $request->has('total_floors') ? $request->integer('total_floors') : (int) $property->total_floors;
+        $basementFloors = $request->has('basement_floors') ? $request->integer('basement_floors') : (int) $property->basement_floors;
+        $outsideBuilding = $property->propertyUnits()
+            ->where(fn ($query) => $query->where('floor_number', '>', $totalFloors)->orWhere('floor_number', '<', -$basementFloors))
+            ->exists();
+        if ($outsideBuilding) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'total_floors' => '🏢 Some units are on floors this change would remove. Move or delete those units first.',
+            ]);
+        }
 
         $property->update([
             'cell_id' => $request->cell_id,
             'name' => $request->name,
             'address' => $request->address,
+            'total_floors' => $totalFloors,
+            'basement_floors' => $basementFloors,
             'description' => $request->description,
             'amenities' => $request->input('amenities'),
             'proximity' => $request->input('proximity'),

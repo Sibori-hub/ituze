@@ -44,6 +44,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'disabled_at',
         'disabled_reason',
         'status_before_disabled',
+        'management_fee_percent',
     ];
 
     /**
@@ -77,6 +78,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'expires_at' => 'datetime',
             'profile_completed' => 'boolean',
             'login_enabled' => 'boolean',
+            'must_change_password' => 'boolean',
+            'management_fee_percent' => 'decimal:2',
             'password' => 'hashed',
         ];
     }
@@ -118,6 +121,27 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->created_by !== null;
     }
 
+    /**
+     * Managed owners follow their properties but cannot change anything:
+     * Q.R.A does all the work on their behalf.
+     */
+    public function isReadOnly(): bool
+    {
+        return $this->isOwner() && $this->isManaged();
+    }
+
+    /**
+     * Share of collected rent Q.R.A keeps as its management fee (managed owners only).
+     */
+    public function managementFeeRate(): float
+    {
+        if (! $this->isOwner() || ! $this->isManaged()) {
+            return 0.0;
+        }
+
+        return (float) ($this->management_fee_percent ?? 10);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
@@ -137,6 +161,11 @@ class User extends Authenticatable implements MustVerifyEmail
         // Advertiser plans are part of the advertising module; approval alone
         // is enough to use the advertiser workspace for now.
         if ($this->isAdvertiser()) {
+            return false;
+        }
+
+        // Managed owners pay a management fee on collected rent, not a subscription.
+        if ($this->isManaged()) {
             return false;
         }
 

@@ -21,6 +21,7 @@ import {
     Bell,
     ChevronDown,
     ChevronRight,
+    Eye,
 } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
@@ -264,7 +265,17 @@ export default function AuthenticatedLayout({ header, children }) {
                     </header>
 
                     {/* Page content */}
-                    <main className="authenticated-page-content min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
+                    <main className="authenticated-page-content flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-smooth" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
+                        <div className="flex-1 p-4 sm:p-6">
+                        {pageProps.auth.readOnly && (
+                            <div className="mx-auto mb-4 flex max-w-7xl items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950" role="note">
+                                <Eye size={18} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" />
+                                <p>
+                                    <span className="font-semibold">{t('View-only account.')}</span>{' '}
+                                    {t('ITUZE GREEN PLATFORM manages your properties. You can follow everything here; please contact us for any change.')}
+                                </p>
+                            </div>
+                        )}
                         {flash.error && (
                             <div className="mb-4 max-w-7xl mx-auto">
                                 <InlineAlert message={flash.error} type="error" />
@@ -283,12 +294,22 @@ export default function AuthenticatedLayout({ header, children }) {
                         <div key={page.url.split('#')[0]} className="animate-fade-up motion-reduce:animate-none">
                             {children}
                         </div>
+                        </div>
+
+                        <footer className="authenticated-main-footer mt-6 border-t border-gray-200/80 bg-white/70 px-4 py-4 backdrop-blur-sm sm:px-6">
+                            <div className="mx-auto flex max-w-7xl flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+                                <p>
+                                    © {new Date().getFullYear()} <span className="font-semibold text-[#0E3B2E]">ITUZE GREEN PLATFORM</span>
+                                    <span aria-hidden="true"> · </span>
+                                    {t('Powered by Q.R.A GROUP LTD')}. {t('All rights reserved.')}
+                                </p>
+                                <nav aria-label={t('Legal')} className="flex items-center gap-4">
+                                    <Link href={route('legal.terms')} className="font-medium transition-colors hover:text-[#0E3B2E] hover:underline">{t('Terms')}</Link>
+                                    <Link href={route('legal.privacy')} className="font-medium transition-colors hover:text-[#0E3B2E] hover:underline">{t('Privacy')}</Link>
+                                </nav>
+                            </div>
+                        </footer>
                     </main>
-                    <footer className="authenticated-main-footer shrink-0 bg-[#111827] px-4 py-3 sm:px-6" style={{ flexShrink: 0 }}>
-                        <p className="mx-auto max-w-7xl text-xs text-white/40">
-                            © {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}
-                        </p>
-                    </footer>
                 </div>
             </div>
         </div>

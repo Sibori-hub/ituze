@@ -333,11 +333,14 @@ class AuthSecurityTest extends TestCase
             'national_id' => '1 1985 7 0012345 0 99',
             'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('jeanne.jpg'),
+            'password' => 'Temp#Pass2026',
+            'password_confirmation' => 'Temp#Pass2026',
+            'management_fee_percent' => '10',
             ...$overrides,
         ];
     }
 
-    public function test_admin_creates_a_managed_owner_who_cannot_sign_in(): void
+    public function test_admin_creates_a_managed_owner_with_a_temporary_password(): void
     {
         \Illuminate\Support\Facades\Storage::fake('public');
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'name' => 'Ituze Admin']);
@@ -345,34 +348,180 @@ class AuthSecurityTest extends TestCase
         $this->actingAs($admin)->get(route('admin.users.create'))->assertOk()
             ->assertInertia(fn ($page) => $page->component('Admin/CreateUser')->has('locations.sectors'));
 
-        $this->actingAs($admin)->post(route('admin.users.store'), $this->managedAccountPayload())
+        $this->actingAs($admin)->post(route('admin.users.store'), $this->managedAccountPayload([
+            'management_fee_percent' => '12.5',
+        ]))
             ->assertRedirect(route('admin.users', ['source' => 'managed']))
             ->assertSessionHas('success');
 
         $owner = User::query()->where('email', 'jeanne.owner@example.com')->firstOrFail();
         $this->assertSame($admin->id, $owner->created_by);
         $this->assertTrue($owner->isManaged());
-        $this->assertFalse($owner->login_enabled);
+        $this->assertTrue($owner->isReadOnly());
+        $this->assertTrue($owner->login_enabled);
+        $this->assertTrue($owner->must_change_password);
+        $this->assertSame(12.5, $owner->managementFeeRate());
+        $this->assertNull($owner->expires_at, 'Managed owners pay a fee, not a subscription.');
+        $this->assertFalse($owner->isExpired());
         $this->assertSame('approved', $owner->status);
-        $this->assertTrue($owner->expires_at->isFuture());
-        $this->assertTrue($owner->profile_completed);
         $this->assertSame('0788555111', $owner->phone);
         $this->assertSame('1198570012345099', $owner->national_id);
-        $this->assertNotNull($owner->email_verified_at);
         \Illuminate\Support\Facades\Storage::disk('public')->assertExists($owner->profile_photo);
-
-        // Q.R.A manages the account: no sign-in on the web or the mobile app.
-        auth()->logout();
-        $this->post('/login', ['email' => $owner->email, 'password' => 'anything'])->assertSessionHasErrors('email');
-        $this->assertGuest();
 
         // Listed as managed, with the admin who added it.
         $this->actingAs($admin)->get(route('admin.users', ['source' => 'managed']))
             ->assertInertia(fn ($page) => $page
                 ->has('users.data', 1)
-                ->where('users.data.0.email', 'jeanne.owner@example.com')
                 ->where('users.data.0.creator.name', 'Ituze Admin')
                 ->where('counts.sources.managed', 1));
+    }
+
+    public function test_managed_owner_must_replace_the_temporary_password_at_first_sign_in(): void
+    {
+        $owner = $this->managedOwner();
+
+        // Same sign-in as everyone: password, then the code sent to email and WhatsApp.
+        $this->post('/login', ['email' => $owner->email, 'password' => 'Temp#Pass2026'])
+            ->assertRedirect(route('login.otp.notice'));
+        $this->post(route('login.otp.verify'), ['otp' => $this->sentLoginCode($owner)])->assertRedirect();
+        $this->assertAuthenticatedAs($owner);
+
+        // Everything leads to the change-password page until it is done.
+        $this->get('/dashboard')->assertRedirect(route('password.change'));
+        $this->get(route('reports.index'))->assertRedirect(route('password.change'));
+        $this->get(route('password.change'))->assertInertia(fn ($page) => $page->component('Auth/ChangeTemporaryPassword'));
+
+        $this->post(route('password.change.update'), [
+            'current_password' => 'Temp#Pass2026',
+            'password' => 'Temp#Pass2026',
+            'password_confirmation' => 'Temp#Pass2026',
+        ])->assertSessionHasErrors('password');
+
+        $this->post(route('password.change.update'), [
+            'current_password' => 'Temp#Pass2026',
+            'password' => 'MyOwn#Secret2026',
+            'password_confirmation' => 'MyOwn#Secret2026',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertFalse($owner->fresh()->must_change_password);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('MyOwn#Secret2026', $owner->fresh()->password));
+        $this->get('/dashboard')->assertOk();
+    }
+
+    public function test_managed_owner_is_view_only(): void
+    {
+        $owner = $this->managedOwner(['must_change_password' => false]);
+
+        $this->actingAs($owner)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('auth.readOnly', true));
+        $this->get(route('properties.index'))->assertOk();
+        $this->get(route('tenants.index'))->assertOk();
+        $this->get(route('reports.index'))->assertOk();
+
+        // Any change is refused, on the web and in the mobile API.
+        $this->from(route('properties.index'))
+            ->post(route('properties.store'), ['name' => 'Sneaky', 'address' => 'Kigali'])
+            ->assertRedirect(route('properties.index'))
+            ->assertSessionHas('error', \App\Http\Middleware\EnsureOwnerCanWrite::MESSAGE);
+        $this->assertDatabaseMissing('properties', ['name' => 'Sneaky']);
+        $this->post(route('tenants.store'), [])->assertSessionHas('error');
+
+        $token = $owner->createToken('phone')->plainTextToken;
+        $this->postJson('/api/mobile/workspace/tenants', [], ['Authorization' => 'Bearer '.$token])
+            ->assertForbidden()
+            ->assertJsonPath('read_only', true);
+
+        // Their own account still works: profile and sign-out.
+        $this->actingAs($owner)->post(route('logout'))->assertRedirect('/');
+    }
+
+    public function test_admin_can_reset_a_managed_password_and_change_the_fee(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
+        $owner = $this->managedOwner(['must_change_password' => false, 'login_enabled' => false]);
+        $selfRegistered = $this->owner(['phone' => '0788777000']);
+
+        $this->actingAs($admin)->post(route('admin.users.password', $owner), [
+            'password' => 'Reset#Pass2026',
+            'password_confirmation' => 'Reset#Pass2026',
+        ])->assertSessionHas('success');
+        $owner->refresh();
+        $this->assertTrue($owner->login_enabled, 'Setting a password turns sign-in on for older managed accounts.');
+        $this->assertTrue($owner->must_change_password);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Reset#Pass2026', $owner->password));
+
+        $this->patch(route('admin.users.fee', $owner), ['management_fee_percent' => 8])->assertSessionHas('success');
+        $this->assertSame(8.0, $owner->fresh()->managementFeeRate());
+        $this->patch(route('admin.users.fee', $owner), ['management_fee_percent' => 150])->assertSessionHasErrors('management_fee_percent');
+
+        // Only managed accounts have these actions.
+        $this->post(route('admin.users.password', $selfRegistered), ['password' => 'X#y2abcdefg', 'password_confirmation' => 'X#y2abcdefg'])->assertNotFound();
+        $this->patch(route('admin.users.fee', $selfRegistered), ['management_fee_percent' => 5])->assertNotFound();
+    }
+
+    public function test_fee_report_keeps_the_management_fee_from_collected_rent_only(): void
+    {
+        $owner = $this->managedOwner(['must_change_password' => false, 'management_fee_percent' => 10]);
+        $property = \App\Models\Property::query()->forceCreate(['owner_id' => $owner->id, 'name' => 'Fee Plaza', 'address' => 'KN 1 Rd']);
+        $unitType = \App\Models\UnitType::query()->create(['name' => 'Office']);
+        $unit = \App\Models\Unit::query()->forceCreate([
+            'property_id' => $property->id, 'unit_type_id' => $unitType->id, 'unit_number' => 'F-1',
+            'rent_amount' => 200000, 'rent_frequency' => 'monthly', 'status' => 'occupied',
+        ]);
+        $tenant = \App\Models\Tenant::query()->forceCreate([
+            'type' => 'individual', 'name' => 'Fee Tenant', 'first_name' => 'Fee', 'last_name' => 'Tenant',
+            'email' => 'fee-tenant@example.com', 'phone' => '0788123000', 'status' => 'active',
+        ]);
+        $tenancy = \App\Models\Tenancy::query()->forceCreate([
+            'unit_id' => $unit->id, 'tenant_id' => $tenant->id, 'assigned_by' => $owner->created_by,
+            'start_date' => now()->startOfMonth(), 'end_date' => now()->addYear(),
+            'monthly_rent' => 200000, 'rent_frequency' => 'monthly', 'deposit_amount' => 200000, 'status' => 'active',
+        ]);
+        $pay = function (string $type, int $amount) use ($tenancy) {
+            $charge = \App\Models\RentCharge::query()->create([
+                'tenancy_id' => $tenancy->id, 'charge_type' => $type, 'period_start' => now()->startOfMonth(),
+                'period_end' => now()->endOfMonth(), 'due_date' => now()->startOfMonth(), 'amount' => $amount,
+            ]);
+            \App\Models\RentPayment::query()->forceCreate([
+                'rent_charge_id' => $charge->id, 'amount' => $amount, 'method' => 'cash', 'paid_at' => now(), 'recorded_by' => $tenancy->assigned_by,
+            ]);
+        };
+        $pay('rent', 200000);
+        $pay('deposit', 200000); // never part of the fee
+
+        $this->actingAs($owner)->get(route('reports.index'))
+            ->assertInertia(fn ($page) => $page
+                ->where('managementFee.rate', 10)
+                ->where('managementFee.totals.collected', 200000)
+                ->where('managementFee.totals.fee', 20000)
+                ->where('managementFee.totals.net', 180000)
+                ->where('managementFee.months.0.month', now()->format('Y-m'))
+                ->where('managementFee.months.0.fee', 20000));
+
+        // Self-registered owners pay a subscription, so they see no fee report.
+        $selfRegistered = $this->owner(['phone' => '0788777111']);
+        $this->actingAs($selfRegistered)->get(route('reports.index'))
+            ->assertInertia(fn ($page) => $page->where('managementFee', null));
+    }
+
+    private function managedOwner(array $attributes = []): User
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
+        $owner = $this->owner([
+            'created_by' => $admin->id,
+            'expires_at' => null,
+            'password' => 'Temp#Pass2026',
+            'phone' => '0788999'.random_int(100, 999),
+        ]);
+        $owner->forceFill([
+            'login_enabled' => true,
+            'must_change_password' => true,
+            'management_fee_percent' => 10,
+            ...$attributes,
+        ])->save();
+
+        return $owner->fresh();
     }
 
     public function test_managed_accounts_are_refused_by_the_mobile_login_even_with_a_password(): void
@@ -399,6 +548,7 @@ class AuthSecurityTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.users.store'), $this->managedAccountPayload([
             'role' => 'advertiser',
+            'management_fee_percent' => null,
             'email' => 'brand@example.com',
             'phone' => '0722555333',
         ]))->assertSessionHasNoErrors();

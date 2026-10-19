@@ -171,7 +171,7 @@ class TenantController extends Controller
                         ->whereDoesntHave('tenancies', fn ($tenancies) => $tenancies->whereIn('status', ['active', 'scheduled']));
                 })->orWhere(function ($apartment) {
                     $apartment->whereIn('status', ['available', 'reserved', 'occupied'])
-                        ->whereHas('unitType', fn ($type) => $type->whereIn('name', ['Apartment', 'Studio']));
+                        ->whereHas('unitType', fn ($type) => $type->matchingFilter('apartments'));
                 });
             })
             ->orderBy('property_id')

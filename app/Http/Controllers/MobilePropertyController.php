@@ -11,14 +11,6 @@ use Illuminate\Http\Request;
 
 class MobilePropertyController extends Controller
 {
-    private const CATEGORY_TYPES = [
-        'offices' => ['Office'],
-        'apartments' => ['Apartment', 'Studio', '1 Bedroom', '2 Bedrooms', '3 Bedrooms', '4+ Bedrooms'],
-        'coffee-shops' => ['Coffee Shop'],
-        'commercial-buildings' => ['Commercial Building', 'Commercial Space', 'Shop'],
-        'warehouses' => ['Warehouse'],
-    ];
-
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
@@ -29,14 +21,14 @@ class MobilePropertyController extends Controller
         ]);
 
         $searchTerm = trim($filters['search'] ?? '');
-        $categoryTypes = self::CATEGORY_TYPES[$filters['category'] ?? ''] ?? [];
+        $category = $filters['category'] ?? null;
         $priceRange = $filters['price_range'] ?? 'any';
 
         $units = Unit::query()
-            ->where('status', 'available')
-            ->when($categoryTypes, fn ($query) => $query->whereHas(
+            ->publiclyListed()
+            ->when($category, fn ($query) => $query->whereHas(
                 'unitType',
-                fn ($typeQuery) => $typeQuery->whereIn('name', $categoryTypes),
+                fn ($typeQuery) => $typeQuery->matchingFilter($category),
             ))
             ->when($priceRange !== 'any', function ($query) use ($priceRange) {
                 match ($priceRange) {
@@ -81,7 +73,7 @@ class MobilePropertyController extends Controller
             'owner:id,name,first_name,last_name,phone',
             'cell.sector.district.province',
             'units' => fn ($query) => $query
-                ->where('status', 'available')
+                ->publiclyListed()
                 ->with(['unitType', 'images'])
                 ->orderBy('rent_amount'),
         ]);

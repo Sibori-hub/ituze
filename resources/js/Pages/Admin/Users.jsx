@@ -6,6 +6,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Ban,
     CalendarClock,
+    KeyRound,
+    Percent,
     ChevronLeft,
     ChevronRight,
     Download,
@@ -88,6 +90,16 @@ function Badge({ className, children }) {
 function PlanCell({ user }) {
     const { t, language } = useTranslation();
 
+    if (user.role === 'owner' && user.created_by) {
+        return (
+            <div className="w-36">
+                <p className="text-[11px] font-semibold text-indigo-800">
+                    {t('Management fee :rate%', { rate: Number(user.management_fee_percent ?? 10).toLocaleString(undefined, { maximumFractionDigits: 2 }) })}
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-500">{user.login_enabled ? t('Can sign in (view only)') : t('No sign-in yet')}</p>
+            </div>
+        );
+    }
     if (user.role !== 'owner') {
         return <span className="text-xs text-gray-300">{t('Not applicable')}</span>;
     }
@@ -186,11 +198,27 @@ export default function Users({ users, filters, counts = {} }) {
     const [disableReason, setDisableReason] = useState('');
     const [userToEnable, setUserToEnable] = useState(null);
     const [planUser, setPlanUser] = useState(null);
+    const [feeUser, setFeeUser] = useState(null);
+    const [feeValue, setFeeValue] = useState('10');
+    const [passwordUser, setPasswordUser] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
     const [planDate, setPlanDate] = useState('');
     const [processing, setProcessing] = useState(false);
     const exportRef = useRef(null);
     const disableShown = useLatest(userToDisable);
     const planShown = useLatest(planUser);
+    const feeShown = useLatest(feeUser);
+    const passwordShown = useLatest(passwordUser);
+
+    // A strong temporary password the admin can read out to the account holder.
+    const generatePassword = () => {
+        const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '#@!%&*?'];
+        const random = (max) => window.crypto.getRandomValues(new Uint32Array(1))[0] % max;
+        const chars = sets.map((set) => set[random(set.length)]);
+        const all = sets.join('');
+        while (chars.length < 12) chars.push(all[random(all.length)]);
+        setNewPassword(chars.sort(() => random(3) - 1).join(''));
+    };
 
     const visit = (params) => {
         router.get(route('admin.users'), params, {
@@ -252,17 +280,42 @@ export default function Users({ users, filters, counts = {} }) {
 
     const actions = (user) => (
         <div className="flex items-center justify-end gap-0.5">
-            <IconAction
-                label={t('Update plan')}
-                tone="brand"
-                disabled={user.role !== 'owner'}
-                onClick={() => {
-                    setPlanUser(user);
-                    setPlanDate(toInputDate(user.expires_at));
-                }}
-            >
-                <CalendarClock size={16} />
-            </IconAction>
+            {user.role === 'owner' && user.created_by ? (
+                <IconAction
+                    label={t('Management fee')}
+                    tone="brand"
+                    onClick={() => {
+                        setFeeUser(user);
+                        setFeeValue(String(Number(user.management_fee_percent ?? 10)));
+                    }}
+                >
+                    <Percent size={16} />
+                </IconAction>
+            ) : (
+                <IconAction
+                    label={t('Update plan')}
+                    tone="brand"
+                    disabled={user.role !== 'owner'}
+                    onClick={() => {
+                        setPlanUser(user);
+                        setPlanDate(toInputDate(user.expires_at));
+                    }}
+                >
+                    <CalendarClock size={16} />
+                </IconAction>
+            )}
+            {user.created_by && user.role !== 'admin' && (
+                <IconAction
+                    label={t('Set temporary password')}
+                    tone="brand"
+                    onClick={() => {
+                        setPasswordUser(user);
+                        setNewPassword('');
+                    }}
+                >
+                    <KeyRound size={16} />
+                </IconAction>
+            )}
             {user.status === 'disabled' ? (
                 <IconAction label={t('Enable')} tone="green" disabled={!canManage(user)} onClick={() => setUserToEnable(user)}>
                     <RotateCcw size={16} />
@@ -699,6 +752,81 @@ export default function Users({ users, filters, counts = {} }) {
                             className="flex-1 rounded-xl border border-[#0E3B2E]/20 py-2.5 text-sm font-semibold text-[#0E3B2E] hover:bg-[#0E3B2E]/5 disabled:opacity-60"
                         >
                             {processing ? t('Please wait...') : t('Save date')}
+                        </button>
+                    </div>
+                </DialogShell>
+            )}
+
+            {feeShown && (
+                <DialogShell
+                    open={!!feeUser}
+                    onClose={() => !processing && setFeeUser(null)}
+                    title={t('Management fee')}
+                    description={t('Share of the rent collected for :name that Q.R.A keeps.', { name: feeShown.name })}
+                >
+                    <label htmlFor="fee-value" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600">{t('Fee (%)')}</label>
+                    <input
+                        id="fee-value"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={feeValue}
+                        onChange={(e) => setFeeValue(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border-gray-300 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
+                    />
+                    <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => !processing && setFeeUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                            {t('Cancel')}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={processing || feeValue === '' || Number(feeValue) < 0 || Number(feeValue) > 100}
+                            onClick={() => feeUser && submit('patch', route('admin.users.fee', feeUser.id), { management_fee_percent: feeValue }, () => setFeeUser(null))}
+                            className="min-h-11 flex-1 rounded-xl bg-[#0E3B2E] text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60"
+                        >
+                            {processing ? t('Please wait...') : t('Save')}
+                        </button>
+                    </div>
+                </DialogShell>
+            )}
+
+            {passwordShown && (
+                <DialogShell
+                    open={!!passwordUser}
+                    onClose={() => !processing && setPasswordUser(null)}
+                    title={t('Set temporary password')}
+                    description={t(':name signs in with this password and must change it at the next sign-in. Any open sessions are signed out.', { name: passwordShown.name })}
+                >
+                    <div className="mt-4 flex items-center justify-between">
+                        <label htmlFor="temp-password" className="text-xs font-semibold uppercase tracking-wide text-gray-600">{t('Temporary password')}</label>
+                        <button type="button" onClick={generatePassword} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[#0E3B2E] underline decoration-2 underline-offset-4 hover:bg-emerald-50">
+                            <KeyRound size={14} aria-hidden="true" />
+                            {t('Generate')}
+                        </button>
+                    </div>
+                    <input
+                        id="temp-password"
+                        type="text"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        autoComplete="off"
+                        aria-describedby="temp-password-hint"
+                        className="mt-1.5 w-full rounded-xl border-gray-300 px-3 py-2.5 font-mono text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
+                    />
+                    <p id="temp-password-hint" className="mt-1.5 text-xs text-gray-600">{t('At least 10 characters with upper and lowercase letters, a number and a symbol.')}</p>
+                    {errors?.password && <p className="mt-1.5 text-sm font-medium text-red-700" role="alert">{errors.password}</p>}
+                    <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => !processing && setPasswordUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                            {t('Cancel')}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={processing || newPassword.length < 10}
+                            onClick={() => passwordUser && submit('post', route('admin.users.password', passwordUser.id), { password: newPassword, password_confirmation: newPassword }, () => setPasswordUser(null))}
+                            className="min-h-11 flex-1 rounded-xl bg-[#0E3B2E] text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60"
+                        >
+                            {processing ? t('Please wait...') : t('Set password')}
                         </button>
                     </div>
                 </DialogShell>

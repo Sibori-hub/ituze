@@ -30,19 +30,12 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
         'price_range' => ['nullable', 'regex:/^(any|under-500000|500000-1500000|1500000-5000000|5000000-plus)$/'],
     ]);
 
-    $categoryTypeNames = [
-        'offices' => ['Office'],
-        'apartments' => ['Apartment', 'Studio', '1 Bedroom', '2 Bedrooms', '3 Bedrooms', '4+ Bedrooms'],
-        'coffee-shops' => ['Coffee Shop'],
-        'commercial-buildings' => ['Commercial Building', 'Commercial Space', 'Shop'],
-        'warehouses' => ['Warehouse'],
-    ];
     $searchTerm = trim($filters['search'] ?? '');
-    $categoryTypes = $categoryTypeNames[$filters['category'] ?? ''] ?? [];
+    $category = $filters['category'] ?? null;
     $priceRange = $filters['price_range'] ?? 'any';
     $availableUnits = \App\Models\Unit::query()
-        ->where('status', 'available')
-        ->when($categoryTypes, fn ($query) => $query->whereHas('unitType', fn ($typeQuery) => $typeQuery->whereIn('name', $categoryTypes)))
+        ->publiclyListed()
+        ->when($category, fn ($query) => $query->whereHas('unitType', fn ($typeQuery) => $typeQuery->matchingFilter($category)))
             ->when($priceRange !== 'any', function ($query) use ($priceRange) {
                 match ($priceRange) {
                     'under-500000' => $query->where('rent_amount', '<', 500000),
@@ -297,11 +290,20 @@ Route::middleware('auth')->group(function () {
         Route::put('/{property}', [PropertyController::class, 'update'])->name('update');
         Route::delete('/{property}', [PropertyController::class, 'destroy'])->name('destroy');
 
-        // Unit management routes (nested under properties)
+        // Units: a category on one floor of the property; rooms are added inside them.
+        Route::post('/{property}/property-units', [\App\Http\Controllers\PropertyUnitController::class, 'store'])->name('property-units.store');
+        Route::post('/{property}/property-units/describe', [\App\Http\Controllers\AIDescriptionController::class, 'generateUnitDescription'])
+            ->middleware('throttle:10,1')->name('property-units.describe');
+        Route::put('/{property}/property-units/{propertyUnit}', [\App\Http\Controllers\PropertyUnitController::class, 'update'])->name('property-units.update');
+        Route::delete('/{property}/property-units/{propertyUnit}', [\App\Http\Controllers\PropertyUnitController::class, 'destroy'])->name('property-units.destroy');
+
+        // Rooms (stored as units; nested under properties)
         Route::prefix('{property}/units')->name('units.')->group(function () {
             Route::get('/', [UnitController::class, 'index'])->name('index');
             Route::get('/create', [UnitController::class, 'create'])->name('create');
             Route::post('/', [UnitController::class, 'store'])->name('store');
+            Route::post('/describe', [\App\Http\Controllers\AIDescriptionController::class, 'generateRoomDescription'])
+                ->middleware('throttle:10,1')->name('describe');
             Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
             Route::get('/{unit}/edit', [UnitController::class, 'edit'])->name('edit');
             Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
@@ -319,6 +321,14 @@ Route::middleware('auth')->group(function () {
         });
 
         Route::post('/{property}/tenants', [TenancyController::class, 'storeTenant'])->name('tenants.store');
+    });
+
+    // Mobile money payment requests pushed to a tenant's phone.
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->group(function () {
+        Route::post('/mobile-money/requests', [\App\Http\Controllers\MobileMoneyController::class, 'store'])
+            ->middleware('throttle:10,1')->name('mobile-money.requests.store');
+        Route::get('/mobile-money/requests/{mobileMoneyRequest}', [\App\Http\Controllers\MobileMoneyController::class, 'show'])
+            ->middleware('throttle:120,1')->name('mobile-money.requests.show');
     });
 
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
@@ -345,6 +355,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
     Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan'])->name('users.plan');
+    Route::post('/users/{user}/password', [AdminUserController::class, 'setPassword'])->name('users.password');
+    Route::patch('/users/{user}/fee', [AdminUserController::class, 'updateFee'])->name('users.fee');
     Route::post('/users/{user}/disable', [AdminUserController::class, 'disable'])->name('users.disable');
     Route::post('/users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');
     Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');

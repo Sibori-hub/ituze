@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import useCanEdit from '@/hooks/useCanEdit';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Search, Plus, DoorOpen, Edit, Trash2, ArrowLeft, DollarSign, Home } from 'lucide-react';
+import { Search, Plus, DoorOpen, Edit, Trash2, ArrowLeft, Home } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 import TenantLocationFields from '@/Components/TenantLocationFields';
@@ -19,6 +20,7 @@ const statusStyles = {
 
 export default function UnitsIndex({ property, units, unitTypes, filters, tenants = [] }) {
     const { t, language } = useTranslation();
+    const canEdit = useCanEdit();
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
     const [unitToDelete, setUnitToDelete] = useState(null);
@@ -66,6 +68,11 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
 
     const assignTenant = (e) => {
         e.preventDefault();
+        // Check-in and check-out times belong to nightly stays only.
+        assignmentForm.transform(({ check_in_time, check_out_time, ...values }) => ({
+            ...values,
+            ...(dailyStay ? { check_in_time, check_out_time } : {}),
+        }));
         assignmentForm.post(route('properties.units.tenancy.store', [property, unitToAssign]), {
             forceFormData: true,
             onSuccess: () => { setUnitToAssign(null); assignmentForm.reset(); },
@@ -81,8 +88,8 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
     };
 
     return (
-        <AuthenticatedLayout header={t(':property - Units', { property: property.name })}>
-            <Head title={t(':property - Units', { property: property.name })} />
+        <AuthenticatedLayout header={t(':property - Rooms', { property: property.name })}>
+            <Head title={t(':property - Rooms', { property: property.name })} />
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -107,7 +114,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder={t('Search units...')}
+                            placeholder={t('Search rooms...')}
                             className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-9 pr-3 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
                         />
                     </div>
@@ -125,13 +132,13 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         <option value="inactive">{t('Inactive')}</option>
                     </select>
 
-                    <Link
+                    {canEdit && <Link
                         href={route('properties.units.create', property)}
                         className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                     >
                         <Plus size={15} />
-                        {t('Add Unit')}
-                    </Link>
+                        {t('Add room')}
+                    </Link>}
                 </div>
             </div>
 
@@ -139,17 +146,17 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                 {units.data.length === 0 ? (
                     <div className="p-12 text-center">
                         <DoorOpen size={48} className="mx-auto mb-4 text-gray-300" />
-                        <h3 className="text-lg font-medium text-gray-900">{t('No units found')}</h3>
+                        <h3 className="text-lg font-medium text-gray-900">{t('No rooms found')}</h3>
                         <p className="mt-1 text-sm text-gray-500">
                             {t(search || status ? 'Try adjusting your search filters' : 'Get started by adding your first unit to this property')}
                         </p>
-                        {!search && !status && (
+                        {!search && !status && canEdit && (
                             <Link
                                 href={route('properties.units.create', property)}
                                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                             >
                                 <Plus size={15} />
-                                {t('Add Unit')}
+                                {t('Add room')}
                             </Link>
                         )}
                     </div>
@@ -159,7 +166,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                             <table className="w-full text-left text-sm">
                                 <thead>
                                     <tr className="border-b border-gray-100 bg-gray-50/50 text-xs uppercase tracking-wide text-gray-400">
-                                        <th className="px-5 py-3 font-semibold">{t('Unit')}</th>
+                                        <th className="px-5 py-3 font-semibold">{t('Room')}</th>
                                         <th className="px-5 py-3 font-semibold">{t('Type')}</th>
                                         <th className="px-5 py-3 font-semibold">{t('Rent')}</th>
                                         <th className="px-5 py-3 font-semibold">{t('Size')}</th>
@@ -214,9 +221,8 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                             </td>
                                             <td className="px-5 py-3.5 text-gray-600">
                                                 <div className="flex items-center gap-1">
-                                                    <DollarSign size={14} className="text-gray-400" />
                                                     <span className="font-medium">
-                                                        {Number(unit.rent_amount).toLocaleString()}
+                                                        {Number(unit.rent_amount).toLocaleString()} RWF
                                                     </span>
                                                     <span className="text-xs text-gray-400">{unit.rent_frequency === 'daily' ? `/${t('night')}` : `/${t('month')}`}</span>
                                                     {unit.size_sqm != null && unit.size_sqm !== '' && (
@@ -244,7 +250,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                 {unit.active_tenancy?.tenant?.name || <span className="text-gray-400">—</span>}
                                             </td>
                                             <td className="px-5 py-3.5 text-right">
-                                                <div className="flex items-center justify-end gap-2">
+                                                {canEdit && <div className="flex items-center justify-end gap-2">
                                                     {(unit.status === 'available' || (isApartmentUnit(unit) && ['reserved', 'occupied'].includes(unit.status))) && (
                                                         <button onClick={() => openAssignment(unit)} className="rounded-lg bg-[#0E3B2E]/10 px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] hover:bg-[#0E3B2E]/20">
                                                             {t('Assign tenant')}
@@ -262,7 +268,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
-                                                </div>
+                                                </div>}
 
                                                 {unitToAssign && (
                                                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -362,7 +368,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         {units.links && units.links.length > 3 && (
                             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/30 p-4">
                                 <p className="text-xs text-gray-400">
-                                    {t('Showing :from to :to of :total units', { from: units.from, to: units.to, total: units.total })}
+                                    {t('Showing :from to :to of :total rooms', { from: units.from, to: units.to, total: units.total })}
                                 </p>
                                 <div className="flex gap-1">
                                     {units.links.map((link, i) => (
@@ -390,9 +396,9 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
             {unitToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                        <h3 className="text-lg font-semibold text-gray-900">{t('Delete Unit')}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('Delete room')}</h3>
                         <p className="mt-2 text-sm text-gray-500">
-                            {t('Are you sure you want to delete unit :unit? This action cannot be undone.', { unit: unitToDelete.unit_number })}
+                            {t('Are you sure you want to delete room :unit? This action cannot be undone.', { unit: unitToDelete.unit_number })}
                         </p>
                         <div className="mt-6 flex justify-end gap-3">
                             <button

@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ManagementFeeReport from '@/Components/ManagementFeeReport';
 import { Head, Link, router } from '@inertiajs/react';
 import { AlertCircle, ArrowUpRight, Building2, CalendarClock, CheckCircle2, CreditCard, DoorOpen, FileText, Percent, Printer, Wallet, TrendingUp } from 'lucide-react';
 import { useTranslation } from '@/localization';
@@ -14,7 +15,7 @@ const cards = [
     { key: 'past_due_charges', label: 'Past-due rent / damage charges', icon: AlertCircle, format: value => `${Number(value).toLocaleString()} RWF` },
 ];
 
-export default function ReportsIndex({ summary, properties, agreementReports = [], vatRate = 18, isAdmin = false, owners = [], filters = {} }) {
+export default function ReportsIndex({ summary, properties, agreementReports = [], vatRate = 18, isAdmin = false, owners = [], filters = {}, managementFee = null }) {
     const { t, language } = useTranslation();
     const locale = { en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' }[language] || 'en-RW';
     const formatMoney = value => `${Number(value || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF`;
@@ -118,6 +119,8 @@ export default function ReportsIndex({ summary, properties, agreementReports = [
                     </div>
                 ))}
             </div>
+            <ManagementFeeReport report={managementFee} />
+
             <section id="agreement-finance-report" className="mt-7 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-900/5">
                 <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
                     <div className="flex items-center gap-3">

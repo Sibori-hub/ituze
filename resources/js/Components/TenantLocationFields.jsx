@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 
 const locationFields = ['province_id', 'district_id', 'sector_id'];
 
-export default function TenantLocationFields({ data, setData, errors, t }) {
+// `selectClassName` / `className` restyle the fields without changing how they work.
+export default function TenantLocationFields({ data, setData, errors, t, selectClassName, className }) {
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [sectors, setSectors] = useState([]);
@@ -96,10 +97,10 @@ export default function TenantLocationFields({ data, setData, errors, t }) {
         }));
     };
 
-    const selectClass = 'mt-1 w-full rounded-xl border-gray-200 text-sm';
+    const selectClass = selectClassName || 'mt-1 w-full rounded-xl border-gray-200 text-sm';
 
     return (
-        <div className="grid gap-3 sm:grid-cols-3 sm:col-span-2">
+        <div className={className || 'grid gap-3 sm:grid-cols-3 sm:col-span-2'}>
             <label className="text-sm font-medium text-gray-700">
                 {t('Province')}
                 <select required value={data.province_id} onChange={event => updateLocation('province_id', event.target.value)} className={selectClass}>

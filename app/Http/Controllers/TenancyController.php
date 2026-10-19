@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lease;
+use App\Models\MobileMoneyRequest;
 use App\Models\MoveOutInspection;
 use App\Models\Property;
 use App\Models\RentCharge;
@@ -28,6 +29,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class TenancyController extends Controller
 {
     private const LEASE_MAX_KB = 10240;
+
+    /**
+     * Monthly leases last at least this many months, and this many months of
+     * rent are paid at assignment together with a one-month security deposit.
+     */
+    public const MINIMUM_MONTHS = 2;
+
+    /** Note on rent payments taken out of the received deposit (nightly stays only). */
+    public const DEPOSIT_FUNDED_RENT_NOTE = 'Rent paid from the received security deposit.';
 
     private const LEASE_MIMES = 'pdf,doc,docx,jpg,jpeg,png';
 
@@ -113,11 +123,30 @@ class TenancyController extends Controller
             'deposit_amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'lease_notes' => ['nullable', 'string', 'max:1000'],
-            'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
-            'payment_reference' => ['required_if:payment_method,bank_transfer,mobile_money', 'nullable', 'string', 'max:255'],
+            'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,cheque,other'],
+            // A confirmed phone payment request is its own proof; otherwise the reference is typed.
+            'mobile_money_request_id' => ['nullable', 'integer', 'prohibited_unless:payment_method,mobile_money'],
+            'payment_reference' => [
+                Rule::requiredIf(fn () => in_array($request->input('payment_method'), ['bank_transfer', 'mobile_money', 'cheque'], true)
+                    && ! $request->filled('mobile_money_request_id')),
+                'nullable', 'string', 'max:255',
+            ],
             'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
             ...($hasExistingTenant ? [] : app(TenantLocationService::class)->validationRules($request)),
         ]);
+
+        // Monthly rentals: the lease runs at least 2 months, the security deposit is
+        // exactly one month's rent, and at assignment the tenant pays 3 months
+        // (months 1 and 2 of rent plus the deposit, which is held until move-out).
+        if ($data['rent_frequency'] === 'monthly') {
+            $minimumEnd = CarbonImmutable::parse($data['start_date'])->addMonthsNoOverflow(self::MINIMUM_MONTHS)->subDay();
+            if (CarbonImmutable::parse($data['end_date'])->lessThan($minimumEnd)) {
+                throw ValidationException::withMessages([
+                    'end_date' => 'A monthly lease lasts at least '.self::MINIMUM_MONTHS.' months. Choose an end date on or after '.$minimumEnd->format('j M Y').'.',
+                ]);
+            }
+            $data['deposit_amount'] = $data['monthly_rent'];
+        }
 
         DB::transaction(function () use ($data, $request, $unit, $tenantType, $isApartment) {
             $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->firstOrFail();
@@ -196,6 +225,24 @@ class TenancyController extends Controller
                 ]);
             }
 
+            // Paid by a request to the tenant's phone: the confirmed payment is the proof.
+            $phonePayment = null;
+            if (! empty($data['mobile_money_request_id'])) {
+                $phonePayment = MobileMoneyRequest::query()->whereKey($data['mobile_money_request_id'])->lockForUpdate()->first();
+                $expectedCents = (int) round((float) $data['monthly_rent'] * 100) * (self::MINIMUM_MONTHS + 1);
+                $problem = match (true) {
+                    ! $phonePayment || $phonePayment->purpose !== 'assignment' || $phonePayment->tenant_id !== $tenant->id || $phonePayment->unit_id !== $lockedUnit->id => 'This mobile money payment is not for this tenant and unit.',
+                    ! $phonePayment->isSuccessful() => 'This mobile money payment has not been approved.',
+                    $phonePayment->used_at !== null => 'This mobile money payment has already been used.',
+                    $data['rent_frequency'] !== 'monthly' || (int) round((float) $phonePayment->amount * 100) !== $expectedCents => 'The mobile money payment does not match the amount due now.',
+                    default => null,
+                };
+                if ($problem) {
+                    throw ValidationException::withMessages(['mobile_money_request_id' => $problem]);
+                }
+                $data['payment_reference'] = $phonePayment->provider_transaction_id;
+            }
+
             $tenancy = Tenancy::create([
                 'unit_id' => $lockedUnit->id,
                 'tenant_id' => $tenant->id,
@@ -213,12 +260,18 @@ class TenancyController extends Controller
             ]);
 
             $this->storeLeaseDocument($tenancy, $request, $data['lease'], $data['lease_notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
+            $phonePayment?->update(['tenancy_id' => $tenancy->id, 'used_at' => now()]);
             $lockedUnit->update([
                 'status' => $tenancy->status === 'active' || $lockedUnit->tenancies()->where('status', 'active')->exists()
                     ? 'occupied'
                     : 'reserved',
             ]);
             app(RentScheduleService::class)->createCharges($tenancy);
+
+            // Monthly rentals: the deposit and the first months are one payment, so they
+            // share one transaction and one receipt that lists everything covered.
+            $assignmentTransaction = (string) Str::uuid();
+            $oneReceipt = $tenancy->rent_frequency === 'monthly';
 
             if ((int) round((float) $tenancy->deposit_amount * 100) > 0) {
                 $depositCharge = $tenancy->rentCharges()
@@ -227,7 +280,7 @@ class TenancyController extends Controller
                 $depositCents = (int) round((float) $depositCharge->amount * 100);
                 $depositPayment = RentPayment::create([
                     'rent_charge_id' => $depositCharge->id,
-                    'transaction_id' => (string) Str::uuid(),
+                    'transaction_id' => $oneReceipt ? $assignmentTransaction : (string) Str::uuid(),
                     'recorded_by' => $request->user()->id,
                     'amount' => number_format($depositCents / 100, 2, '.', ''),
                     'method' => $data['payment_method'],
@@ -238,9 +291,52 @@ class TenancyController extends Controller
                 $depositPayment->update([
                     'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $depositPayment->id),
                 ]);
+            }
 
-                $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
-                $availableDepositCents = $depositCents;
+            $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
+            $recordRentPayment = function (RentCharge $rentCharge, int $cents, string $notes, ?string $transactionId = null) use ($data, $request, $vatRate) {
+                $vatCents = (int) round($cents * $vatRate / 10000);
+                $rentPayment = RentPayment::create([
+                    'rent_charge_id' => $rentCharge->id,
+                    'transaction_id' => $transactionId ?? (string) Str::uuid(),
+                    'recorded_by' => $request->user()->id,
+                    'amount' => number_format($cents / 100, 2, '.', ''),
+                    'taxable_amount' => number_format($cents / 100, 2, '.', ''),
+                    'vat_rate' => number_format($vatRate / 100, 2, '.', ''),
+                    'vat_amount' => number_format($vatCents / 100, 2, '.', ''),
+                    'method' => $data['payment_method'],
+                    'reference' => $data['payment_reference'] ?? null,
+                    'notes' => $notes,
+                    'paid_at' => now(),
+                ]);
+                $rentPayment->update([
+                    'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $rentPayment->id),
+                ]);
+            };
+
+            if ($tenancy->rent_frequency === 'monthly') {
+                // The deposit stays aside; the first two months of rent are paid now.
+                $tenancy->rentCharges()
+                    ->where('charge_type', 'rent')
+                    ->orderBy('due_date')
+                    ->limit(self::MINIMUM_MONTHS)
+                    ->get()
+                    ->each(fn (RentCharge $rentCharge) => $recordRentPayment(
+                        $rentCharge,
+                        (int) round((float) $rentCharge->amount * 100),
+                        'Rent paid in advance at assignment (first '.self::MINIMUM_MONTHS.' months).',
+                        $assignmentTransaction,
+                    ));
+
+                // One receipt number for the whole payment.
+                $firstId = RentPayment::query()->where('transaction_id', $assignmentTransaction)->min('id');
+                if ($firstId) {
+                    RentPayment::query()->where('transaction_id', $assignmentTransaction)
+                        ->update(['receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $firstId)]);
+                }
+            } elseif ((int) round((float) $tenancy->deposit_amount * 100) > 0) {
+                // Nightly stays: the amount received up front is applied to the nights.
+                $availableDepositCents = (int) round((float) $tenancy->deposit_amount * 100);
                 $rentCharges = $tenancy->rentCharges()
                     ->where('charge_type', 'rent')
                     ->orderBy('due_date')
@@ -250,23 +346,7 @@ class TenancyController extends Controller
                         break;
                     }
                     $rentCents = min($availableDepositCents, (int) round((float) $rentCharge->amount * 100));
-                    $vatCents = (int) round($rentCents * $vatRate / 10000);
-                    $rentPayment = RentPayment::create([
-                        'rent_charge_id' => $rentCharge->id,
-                        'transaction_id' => (string) Str::uuid(),
-                        'recorded_by' => $request->user()->id,
-                        'amount' => number_format($rentCents / 100, 2, '.', ''),
-                        'taxable_amount' => number_format($rentCents / 100, 2, '.', ''),
-                        'vat_rate' => number_format($vatRate / 100, 2, '.', ''),
-                        'vat_amount' => number_format($vatCents / 100, 2, '.', ''),
-                        'method' => $data['payment_method'],
-                        'reference' => $data['payment_reference'] ?? null,
-                        'notes' => 'Rent paid from the received security deposit. Remaining deposit credit is calculated separately.',
-                        'paid_at' => now(),
-                    ]);
-                    $rentPayment->update([
-                        'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $rentPayment->id),
-                    ]);
+                    $recordRentPayment($rentCharge, $rentCents, self::DEPOSIT_FUNDED_RENT_NOTE.' Remaining deposit credit is calculated separately.');
                     $availableDepositCents -= $rentCents;
                 }
             }
@@ -293,10 +373,10 @@ class TenancyController extends Controller
 
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
-            'method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
+            'method' => ['required', 'in:cash,bank_transfer,mobile_money,cheque,other'],
             'paid_at' => ['required', 'date', 'before_or_equal:now'],
             'reference' => [
-                'required_if:method,bank_transfer,mobile_money',
+                'required_if:method,bank_transfer,mobile_money,cheque',
                 'nullable',
                 'string',
                 'max:255',
@@ -367,10 +447,10 @@ class TenancyController extends Controller
 
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
-            'method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
+            'method' => ['required', 'in:cash,bank_transfer,mobile_money,cheque,other'],
             'paid_at' => ['required', 'date', 'before_or_equal:now'],
             'reference' => [
-                'required_if:method,bank_transfer,mobile_money',
+                'required_if:method,bank_transfer,mobile_money,cheque',
                 'nullable',
                 'string',
                 'max:255',
@@ -463,23 +543,40 @@ class TenancyController extends Controller
         }
 
         $data = $request->validate([
-            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after:start_date'],
             'check_in_time' => ['required_if:rent_frequency,daily', 'prohibited_unless:rent_frequency,daily', 'date_format:H:i'],
             'check_out_time' => ['required_if:rent_frequency,daily', 'prohibited_unless:rent_frequency,daily', 'date_format:H:i'],
             'monthly_rent' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
             'rent_frequency' => ['required', Rule::in($isApartment ? ['daily', 'monthly'] : ['monthly'])],
-            'due_day' => ['nullable', 'required_if:rent_frequency,monthly', 'integer', 'between:1,31'],
+            'due_day' => ['nullable', 'integer', 'between:1,31'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'lease_notes' => ['nullable', 'string', 'max:1000'],
-            'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
-            'payment_reference' => ['required_if:payment_method,bank_transfer,mobile_money', 'nullable', 'string', 'max:255'],
+            'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,cheque,other'],
+            'mobile_money_request_id' => ['nullable', 'integer', 'prohibited_unless:payment_method,mobile_money'],
+            'payment_reference' => [
+                Rule::requiredIf(fn () => in_array($request->input('payment_method'), ['bank_transfer', 'mobile_money', 'cheque'], true)
+                    && ! $request->filled('mobile_money_request_id')),
+                'nullable', 'string', 'max:255',
+            ],
             'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
         ]);
-        if ($tenancy->end_date && CarbonImmutable::parse($data['start_date'])->lessThanOrEqualTo($tenancy->end_date->startOfDay())) {
+        $start = CarbonImmutable::parse($data['start_date'])->startOfDay();
+        if ($tenancy->end_date && $start->lessThanOrEqualTo($tenancy->end_date->startOfDay())) {
             throw ValidationException::withMessages([
                 'start_date' => 'A renewal must start after the current lease end date.',
             ]);
+        }
+        // An expired lease may be renewed from the day after it ended (no unpaid gap);
+        // otherwise a renewal cannot start in the past.
+        $continuesLease = $tenancy->end_date && $start->equalTo($tenancy->end_date->startOfDay()->addDay());
+        if ($start->lessThan(CarbonImmutable::today()) && ! $continuesLease) {
+            throw ValidationException::withMessages([
+                'start_date' => 'A renewal starts today or later, or the day after the current lease ended.',
+            ]);
+        }
+        if ($data['rent_frequency'] === 'monthly') {
+            $data['due_day'] = $data['due_day'] ?? $start->day;
         }
 
         DB::transaction(function () use ($data, $request, $unit, $tenancy, $isApartment) {
@@ -497,6 +594,23 @@ class TenancyController extends Controller
 
             if ($isApartment && $data['rent_frequency'] === 'daily') {
                 $this->validateApartmentBookingDoesNotOverlap($lockedUnit, $data);
+            }
+
+            // First month paid by a request to the tenant's phone: that is the proof.
+            $phonePayment = null;
+            if (! empty($data['mobile_money_request_id'])) {
+                $phonePayment = MobileMoneyRequest::query()->whereKey($data['mobile_money_request_id'])->lockForUpdate()->first();
+                $problem = match (true) {
+                    ! $phonePayment || $phonePayment->purpose !== 'renewal' || $phonePayment->tenant_id !== $lockedTenancy->tenant_id || $phonePayment->unit_id !== $lockedUnit->id => 'This mobile money payment is not for this lease.',
+                    ! $phonePayment->isSuccessful() => 'This mobile money payment has not been approved.',
+                    $phonePayment->used_at !== null => 'This mobile money payment has already been used.',
+                    (int) round((float) $phonePayment->amount * 100) !== (int) round((float) $data['monthly_rent'] * 100) => 'The mobile money payment does not match the first month of rent.',
+                    default => null,
+                };
+                if ($problem) {
+                    throw ValidationException::withMessages(['mobile_money_request_id' => $problem]);
+                }
+                $data['payment_reference'] = $phonePayment->provider_transaction_id;
             }
 
             $renewal = Tenancy::create([
@@ -517,8 +631,32 @@ class TenancyController extends Controller
             ]);
 
             $this->storeLeaseDocument($renewal, $request, $data['lease'], $data['lease_notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
+            $phonePayment?->update(['tenancy_id' => $renewal->id, 'used_at' => now()]);
 
             app(RentScheduleService::class)->createCharges($renewal, false);
+
+            // Monthly renewals: the first month is paid at signing; the deposit carries forward.
+            if ($renewal->rent_frequency === 'monthly') {
+                $firstMonth = $renewal->rentCharges()->where('charge_type', 'rent')->orderBy('due_date')->first();
+                if ($firstMonth) {
+                    $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
+                    $cents = (int) round((float) $firstMonth->amount * 100);
+                    $payment = RentPayment::create([
+                        'rent_charge_id' => $firstMonth->id,
+                        'transaction_id' => (string) Str::uuid(),
+                        'recorded_by' => $request->user()->id,
+                        'amount' => number_format($cents / 100, 2, '.', ''),
+                        'taxable_amount' => number_format($cents / 100, 2, '.', ''),
+                        'vat_rate' => number_format($vatRate / 100, 2, '.', ''),
+                        'vat_amount' => number_format(round($cents * $vatRate / 10000) / 100, 2, '.', ''),
+                        'method' => $data['payment_method'],
+                        'reference' => $data['payment_reference'] ?? null,
+                        'notes' => 'First month of the renewed lease, paid at signing.',
+                        'paid_at' => now(),
+                    ]);
+                    $payment->update(['receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $payment->id)]);
+                }
+            }
 
             if ($renewal->status === 'active') {
                 $lockedTenancy->update([
@@ -529,7 +667,7 @@ class TenancyController extends Controller
             }
         });
 
-        return back()->with('success', 'Renewal recorded. The existing deposit carries forward to this lease.');
+        return back()->with('success', 'Lease renewed. The first month is recorded as paid and the deposit carries forward.');
     }
 
     public function moveOut(Request $request, Property $property, Unit $unit, Tenancy $tenancy): JsonResponse|RedirectResponse
@@ -654,8 +792,8 @@ class TenancyController extends Controller
             $data = $request->validate([
                 'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
                 'notes' => ['nullable', 'string', 'max:1000'],
-                'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,other'],
-                'payment_reference' => ['required_if:payment_method,bank_transfer,mobile_money', 'nullable', 'string', 'max:255'],
+                'payment_method' => ['required', 'in:cash,bank_transfer,mobile_money,cheque,other'],
+                'payment_reference' => ['required_if:payment_method,bank_transfer,mobile_money,cheque', 'nullable', 'string', 'max:255'],
             ]);
             $this->storeLeaseDocument($tenancy, $request, $data['lease'], $data['notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
 

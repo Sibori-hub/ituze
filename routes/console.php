@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('tenancies:activate-scheduled')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('tenancies:complete-apartment-stays')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('rent:generate-charges')->dailyAt('00:10')->withoutOverlapping();
+Schedule::command('leases:send-reminders')->dailyAt('08:00')->withoutOverlapping();

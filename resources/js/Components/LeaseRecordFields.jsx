@@ -1,11 +1,12 @@
 import { useTranslation } from '@/localization';
 
-const paymentMethods = ['cash', 'mobile_money', 'bank_transfer', 'other'];
+const paymentMethods = ['cash', 'mobile_money', 'bank_transfer', 'cheque', 'other'];
 
 const paymentMethodLabels = {
     cash: 'Cash',
     mobile_money: 'Mobile money',
     bank_transfer: 'Bank transfer',
+    cheque: 'Cheque',
     other: 'Other',
 };
 
@@ -18,7 +19,7 @@ export default function LeaseRecordFields({
     isDepositPayment = false,
 }) {
     const { t } = useTranslation();
-    const requiresPaymentReference = ['mobile_money', 'bank_transfer'].includes(paymentMethod);
+    const requiresPaymentReference = ['mobile_money', 'bank_transfer', 'cheque'].includes(paymentMethod);
 
     return (
         <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
@@ -35,7 +36,7 @@ export default function LeaseRecordFields({
                     value={paymentMethod}
                     onChange={event => {
                         onPaymentMethodChange(event.target.value);
-                        if (!['mobile_money', 'bank_transfer'].includes(event.target.value)) {
+                        if (!['mobile_money', 'bank_transfer', 'cheque'].includes(event.target.value)) {
                             onPaymentReferenceChange('');
                         }
                     }}
@@ -47,11 +48,11 @@ export default function LeaseRecordFields({
                     ))}
                 </select>
                 {errors.payment_method && <span className="mt-1 block text-xs text-red-600">{errors.payment_method}</span>}
-                {isDepositPayment && <span className="mt-1 block text-xs font-normal text-gray-500">{t('The full deposit is recorded as received; rent is allocated from it and the remaining deposit credit is calculated automatically.')}</span>}
+                {isDepositPayment && <span className="mt-1 block text-xs font-normal text-gray-500">{t('Monthly rentals: the tenant pays 2 months of rent and a 1-month security deposit now. The deposit is kept until move-out.')}</span>}
             </label>
             {requiresPaymentReference && (
                 <label className="block text-sm font-medium text-gray-700 sm:col-span-2">
-                    {t(paymentMethod === 'mobile_money' ? 'Mobile money transaction ID' : 'Bank payment reference')}
+                    {t(({ mobile_money: 'Mobile money transaction ID', bank_transfer: 'Bank slip reference', cheque: 'Cheque number' })[paymentMethod])}
                     <input
                         required
                         value={paymentReference}

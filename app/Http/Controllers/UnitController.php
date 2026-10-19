@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Property;
+use Illuminate\Validation\ValidationException;
+use App\Models\PropertyUnit;
 use App\Models\RentPayment;
 use App\Models\Unit;
 use App\Models\UnitType;
@@ -84,6 +86,8 @@ class UnitController extends Controller
         return Inertia::render('Units/Create', [
             'property' => $property,
             'unitTypes' => $unitTypes,
+            'propertyUnits' => $this->propertyUnitOptions($property),
+            'selectedPropertyUnitId' => $request->integer('property_unit_id') ?: null,
         ]);
     }
 
@@ -94,6 +98,7 @@ class UnitController extends Controller
     {
         try {
             $this->authorizePropertyAccess($request->user(), $property);
+            $this->applyParentUnit($request, $property);
 
             $isApartment = $this->isApartmentUnitType($request->input('unit_type_id'));
             $data = $request->validate([
@@ -106,13 +111,13 @@ class UnitController extends Controller
                 'description' => 'nullable|string',
                 'floor_number' => 'nullable|integer|min:-10|max:200',
                 'rent_frequency' => ['required', Rule::in($isApartment ? ['monthly', 'daily'] : ['monthly'])],
-                'status' => 'required|in:available,occupied,maintenance,reserved,inactive',
                 'images' => 'nullable|array|max:10',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
 
             $unit = Unit::create([
                 'property_id' => $property->id,
+                'property_unit_id' => $this->parentUnitId($property, $data),
                 'unit_type_id' => $data['unit_type_id'],
                 'unit_number' => $data['unit_number'],
                 'floor_number' => $data['floor_number'] ?? null,
@@ -122,7 +127,8 @@ class UnitController extends Controller
                 'bedrooms' => $isApartment ? $data['bedrooms'] : null,
                 'bathrooms' => $isApartment ? $data['bathrooms'] : null,
                 'description' => $data['description'] ?? null,
-                'status' => $data['status'],
+                // New rooms are always available; the status changes later (edit, tenancy).
+                'status' => 'available',
             ]);
 
             $this->storeImages($unit, $request->file('images', []));
@@ -135,8 +141,8 @@ class UnitController extends Controller
                 ], 201);
             }
 
-            return redirect()->route('properties.units.index', $property)
-                ->with('success', '✅ Unit "' . $unit->unit_number . '" created successfully!');
+            return redirect()->route('properties.show', $property)
+                ->with('success', '✅ Room "' . $unit->unit_number . '" added.');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::warning('Unit store validation failed: ' . json_encode($e->errors()));
@@ -213,6 +219,7 @@ class UnitController extends Controller
             'property' => $property,
             'unit' => $unit->load('unitType', 'images'),
             'unitTypes' => $unitTypes,
+            'propertyUnits' => $this->propertyUnitOptions($property),
         ]);
     }
 
@@ -227,6 +234,7 @@ class UnitController extends Controller
             if ($unit->property_id !== $property->id) {
                 abort(404);
             }
+            $this->applyParentUnit($request, $property);
 
             $isApartment = $this->isApartmentUnitType($request->input('unit_type_id'));
             $data = $request->validate([
@@ -272,6 +280,7 @@ class UnitController extends Controller
                 }
 
                 $lockedUnit->update([
+                    'property_unit_id' => $this->parentUnitId($lockedUnit->property, $data),
                     'unit_type_id' => $data['unit_type_id'],
                     'unit_number' => $data['unit_number'],
                     'floor_number' => $data['floor_number'] ?? null,
@@ -305,8 +314,8 @@ class UnitController extends Controller
                 ]);
             }
 
-            return redirect()->route('properties.units.index', $property)
-                ->with('success', '✅ Unit "' . $unit->unit_number . '" updated successfully!');
+            return redirect()->route('properties.show', $property)
+                ->with('success', '✅ Room "' . $unit->unit_number . '" updated.');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::warning('Unit update validation failed: ' . json_encode($e->errors()));
@@ -368,7 +377,7 @@ class UnitController extends Controller
             }
 
             return redirect()->route('properties.units.index', $property)
-                ->with('success', '🗑️ Unit "' . $unitNum . '" deleted successfully.');
+                ->with('success', '🗑️ Room "' . $unitNum . '" deleted.');
 
         } catch (\Exception $e) {
             Log::error('Unit destroy error: ' . $e->getMessage());
@@ -384,6 +393,60 @@ class UnitController extends Controller
     /**
      * Check if user can access the property.
      */
+    /**
+     * A room is added inside a unit (category on a floor): when the form names
+     * the unit, the room takes that unit's category and floor.
+     */
+    private function applyParentUnit(Request $request, Property $property): void
+    {
+        if (! $request->filled('property_unit_id')) {
+            return;
+        }
+
+        $parent = PropertyUnit::query()
+            ->where('property_id', $property->id)
+            ->find($request->input('property_unit_id'));
+
+        if (! $parent) {
+            throw ValidationException::withMessages([
+                'property_unit_id' => 'Choose one of this property\'s units.',
+            ]);
+        }
+
+        $request->merge([
+            'unit_type_id' => $parent->unit_type_id,
+            'floor_number' => $parent->floor_number,
+        ]);
+    }
+
+    /**
+     * The unit a room belongs to. Clients that still send only a category and
+     * floor (older app versions) get the matching unit, created if needed.
+     */
+    /**
+     * The property's units for the room form: "Office · Floor 2".
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function propertyUnitOptions(Property $property)
+    {
+        return $property->propertyUnits()->with('unitType:id,name')->get()->map(fn (PropertyUnit $unit) => [
+            'id' => $unit->id,
+            'unit_type_id' => $unit->unit_type_id,
+            'category' => $unit->unitType?->name,
+            'floor_number' => $unit->floor_number,
+        ]);
+    }
+
+    private function parentUnitId(Property $property, array $data): int
+    {
+        return PropertyUnit::query()->firstOrCreate([
+            'property_id' => $property->id,
+            'unit_type_id' => $data['unit_type_id'],
+            'floor_number' => (int) ($data['floor_number'] ?? 0),
+        ])->id;
+    }
+
     private function authorizePropertyAccess($user, $property)
     {
         if (!$user->isAdmin() && $property->owner_id !== $user->id) {
@@ -403,7 +466,7 @@ class UnitController extends Controller
     {
         $name = UnitType::query()->whereKey($unitTypeId)->value('name');
 
-        return in_array(strtolower($name ?? ''), ['apartment', 'studio'], true);
+        return UnitType::isResidentialName($name);
     }
 
     private function storeImages(Unit $unit, array $images): void

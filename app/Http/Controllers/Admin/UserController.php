@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -120,6 +121,8 @@ class UserController extends Controller
             'national_id' => IdentityNumber::rules($request->input('identity_document_type')),
             'sector_id' => ['required', 'exists:sectors,id'],
             'profile_photo' => ['required', 'image', 'max:2048'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+            'management_fee_percent' => [$request->input('role') === 'owner' ? 'required' : 'prohibited', 'nullable', 'numeric', 'between:0,100'],
         ], [
             'phone.regex' => 'Enter a valid Rwanda mobile number (072, 073, 078, or 079).',
             ...IdentityNumber::messages(),
@@ -133,25 +136,66 @@ class UserController extends Controller
             'phone' => $validated['phone'],
             'role' => $validated['role'],
             'status' => 'approved',
-            'expires_at' => $validated['role'] === 'owner' ? now()->addYear() : null,
+            // Managed owners pay a fee on collected rent instead of a subscription.
+            'expires_at' => null,
+            'management_fee_percent' => $validated['role'] === 'owner' ? $validated['management_fee_percent'] : null,
             'national_id' => $validated['national_id'],
             'identity_document_type' => $validated['identity_document_type'],
             'sector_id' => $validated['sector_id'],
             'profile_photo' => $request->file('profile_photo')->store('profile-photos', 'public'),
             'profile_completed' => true,
             'created_by' => $request->user()->id,
-            // Never used to sign in: the account has no login of its own.
-            'password' => Str::random(64),
+            'password' => $validated['password'],
         ]);
-        // The administrator vouches for these contacts; no codes are sent.
+        // The administrator vouches for these contacts; the temporary password
+        // must be replaced at first sign-in.
         $user->forceFill([
-            'login_enabled' => false,
+            'login_enabled' => true,
+            'must_change_password' => true,
             'email_verified_at' => now(),
             'phone_verified_at' => now(),
         ])->save();
 
         return redirect()->route('admin.users', ['source' => 'managed'])
-            ->with('success', $user->name.' was added as a '.strtolower($user->roleLabel()).' managed by ITUZE GREEN PLATFORM.');
+            ->with('success', $user->name.' was added as a '.strtolower($user->roleLabel()).' managed by ITUZE GREEN PLATFORM. Give them the temporary password; they must change it at first sign-in.');
+    }
+
+    /**
+     * Give a managed account a (new) temporary password, which also turns its
+     * sign-in on. The owner must replace it at the next sign-in.
+     */
+    public function setPassword(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($user->isManaged() && ! $user->isAdmin(), 404);
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $user->forceFill([
+            'password' => $validated['password'],
+            'login_enabled' => true,
+            'must_change_password' => true,
+        ])->save();
+        $user->endAllSessions();
+
+        return back()->with('success', 'A temporary password was set for '.$user->name.'. They must change it at their next sign-in.');
+    }
+
+    /**
+     * Change the share of collected rent Q.R.A keeps for a managed owner.
+     */
+    public function updateFee(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($user->isManaged() && $user->isOwner(), 404);
+
+        $validated = $request->validate([
+            'management_fee_percent' => ['required', 'numeric', 'between:0,100'],
+        ]);
+
+        $user->forceFill(['management_fee_percent' => $validated['management_fee_percent']])->save();
+
+        return back()->with('success', 'The management fee for '.$user->name.' is now '.rtrim(rtrim(number_format((float) $validated['management_fee_percent'], 2), '0'), '.').'%.');
     }
 
     public function updatePlan(Request $request, User $user): RedirectResponse

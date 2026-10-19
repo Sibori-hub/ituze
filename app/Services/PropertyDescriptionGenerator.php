@@ -137,6 +137,9 @@ class PropertyDescriptionGenerator
         if (isset($inputs['total_floors']) && $inputs['total_floors'] !== '') {
             $lines[] = 'Total Floors (including ground floor): ' . $inputs['total_floors'];
         }
+        if (isset($inputs['basement_floors'])) {
+            $lines[] = 'Basements: ' . ((int) $inputs['basement_floors'] > 0 ? $inputs['basement_floors'] : 'none');
+        }
         if (!empty($inputs['unit_size_range'])) {
             $lines[] = "Unit Size Range: {$inputs['unit_size_range']}";
         }
@@ -191,6 +194,10 @@ class PropertyDescriptionGenerator
         if ($totalFloors !== null && $totalFloors !== '') {
             $fw = (int)$totalFloors === 1 ? 'floor' : 'floors';
             $structure[] = "{$totalFloors} {$fw} (incl. ground)";
+        }
+        $basements = (int) ($inputs['basement_floors'] ?? 0);
+        if ($basements > 0) {
+            $structure[] = $basements === 1 ? '1 basement' : "{$basements} basements";
         }
         if ($unitSizeRange) {
             $structure[] = "sizes from {$unitSizeRange}";
@@ -254,5 +261,208 @@ class PropertyDescriptionGenerator
             'description' => $description,
             'source' => 'template',
         ];
+    }
+    /**
+     * A short description of one rentable room.
+     *
+     * @param  array{property: string, category: string, floor: string, room_number: string, size_sqm: ?float,
+     *               rent_amount: ?float, rent_frequency: string, bedrooms: ?int, bathrooms: ?float,
+     *               location: array<int, string>, amenities: array<int, string>, proximity: array<int, string>}  $room
+     * @return array{description: string, source: string}
+     */
+    public function generateRoom(array $room): array
+    {
+        $apiKey = config('services.openai.api_key');
+        if (empty($apiKey)) {
+            return $this->roomTemplate($room);
+        }
+
+        try {
+            $facts = array_filter([
+                'Building: '.$room['property'],
+                'Category: '.$room['category'],
+                'Floor: '.$room['floor'],
+                'Room number: '.$room['room_number'],
+                $room['size_sqm'] ? 'Size: '.$this->number($room['size_sqm']).' m²' : null,
+                $room['bedrooms'] !== null ? 'Bedrooms: '.$room['bedrooms'] : null,
+                $room['bathrooms'] !== null ? 'Bathrooms: '.$this->number($room['bathrooms']) : null,
+                $room['rent_amount'] ? 'Rent: '.number_format($room['rent_amount']).' RWF per '.($room['rent_frequency'] === 'daily' ? 'day' : 'month') : null,
+                $room['location'] ? 'Location: '.implode(', ', $room['location']).', Rwanda' : null,
+                $room['amenities'] ? 'Building amenities: '.implode(', ', $this->labelAmenities($room['amenities'])) : null,
+                $room['proximity'] ? 'Nearby: '.implode(', ', $this->labelProximity($room['proximity'])) : null,
+            ]);
+
+            $response = Http::timeout(15)
+                ->withToken($apiKey)
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => config('services.openai.model', 'gpt-4o-mini'),
+                    'messages' => [
+                        ['role' => 'system', 'content' => 'You write short rental listings for rooms in buildings in Rwanda. Write 60 to 110 words in plain English, two short paragraphs, no headings, no emojis. Match the tone to the category (office = professional, shop or commercial = visibility and customers, apartment = comfortable home, storage or warehouse = secure and practical). Use only the facts given; never invent features. Prices are in RWF.'],
+                        ['role' => 'user', 'content' => "Write the listing for this room:\n".implode("\n", $facts)],
+                    ],
+                    'temperature' => 0.6,
+                ]);
+
+            $content = trim((string) ($response->successful() ? $response->json('choices.0.message.content') : ''));
+
+            return $content !== '' ? ['description' => $content, 'source' => 'llm'] : $this->roomTemplate($room);
+        } catch (\Throwable $e) {
+            Log::warning('Room description generation failed: '.$e->getMessage());
+
+            return $this->roomTemplate($room);
+        }
+    }
+
+    /**
+     * @return array{description: string, source: string}
+     */
+    private function roomTemplate(array $room): array
+    {
+        $category = trim($room['category']) ?: 'space';
+        $lower = mb_strtolower($category);
+        // Location names are stored in capitals for some districts (KICUKIRO).
+        $places = array_map(fn ($place) => mb_convert_case(mb_strtolower($place), MB_CASE_TITLE), array_slice($room['location'], 0, 2));
+        $where = $places ? ' in '.implode(', ', $places) : '';
+        $size = $room['size_sqm'] ? $this->number($room['size_sqm']).' m² ' : '';
+
+        // "on the ground floor", "on floor 2", "in basement 1".
+        $floor = mb_strtolower($room['floor']);
+        $floorPhrase = match (true) {
+            str_starts_with($floor, 'ground') => 'on the ground floor',
+            str_starts_with($floor, 'basement') => 'in '.$floor,
+            default => 'on '.$floor,
+        };
+        $opening = "Room {$room['room_number']} is a {$size}{$category} space {$floorPhrase} of {$room['property']}{$where}.";
+
+        $use = match (true) {
+            str_contains($lower, 'apart') => 'It is a comfortable place to live'
+                .($room['bedrooms'] !== null ? ', with '.$room['bedrooms'].' '.($room['bedrooms'] == 1 ? 'bedroom' : 'bedrooms') : '')
+                .($room['bathrooms'] !== null ? ' and '.$this->number($room['bathrooms']).' '.($room['bathrooms'] == 1 ? 'bathroom' : 'bathrooms') : '')
+                .'.',
+            str_contains($lower, 'office') || str_contains($lower, 'bureau') => 'It suits a business, a small team or a professional practice looking for a well-located workplace.',
+            str_contains($lower, 'ware') || str_contains($lower, 'stor') || str_contains($lower, 'depot') => 'It is a practical, secure space for storing stock and equipment.',
+            str_contains($lower, 'restaurant') || str_contains($lower, 'coffee') || str_contains($lower, 'cafe') || str_contains($lower, 'café') => 'It is a good place to welcome customers for food and drinks.',
+            default => 'It is a good place for a shop or service that wants to be seen by customers.',
+        };
+
+        $extras = [];
+        if ($room['amenities']) {
+            $extras[] = 'The building offers '.$this->listing($this->labelAmenities($room['amenities']));
+        }
+        if ($room['proximity']) {
+            $extras[] = ($room['amenities'] ? 'and is close to ' : 'The building is close to ').$this->listing($this->labelProximity($room['proximity']));
+        }
+        $building = $extras ? implode(' ', $extras).'.' : '';
+
+        $rent = $room['rent_amount']
+            ? 'Rent is '.number_format($room['rent_amount']).' RWF per '.($room['rent_frequency'] === 'daily' ? 'day' : 'month').'.'
+            : '';
+
+        $paragraphs = array_filter([
+            trim($opening.' '.$use),
+            trim($building.' '.$rent.' Contact us to arrange a visit.'),
+        ]);
+
+        return ['description' => implode("\n\n", $paragraphs), 'source' => 'template'];
+    }
+
+    /**
+     * A short description of a unit: one category on one floor of a building.
+     *
+     * @param  array{property: string, category: string, floor: string, location: array<int, string>,
+     *               amenities: array<int, string>, proximity: array<int, string>}  $unit
+     * @return array{description: string, source: string}
+     */
+    public function generateUnit(array $unit): array
+    {
+        $apiKey = config('services.openai.api_key');
+        if (empty($apiKey)) {
+            return $this->unitTemplate($unit);
+        }
+
+        try {
+            $facts = array_filter([
+                'Building: '.$unit['property'],
+                'Category: '.$unit['category'],
+                'Floor: '.$unit['floor'],
+                $unit['location'] ? 'Location: '.implode(', ', $unit['location']).', Rwanda' : null,
+                $unit['amenities'] ? 'Building amenities: '.implode(', ', $this->labelAmenities($unit['amenities'])) : null,
+                $unit['proximity'] ? 'Nearby: '.implode(', ', $this->labelProximity($unit['proximity'])) : null,
+            ]);
+
+            $response = Http::timeout(15)
+                ->withToken($apiKey)
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => config('services.openai.model', 'gpt-4o-mini'),
+                    'messages' => [
+                        ['role' => 'system', 'content' => 'You describe one floor area of a building in Rwanda that holds several rentable rooms of the same kind. Write 40 to 80 words in plain English, one or two short paragraphs, no headings, no emojis, no prices. Match the tone to the category (office = professional, shop or commercial = visibility and customers, apartment = comfortable homes, storage or warehouse = secure and practical). Use only the facts given; never invent features.'],
+                        ['role' => 'user', 'content' => "Describe this unit:\n".implode("\n", $facts)],
+                    ],
+                    'temperature' => 0.6,
+                ]);
+
+            $content = trim((string) ($response->successful() ? $response->json('choices.0.message.content') : ''));
+
+            return $content !== '' ? ['description' => $content, 'source' => 'llm'] : $this->unitTemplate($unit);
+        } catch (\Throwable $e) {
+            Log::warning('Unit description generation failed: '.$e->getMessage());
+
+            return $this->unitTemplate($unit);
+        }
+    }
+
+    /**
+     * @return array{description: string, source: string}
+     */
+    private function unitTemplate(array $unit): array
+    {
+        $category = trim($unit['category']) ?: 'Rooms';
+        $lower = mb_strtolower($category);
+        $places = array_map(fn ($place) => mb_convert_case(mb_strtolower($place), MB_CASE_TITLE), array_slice($unit['location'], 0, 2));
+        $where = $places ? ' in '.implode(', ', $places) : '';
+        $floor = mb_strtolower($unit['floor']);
+        $floorPhrase = match (true) {
+            str_starts_with($floor, 'ground') => 'on the ground floor',
+            str_starts_with($floor, 'basement') => 'in '.$floor,
+            default => 'on '.$floor,
+        };
+
+        $use = match (true) {
+            str_contains($lower, 'apart') => 'Its apartments are comfortable places to live.',
+            str_contains($lower, 'office') || str_contains($lower, 'bureau') => 'Its rooms suit businesses, small teams and professional practices looking for a well-located workplace.',
+            str_contains($lower, 'ware') || str_contains($lower, 'stor') || str_contains($lower, 'depot') => 'Its rooms are practical, secure spaces for storing stock and equipment.',
+            str_contains($lower, 'restaurant') || str_contains($lower, 'coffee') || str_contains($lower, 'cafe') || str_contains($lower, 'café') => 'Its rooms are good places to welcome customers for food and drinks.',
+            default => 'Its rooms are good places for shops and services that want to be seen by customers.',
+        };
+
+        $extras = [];
+        if ($unit['amenities']) {
+            $extras[] = 'The building offers '.$this->listing($this->labelAmenities($unit['amenities']));
+        }
+        if ($unit['proximity']) {
+            $extras[] = ($unit['amenities'] ? 'and is close to ' : 'The building is close to ').$this->listing($this->labelProximity($unit['proximity']));
+        }
+
+        $paragraphs = array_filter([
+            "{$category} {$floorPhrase} of {$unit['property']}{$where}. {$use}",
+            $extras ? implode(' ', $extras).'.' : null,
+        ]);
+
+        return ['description' => implode("\n\n", $paragraphs), 'source' => 'template'];
+    }
+
+    private function listing(array $items): string
+    {
+        $items = array_values($items);
+        if (count($items) <= 1) {
+            return $items[0] ?? '';
+        }
+
+        return implode(', ', array_slice($items, 0, -1)).' and '.end($items);
+    }
+
+    private function number(float|int|string $value): string
+    {
+        return rtrim(rtrim(number_format((float) $value, 2, '.', ','), '0'), '.');
     }
 }

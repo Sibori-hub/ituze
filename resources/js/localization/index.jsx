@@ -61,8 +61,8 @@ export function useTranslation() {
 }
 
 function interpolate(phrase, replacements) {
-    return Object.entries(replacements).reduce(
-        (text, [key, value]) => text.replaceAll(`:${key}`, String(value)),
-        phrase,
-    );
+    // Longest names first, so ":to" never eats the start of ":total".
+    return Object.entries(replacements)
+        .sort(([a], [b]) => b.length - a.length)
+        .reduce((text, [key, value]) => text.replaceAll(`:${key}`, String(value)), phrase);
 }

@@ -272,6 +272,8 @@ class MobileAuthController extends Controller
             'email_verified' => $user->hasVerifiedEmail(),
             'phone_verified' => $user->isPhoneVerified(),
             'terms_accepted' => $user->hasAcceptedTerms(),
+            'must_change_password' => (bool) $user->must_change_password,
+            'read_only' => $user->isReadOnly(),
         ];
     }
 }

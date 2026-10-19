@@ -19,7 +19,7 @@ class MobilePropertyBrowseTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['unit_images', 'property_images', 'units', 'unit_types', 'properties', 'cells', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['tenancies', 'unit_images', 'property_images', 'units', 'property_units', 'unit_types', 'properties', 'cells', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -52,6 +52,9 @@ class MobilePropertyBrowseTest extends TestCase
 
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            $table->unsignedSmallInteger('total_floors')->default(0);
+            $table->unsignedTinyInteger('basement_floors')->default(0);
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('owner_id')->nullable();
             $table->unsignedBigInteger('cell_id')->nullable();
             $table->string('name');
@@ -68,8 +71,18 @@ class MobilePropertyBrowseTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('property_units', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('property_id');
+            $table->unsignedBigInteger('unit_type_id');
+            $table->smallInteger('floor_number')->default(0);
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('units', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('property_unit_id')->nullable();
             $table->unsignedBigInteger('property_id');
             $table->unsignedBigInteger('unit_type_id');
             $table->string('unit_number');
@@ -81,6 +94,15 @@ class MobilePropertyBrowseTest extends TestCase
             $table->decimal('size_sqm', 12, 2)->nullable();
             $table->text('description')->nullable();
             $table->string('status')->default('available');
+            $table->timestamps();
+        });
+
+        // Only what the public listing checks: a room's current or upcoming tenancy.
+        Schema::create('tenancies', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('unit_id');
+            $table->string('status');
+            $table->unsignedBigInteger('renewed_from_id')->nullable();
             $table->timestamps();
         });
 
@@ -122,6 +144,22 @@ class MobilePropertyBrowseTest extends TestCase
             ->assertJsonPath('total', 1);
     }
 
+    public function test_room_with_a_current_tenancy_is_not_listed_even_if_marked_available(): void
+    {
+        [$property, $unit] = $this->makeListing();
+        \Illuminate\Support\Facades\DB::table('tenancies')->insert([
+            'unit_id' => $unit->id,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson('/api/mobile/properties')
+            ->assertOk()
+            ->assertJsonPath('total', 0);
+        $this->getJson('/api/mobile/properties/'.$property->id)
+            ->assertNotFound();
+    }
     public function test_property_details_only_include_currently_available_units(): void
     {
         [$property, $availableUnit] = $this->makeListing();

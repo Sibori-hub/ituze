@@ -17,7 +17,10 @@ body,
     width: 100vw !important;
     height: 100vh !important;
     height: 100dvh !important;
+    /* clip, not hidden: a hidden box can still be scrolled by the browser (for example when it
+       focuses a radio button), which slid the whole app out of view and left a blank screen. */
     overflow: hidden !important;
+    overflow: clip !important;
 }
 
 #app .authenticated-layout-row {
@@ -25,6 +28,8 @@ body,
     flex: 1 1 0% !important;
     min-width: 0 !important;
     min-height: 0 !important;
+    overflow: hidden !important;
+    overflow: clip !important;
 }
 
 #app .authenticated-sidebar {
@@ -53,11 +58,19 @@ body,
     flex-direction: column !important;
     min-width: 0 !important;
     min-height: 0 !important;
+    overflow: hidden !important;
+    overflow: clip !important;
 }
 
-#app .authenticated-main-header,
-#app .authenticated-main-footer {
+#app .authenticated-main-header {
     flex-shrink: 0 !important;
+}
+
+/* Signed-in pages scroll inside the shell; the window itself stays still. */
+html:has(.authenticated-app-shell),
+body:has(.authenticated-app-shell) {
+    overflow: hidden;
+    overscroll-behavior: none;
 }
 
 #app .authenticated-page-content {
@@ -190,4 +203,10 @@ body,
     body[data-print-target="payments-finance-report"] #payments-finance-report .screen-only {
         display: none !important;
     }
+}
+
+/* Option cards hide their radio/checkbox visually (sr-only). Keep it inside its
+   card so focusing it never makes the browser scroll somewhere else. */
+label:has(> input.sr-only) {
+    position: relative;
 }

@@ -4,12 +4,19 @@ import useAvailability from '@/hooks/useAvailability';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatNida, formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/lib/rwanda';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, BookUser, Building2, Camera, Check, IdCard, Info, Loader2, Mail, MapPin, Megaphone, Trash2, UploadCloud, User, UserPlus } from 'lucide-react';
+import { ArrowLeft, BookUser, Building2, Camera, Check, Eye, EyeOff, IdCard, Info, KeyRound, Loader2, Mail, MapPin, Megaphone, Trash2, UploadCloud, User, UserPlus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024; // matches max:2048 on the server
 
+// Mirrors Password::defaults() in AppServiceProvider.
+const PASSWORD_RULES = [
+    { label: 'At least 10 characters', test: (p) => p.length >= 10 },
+    { label: 'Upper and lowercase letters', test: (p) => /[a-z]/.test(p) && /[A-Z]/.test(p) },
+    { label: 'A number', test: (p) => /\d/.test(p) },
+    { label: 'A symbol', test: (p) => /[^A-Za-z0-9]/.test(p) },
+];
 const ACCOUNT_TYPES = [
     { value: 'owner', label: 'Property Owner', description: 'Q.R.A manages their buildings, units, tenants and rent.', Icon: Building2 },
     { value: 'advertiser', label: 'Advertiser', description: 'A business whose adverts Q.R.A publishes on the platform.', Icon: Megaphone },
@@ -67,6 +74,9 @@ export default function CreateUser({ locations }) {
         national_id: '',
         sector_id: '',
         profile_photo: null,
+        password: '',
+        password_confirmation: '',
+        management_fee_percent: '10',
     });
 
     const fileInput = useRef(null);
@@ -95,7 +105,25 @@ export default function CreateUser({ locations }) {
         phoneValid && phoneStatus !== 'taken' && phoneStatus !== 'checking';
     const locationDone = Boolean(data.sector_id);
     const photoDone = Boolean(data.profile_photo);
-    const isFormValid = contactDone && idValid && locationDone && photoDone;
+    const [showPassword, setShowPassword] = useState(false);
+    const passwordChecks = PASSWORD_RULES.map((rule) => ({ ...rule, met: rule.test(data.password) }));
+    const passwordValid = passwordChecks.every((rule) => rule.met);
+    const passwordsMatch = data.password !== '' && data.password === data.password_confirmation;
+    const feeValid = data.role !== 'owner' || (data.management_fee_percent !== '' && Number(data.management_fee_percent) >= 0 && Number(data.management_fee_percent) <= 100);
+    const accessDone = passwordValid && passwordsMatch && feeValid;
+    const isFormValid = contactDone && idValid && locationDone && photoDone && accessDone;
+
+    // A strong temporary password the admin can read out or send to the owner.
+    const generatePassword = () => {
+        const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '#@!%&*?'];
+        const random = (max) => window.crypto.getRandomValues(new Uint32Array(1))[0] % max;
+        const chars = sets.map((set) => set[random(set.length)]);
+        const all = sets.join('');
+        while (chars.length < 12) chars.push(all[random(all.length)]);
+        const password = chars.sort(() => random(3) - 1).join('');
+        setData((form) => ({ ...form, password, password_confirmation: password }));
+        setShowPassword(true);
+    };
 
     const choosePhoto = (file) => {
         if (!file) return;
@@ -118,7 +146,8 @@ export default function CreateUser({ locations }) {
     const submit = (e) => {
         e.preventDefault();
         if (!isFormValid || processing) return;
-        transform((form) => ({ ...form, phone: `0${form.phone}` }));
+        // Advertisers pay per post, not a management fee.
+        transform((form) => ({ ...form, phone: `0${form.phone}`, management_fee_percent: form.role === 'owner' ? form.management_fee_percent : undefined }));
         post(route('admin.users.store'), { forceFormData: true, preserveScroll: true });
     };
 
@@ -148,9 +177,9 @@ export default function CreateUser({ locations }) {
                 <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950" role="note">
                     <Info size={18} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" />
                     <ul className="list-disc space-y-0.5 pl-4">
-                        <li>{t('The account is approved straight away. Owners get a one-year plan starting today.')}</li>
-                        <li>{t('They do not sign in: Q.R.A manages everything from this admin panel.')}</li>
-                        <li>{t('Their email and phone are used only to send them information and updates.')}</li>
+                        <li>{t('The account is approved straight away. Q.R.A manages everything from this admin panel.')}</li>
+                        <li>{t('Owners sign in with the temporary password you set, must change it at first sign-in, and can only view their reports.')}</li>
+                        <li>{t('Owners pay Q.R.A a management fee on the rent collected instead of a subscription.')}</li>
                     </ul>
                 </div>
 
@@ -408,6 +437,92 @@ export default function CreateUser({ locations }) {
                         <InputError message={errors.profile_photo} className="mt-2" />
                     </Section>
 
+                    <Section number={6} title={t('Sign-in & fee')} hint={t('Set a temporary password to give the account holder. They must change it at their first sign-in.')} done={accessDone}>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <div className="mb-1.5 flex items-center justify-between gap-2">
+                                    <label htmlFor="password" className="text-sm font-semibold text-gray-800">{t('Temporary password')}</label>
+                                    <button type="button" onClick={generatePassword} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[#0E3B2E] underline decoration-2 underline-offset-4 hover:bg-emerald-50">
+                                        <KeyRound size={14} aria-hidden="true" />
+                                        {t('Generate')}
+                                    </button>
+                                </div>
+                                <div className="relative">
+                                    <input
+                                        id="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={data.password}
+                                        onChange={(e) => setData('password', e.target.value)}
+                                        autoComplete="new-password"
+                                        aria-invalid={Boolean(errors.password) || undefined}
+                                        aria-describedby="password-rules"
+                                        className={`${fieldClass} px-3 pr-12 font-mono ${errors.password ? invalidClass : ''}`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((show) => !show)}
+                                        className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
+                                        aria-label={showPassword ? t('Hide password') : t('Show password')}
+                                    >
+                                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                                    </button>
+                                </div>
+                                <InputError message={errors.password} className="mt-1" />
+                            </div>
+                            <div>
+                                <label htmlFor="password_confirmation" className={labelClass}>{t('Confirm Password')}</label>
+                                <input
+                                    id="password_confirmation"
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={data.password_confirmation}
+                                    onChange={(e) => setData('password_confirmation', e.target.value)}
+                                    autoComplete="new-password"
+                                    aria-invalid={(data.password_confirmation !== '' && !passwordsMatch) || undefined}
+                                    className={`${fieldClass} px-3 font-mono ${data.password_confirmation !== '' && !passwordsMatch ? invalidClass : ''}`}
+                                />
+                                {data.password_confirmation !== '' && !passwordsMatch && <Hint tone="error">{t('Passwords do not match')}</Hint>}
+                            </div>
+                        </div>
+                        <ul id="password-rules" className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                            {passwordChecks.map((rule) => (
+                                <li key={rule.label} className={`flex items-center gap-2 text-sm ${rule.met ? 'text-emerald-800' : 'text-gray-600'}`}>
+                                    <span className={`flex h-4 w-4 items-center justify-center rounded-full ${rule.met ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`} aria-hidden="true">
+                                        {rule.met && <Check size={10} strokeWidth={3.5} />}
+                                    </span>
+                                    {t(rule.label)}
+                                    <span className="sr-only">{rule.met ? t('completed') : ''}</span>
+                                </li>
+                            ))}
+                        </ul>
+
+                        {data.role === 'owner' && (
+                            <div className="mt-5 max-w-xs">
+                                <label htmlFor="management_fee_percent" className={labelClass}>{t('Management fee')}</label>
+                                <div className="relative">
+                                    <input
+                                        id="management_fee_percent"
+                                        type="number"
+                                        inputMode="decimal"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={data.management_fee_percent}
+                                        onChange={(e) => setData('management_fee_percent', e.target.value)}
+                                        aria-invalid={!feeValid || Boolean(errors.management_fee_percent) || undefined}
+                                        aria-describedby="fee-hint"
+                                        className={`${fieldClass} pl-3 pr-10 ${!feeValid || errors.management_fee_percent ? invalidClass : ''}`}
+                                    />
+                                    <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-600" aria-hidden="true">%</span>
+                                </div>
+                                {errors.management_fee_percent ? (
+                                    <Hint id="fee-hint" tone="error">{errors.management_fee_percent}</Hint>
+                                ) : (
+                                    <Hint id="fee-hint">{t('Share of the rent collected that Q.R.A keeps. Usually 10%.')}</Hint>
+                                )}
+                            </div>
+                        )}
+                    </Section>
+
                     <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-5 sm:flex-row sm:items-center sm:justify-end">
                         <Link href={route('admin.users')} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-gray-300 px-5 text-sm font-semibold text-gray-800 hover:bg-gray-50">
                             {t('Cancel')}
@@ -421,7 +536,7 @@ export default function CreateUser({ locations }) {
                             {processing ? t('Saving...') : t('Create managed account')}
                         </button>
                     </div>
-                    {!isFormValid && <p className="text-right text-sm text-gray-600">{t('Complete all five sections to continue.')}</p>}
+                    {!isFormValid && <p className="text-right text-sm text-gray-600">{t('Complete all six sections to continue.')}</p>}
                 </form>
             </div>
         </AuthenticatedLayout>

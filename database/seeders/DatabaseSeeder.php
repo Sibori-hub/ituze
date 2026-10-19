@@ -17,7 +17,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             LocationsSeeder::class,
-            UnitTypeSeeder::class,
             PropertyTypeSeeder::class,
             AdminSeeder::class,
         ]);
@@ -36,6 +35,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        $this->call(DemoMarketplaceSeeder::class);
+        // Sample buildings are no longer seeded by default. To load them for a
+        // demo: php artisan db:seed --class=DemoMarketplaceSeeder
     }
 }

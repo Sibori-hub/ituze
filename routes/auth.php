@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\Auth\LoginOtpController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
@@ -58,6 +59,10 @@ Route::get('register/availability', [RegisteredUserController::class, 'availabil
     ->name('register.availability');
 
 Route::middleware('auth')->group(function () {
+    // Replacing a temporary password set by an administrator.
+    Route::get('password/change', [ForcedPasswordController::class, 'show'])->name('password.change');
+    Route::post('password/change', [ForcedPasswordController::class, 'update'])->name('password.change.update');
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

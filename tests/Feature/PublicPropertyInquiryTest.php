@@ -17,7 +17,7 @@ class PublicPropertyInquiryTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'property_inquiries', 'unit_images', 'tenancies', 'tenants', 'units', 'unit_types', 'properties', 'users'] as $table) {
+        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'property_inquiries', 'unit_images', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'users'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -45,6 +45,9 @@ class PublicPropertyInquiryTest extends TestCase
 
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            $table->unsignedSmallInteger('total_floors')->default(0);
+            $table->unsignedTinyInteger('basement_floors')->default(0);
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedBigInteger('cell_id')->nullable();
             $table->string('name');
@@ -61,8 +64,18 @@ class PublicPropertyInquiryTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('property_units', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('property_id');
+            $table->unsignedBigInteger('unit_type_id');
+            $table->smallInteger('floor_number')->default(0);
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('units', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('property_unit_id')->nullable();
             $table->foreignId('property_id')->constrained()->cascadeOnDelete();
             $table->foreignId('unit_type_id')->constrained();
             $table->string('unit_number');
@@ -72,6 +85,15 @@ class PublicPropertyInquiryTest extends TestCase
             $table->decimal('size_sqm', 12, 2)->nullable();
             $table->text('description')->nullable();
             $table->string('status')->default('available');
+            $table->timestamps();
+        });
+
+        // Only what the public listing checks: a room's current or upcoming tenancy.
+        Schema::create('tenancies', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('unit_id');
+            $table->string('status');
+            $table->unsignedBigInteger('renewed_from_id')->nullable();
             $table->timestamps();
         });
 
