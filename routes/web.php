@@ -117,11 +117,14 @@ Route::post('/inquiries/{inquiry}/read', [PublicPropertyController::class, 'mark
     ->name('inquiries.read');
 
 Route::get('/account/status', function (\Illuminate\Http\Request $request) {
-    abort_unless(in_array($request->user()->role, ['owner', 'advertiser'], true), 404);
+    abort_unless(in_array($request->user()->role, ['owner', 'advertiser', 'manager'], true), 404);
 
     return Inertia::render('Account/Status', [
         'status' => $request->user()->status,
         'expired' => $request->user()->isExpired(),
+        // A manager is paused while the owner they work for is inactive or unpaid.
+        'managerPaused' => $request->user()->isManager() && ! $request->user()->employerWorkspaceIsActive(),
+        'employerName' => $request->user()->isManager() ? $request->user()->employer?->name : null,
     ]);
 })->middleware(['auth', 'verified'])->name('account.status');
 
@@ -204,27 +207,29 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
         ]);
     }
 
+    // Owners see their buildings; a manager only the rooms assigned to them.
+    $rooms = fn ($query) => $user->isManager() ? $query->visibleTo($user) : $query;
     $properties = \App\Models\Property::query()
-        ->where('owner_id', $user->id)
+        ->visibleTo($user)
         ->with(['images'])
         ->withCount([
-            'units',
-            'units as occupied_units_count' => fn ($query) => $query->where('status', 'occupied'),
-            'units as available_units_count' => fn ($query) => $query->where('status', 'available'),
-            'units as maintenance_units_count' => fn ($query) => $query->where('status', 'maintenance'),
+            'units' => $rooms,
+            'units as occupied_units_count' => fn ($query) => $rooms($query)->where('status', 'occupied'),
+            'units as available_units_count' => fn ($query) => $rooms($query)->where('status', 'available'),
+            'units as maintenance_units_count' => fn ($query) => $rooms($query)->where('status', 'maintenance'),
         ])
         ->latest()
         ->get();
 
     $recentTenancies = \App\Models\Tenancy::with(['tenant', 'unit.property'])
         ->where('status', 'active')
-        ->whereHas('unit.property', fn ($property) => $property->where('owner_id', $user->id))
+        ->whereHas('unit', fn ($room) => $room->visibleTo($user))
         ->latest('start_date')
         ->take(5)
         ->get();
 
     $recentInquiries = \App\Models\PropertyInquiry::with(['property', 'unit'])
-        ->where('owner_id', $user->id)
+        ->whereIn('property_id', $properties->pluck('id'))
         ->latest()
         ->take(6)
         ->get();
@@ -241,6 +246,8 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
 
     return Inertia::render('Dashboard', [
         'ownerReport' => [
+            'is_manager' => $user->isManager(),
+            'employer' => $user->isManager() ? $user->employer?->name : null,
             'managed' => $user->managementFeeRate() > 0,
             'fee_rate' => $user->managementFeeRate(),
             'month' => [
@@ -255,7 +262,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
             'months' => array_slice($overview['months'], -6),
             'arrears' => ['total' => $arrears['totals']['total'], 'tenants' => $arrears['totals']['tenants'], 'rows' => array_slice($arrears['rows'], 0, 5)],
             'vacant_rent' => round((float) \App\Models\Unit::query()
-                ->whereIn('property_id', $properties->pluck('id'))
+                ->visibleTo($user)
                 ->where('status', 'available')
                 ->sum('rent_amount'), 2),
             'ending_soon' => \App\Models\Tenancy::query()
@@ -263,7 +270,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                 ->where('status', 'active')
                 ->whereNotNull('end_date')
                 ->whereBetween('end_date', [today(), today()->addDays(\App\Http\Controllers\ManagementController::ENDING_SOON_DAYS)])
-                ->whereHas('unit.property', fn ($property) => $property->where('owner_id', $user->id))
+                ->whereHas('unit', fn ($room) => $room->visibleTo($user))
                 ->orderBy('end_date')
                 ->take(5)
                 ->get(['id', 'tenant_id', 'unit_id', 'end_date', 'monthly_rent']),
@@ -377,6 +384,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/payments', [ManagementController::class, 'payments'])->name('payments.index');
         Route::get('/reports', [ManagementController::class, 'reports'])->name('reports.index');
         Route::get('/reports/export', [ManagementController::class, 'exportReport'])->middleware('throttle:20,1')->name('reports.export');
+
+        // A self-registered owner's managers (admins can open any owner's team with ?owner_id).
+        Route::get('/managers', [\App\Http\Controllers\ManagerController::class, 'index'])->name('managers.index');
+        Route::post('/managers', [\App\Http\Controllers\ManagerController::class, 'store'])->name('managers.store');
+        Route::put('/managers/{manager}', [\App\Http\Controllers\ManagerController::class, 'update'])->name('managers.update');
+        Route::post('/managers/{manager}/password', [\App\Http\Controllers\ManagerController::class, 'setPassword'])->name('managers.password');
+        Route::post('/managers/{manager}/disable', [\App\Http\Controllers\ManagerController::class, 'disable'])->name('managers.disable');
+        Route::post('/managers/{manager}/enable', [\App\Http\Controllers\ManagerController::class, 'enable'])->name('managers.enable');
+        Route::delete('/managers/{manager}', [\App\Http\Controllers\ManagerController::class, 'destroy'])->name('managers.destroy');
     });
 
     Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])

@@ -10,7 +10,7 @@ const imageSource = (path) => {
     return /^https?:\/\//i.test(path) ? path : `/storage/${path}`;
 };
 
-export default function PropertiesIndex({ properties, filters, isAdmin, currentUserId, owners = [] }) {
+export default function PropertiesIndex({ properties, filters, isAdmin, currentUserId, owners = [], canCreate = true }) {
     const { t, language } = useTranslation();
     const canEdit = useCanEdit();
     const [search, setSearch] = useState(filters.search || '');
@@ -65,7 +65,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                             {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
                         </select>
                     )}
-                    {canEdit && <Link
+                    {canEdit && canCreate && <Link
                         href={route('properties.create', filters.owner_id ? { owner_id: filters.owner_id } : {})}
                         className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                     >
@@ -83,7 +83,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                         <p className="mt-1 text-sm text-gray-500">
                             {t(search ? 'Try adjusting your search filters' : 'Get started by adding your first property')}
                         </p>
-                        {!search && canEdit && (
+                        {!search && canEdit && canCreate && (
                             <Link
                                 href={route('properties.create')}
                                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"

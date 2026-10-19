@@ -100,7 +100,7 @@ class AIDescriptionController extends Controller
     public function generateUnitDescription(Request $request, \App\Models\Property $property)
     {
         $user = $request->user();
-        abort_unless($user->isAdmin() || $property->owner_id === $user->id, 403);
+        abort_unless($user->canAccessProperty($property), 403);
 
         $data = $request->validate([
             'category_name' => ['required', 'string', 'max:100'],
@@ -131,7 +131,7 @@ class AIDescriptionController extends Controller
     public function generateRoomDescription(Request $request, \App\Models\Property $property)
     {
         $user = $request->user();
-        abort_unless($user->isAdmin() || $property->owner_id === $user->id, 403);
+        abort_unless($user->canAccessProperty($property), 403);
 
         $data = $request->validate([
             'property_unit_id' => ['required', 'integer'],

@@ -37,6 +37,23 @@ class Unit extends Model
         return $this->belongsTo(Property::class);
     }
 
+    /** Rooms this account may work on: a manager only gets the assigned properties and units. */
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+        if ($user->isManager()) {
+            $scope = $user->managerScope();
+
+            return $query->where(fn ($inner) => $inner
+                ->whereIn($query->qualifyColumn('property_id'), $scope['properties'] ?: [0])
+                ->orWhereIn($query->qualifyColumn('property_unit_id'), $scope['units'] ?: [0]));
+        }
+
+        return $query->whereIn($query->qualifyColumn('property_id'), Property::query()->select('id')->where('owner_id', $user->id));
+    }
+
     /**
      * The unit (category on a floor) this room belongs to.
      */

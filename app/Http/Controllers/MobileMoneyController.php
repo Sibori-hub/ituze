@@ -37,7 +37,7 @@ class MobileMoneyController extends Controller
         $user = $request->user();
         $unit = Unit::with('property')->findOrFail($data['unit_id']);
         $tenant = Tenant::findOrFail($data['tenant_id']);
-        abort_unless($user->isAdmin() || $unit->property?->owner_id === $user->id, 403);
+        abort_unless($user->canAccessRoom($unit), 403);
         $this->authorizeTenant($user, $tenant);
 
         $phone = MobileMoneyService::msisdn($data['phone']);
@@ -102,10 +102,7 @@ class MobileMoneyController extends Controller
             return;
         }
 
-        $allowed = Tenant::query()->whereKey($tenant->id)->where(function ($query) use ($user) {
-            $query->where('created_by', $user->id)
-                ->orWhereHas('tenancies.unit.property', fn ($property) => $property->where('owner_id', $user->id));
-        })->exists();
+        $allowed = Tenant::query()->whereKey($tenant->id)->visibleTo($user)->exists();
 
         abort_unless($allowed, 404);
     }

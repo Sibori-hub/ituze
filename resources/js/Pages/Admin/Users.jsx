@@ -25,6 +25,7 @@ import {
     UserPlus,
     UsersRound,
     Building2,
+    UserCog,
     X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -35,6 +36,7 @@ const ROLE_TABS = [
     { value: '', label: 'All users' },
     { value: 'owner', label: 'Owners' },
     { value: 'advertiser', label: 'Advertisers' },
+    { value: 'manager', label: 'Managers' },
     { value: 'admin', label: 'Admins' },
 ];
 
@@ -61,9 +63,10 @@ const roleStyles = {
     admin: 'bg-purple-50 text-purple-700 ring-purple-600/15',
     owner: 'bg-sky-50 text-sky-700 ring-sky-600/15',
     advertiser: 'bg-teal-50 text-teal-700 ring-teal-600/15',
+    manager: 'bg-amber-50 text-amber-800 ring-amber-600/15',
 };
 
-const ROLE_LABELS = { admin: 'Admin', owner: 'Owner', advertiser: 'Advertiser' };
+const ROLE_LABELS = { admin: 'Admin', owner: 'Owner', advertiser: 'Advertiser', manager: 'Manager' };
 const STATUS_LABELS = { approved: 'Approved', pending: 'Pending', rejected: 'Rejected', disabled: 'Disabled' };
 
 function formatDate(value, language) {
@@ -280,6 +283,11 @@ export default function Users({ users, filters, counts = {} }) {
 
     const actions = (user) => (
         <div className="flex items-center justify-end gap-0.5">
+            {(user.role === 'owner' && !user.created_by) || user.role === 'manager' ? (
+                <Link href={route('managers.index', { owner_id: user.role === 'manager' ? user.employer_id : user.id })} className="rounded-lg p-2 text-[#0E3B2E] transition hover:bg-emerald-50" title={t('Managers and activity')} aria-label={t('Managers and activity')}>
+                    <UserCog size={16} />
+                </Link>
+            ) : null}
             {user.role === 'owner' && user.created_by ? (
                 <IconAction
                     label={t('Management fee')}
@@ -563,6 +571,9 @@ export default function Users({ users, filters, counts = {} }) {
                                                 </td>
                                                 <td className="px-5 py-3.5">
                                                     {badges(user)}
+                                                    {user.role === 'manager' && user.employer?.name && (
+                                                        <p className="mt-1.5 text-[11px] text-amber-800">{t('Manager for :name', { name: user.employer.name })}</p>
+                                                    )}
                                                     {user.created_by && user.creator?.name && (
                                                         <p className="mt-1.5 text-[11px] text-gray-500">{t('Added by :name', { name: user.creator.name })}</p>
                                                     )}

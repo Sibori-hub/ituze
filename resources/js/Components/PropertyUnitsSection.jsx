@@ -27,7 +27,7 @@ const EMPTY_FLOORS_SHOWN_UP_TO = 10;
  * rentable spaces inside a unit. Floors fold open and closed so a tall
  * building stays easy to read.
  */
-export default function PropertyUnitsSection({ property, floorNumbers = [], canEdit = false }) {
+export default function PropertyUnitsSection({ property, floorNumbers = [], canEdit = false, canEditProperty = canEdit }) {
     const { t } = useTranslation();
     const floorLabel = useFloorLabel();
     const [dialog, setDialog] = useState(null); // { unit?: object, floor?: number }
@@ -107,7 +107,7 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
         });
     };
 
-    const addUnitButton = (floor) => canEdit && (
+    const addUnitButton = (floor) => canEditProperty && (
         <button
             type="button"
             onClick={() => setDialog({ floor })}
@@ -128,7 +128,7 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                         {t(':units units · :rooms rooms', { units: units.length, rooms: roomCount })}
                     </p>
                 </div>
-                {canEdit && (
+                {canEditProperty && (
                     <button
                         type="button"
                         onClick={() => setDialog({})}
@@ -242,7 +242,7 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                                             forceOpen={Boolean(q)}
                                             canEdit={canEdit}
                                             onEdit={() => setDialog({ unit })}
-                                            onDelete={() => setDeleting(unit)}
+                                            onDelete={canEditProperty ? () => setDeleting(unit) : null}
                                             onAddRoom={() => setRoomDialog({ unitId: unit.id })}
                                             onEditRoom={(room) => setRoomDialog({ room })}
                                         />
@@ -348,7 +348,7 @@ function UnitCard({ property, unit, rooms: shownRooms, forceOpen = false, canEdi
                             <Edit size={14} aria-hidden="true" />
                             {t('Edit')}
                         </button>
-                        <button
+                        {onDelete && <button
                             type="button"
                             onClick={onDelete}
                             disabled={allRooms.length > 0}
@@ -357,7 +357,7 @@ function UnitCard({ property, unit, rooms: shownRooms, forceOpen = false, canEdi
                         >
                             <Trash2 size={14} aria-hidden="true" />
                             {t('Delete')}
-                        </button>
+                        </button>}
                     </div>
                 )}
             </div>

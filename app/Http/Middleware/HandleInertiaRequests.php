@@ -35,6 +35,9 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 // Owners Q.R.A manages can look but not change anything.
                 'readOnly' => (bool) $request->user()?->isReadOnly(),
+                // Self-registered owners can add managers; a manager sees who they work for.
+                'canHireManagers' => (bool) $request->user()?->canHireManagers(),
+                'employer' => $request->user()?->isManager() ? $request->user()->employer?->only(['id', 'name']) : null,
             ],
             // Read-only legal metadata so the Terms/Privacy dialog can show the
             // same version and contact details as the full pages.

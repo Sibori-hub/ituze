@@ -44,9 +44,8 @@ class ManagementController extends Controller
         $search = trim($filters['search'] ?? '');
 
         $base = Lease::query()
-            ->whereHas('tenancy.unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
-                ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId)))
+            ->whereHas('tenancy.unit', fn ($room) => $room->visibleTo($user))
+            ->when($ownerId, fn ($query) => $query->whereHas('tenancy.unit.property', fn ($property) => $property->where('owner_id', $ownerId)))
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%'.$search.'%';
                 $query->where(fn ($inner) => $inner
@@ -77,7 +76,7 @@ class ManagementController extends Controller
         return Inertia::render('Leases/Index', [
             'leases' => $leases,
             'isAdmin' => $user->isAdmin(),
-            'canManage' => $user->isAdmin() || ($user->isOwner() && ! $user->isReadOnly()),
+            'canManage' => $user->isAdmin() || $user->isManager() || ($user->isOwner() && ! $user->isReadOnly()),
             'owners' => $this->ownerOptions($user),
             'counts' => $counts,
             'endingSoonDays' => self::ENDING_SOON_DAYS,
@@ -229,8 +228,8 @@ class ManagementController extends Controller
         // (deposits are refundable, so they are never commissioned).
         $managedRent = RentPayment::query()
             ->whereHas('charge', fn ($charge) => $charge->where('charge_type', 'rent'))
+            ->whereHas('charge.tenancy.unit', fn ($room) => $room->visibleTo($user))
             ->whereHas('charge.tenancy.unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
                 ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId))
                 ->whereHas('owner', fn ($owner) => $owner->where('role', 'owner')->whereNotNull('created_by')))
             ->with('charge.tenancy.unit.property.owner:id,role,created_by,management_fee_percent')
@@ -241,9 +240,8 @@ class ManagementController extends Controller
         $reportTotals['owner_payout'] = round($reportTotals['managed_rent'] - $reportTotals['commission'], 2);
 
         $matchingPayments = RentPayment::query()
-            ->whereHas('charge.tenancy.unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
-                ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId)))
+            ->whereHas('charge.tenancy.unit', fn ($room) => $room->visibleTo($user))
+            ->when($ownerId, fn ($query) => $query->whereHas('charge.tenancy.unit.property', fn ($property) => $property->where('owner_id', $ownerId)))
             ->when($type !== 'all', fn ($query) => $query->whereHas('charge', fn ($charge) => $charge->where('charge_type', $type)))
             ->when($method, fn ($query) => $query->where('method', $method))
             ->when($search !== '', function ($query) use ($search) {
@@ -389,7 +387,13 @@ class ManagementController extends Controller
             throw ValidationException::withMessages(['to' => __('Choose a period of three years or less.')]);
         }
 
-        return ['tab' => $validated['tab'] ?? 'overview', 'period' => $period];
+        $tab = $validated['tab'] ?? 'overview';
+        // Owner statements show the owner's payout: not for managers.
+        if ($tab === 'owners' && $request->user()->isManager()) {
+            $tab = 'overview';
+        }
+
+        return ['tab' => $tab, 'period' => $period];
     }
 
     public function reports(Request $request): JsonResponse|Response
@@ -399,32 +403,37 @@ class ManagementController extends Controller
         ['tab' => $tab, 'period' => $period] = $this->reportFilters($request);
         $portfolio = new PortfolioReport($user, $ownerId);
         $propertyScope = fn ($query) => $query
-            ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+            ->visibleTo($user)
             ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId));
+        // Rooms this account works on (a manager may have only some units of a property).
+        $roomScope = fn ($query) => $query
+            ->visibleTo($user)
+            ->when($ownerId, fn ($query) => $query->whereHas('property', fn ($property) => $property->where('owner_id', $ownerId)));
+        $rooms = fn ($query) => $user->isManager() ? $query->visibleTo($user) : $query;
         $propertiesQuery = Property::query()
             ->where($propertyScope);
         $chargeQuery = RentCharge::query()
             ->whereNull('voided_at')
             ->whereIn('charge_type', ['rent', 'damage'])
-            ->whereHas('tenancy.unit.property', $propertyScope);
+            ->whereHas('tenancy.unit', $roomScope);
         $activeTenancies = Tenancy::query()
             ->where('status', 'active')
-            ->whereHas('unit.property', $propertyScope);
+            ->whereHas('unit', $roomScope);
 
         $paymentsQuery = RentPayment::query()
-            ->whereHas('charge.tenancy.unit.property', $propertyScope);
+            ->whereHas('charge.tenancy.unit', $roomScope);
         $chargePaymentsQuery = RentPayment::query()
             ->whereHas('charge', fn ($query) => $query
                 ->whereIn('charge_type', ['rent', 'damage'])
-                ->whereHas('tenancy.unit.property', $propertyScope));
+                ->whereHas('tenancy.unit', $roomScope));
 
         $properties = $propertiesQuery
             ->withCount([
-                'units',
-                'units as occupied_units_count' => fn ($query) => $query->where('status', 'occupied'),
-                'units as available_units_count' => fn ($query) => $query->where('status', 'available'),
+                'units' => $rooms,
+                'units as occupied_units_count' => fn ($query) => $rooms($query)->where('status', 'occupied'),
+                'units as available_units_count' => fn ($query) => $rooms($query)->where('status', 'available'),
             ])
-            ->with(['units.activeTenancy.tenant'])
+            ->with(['units' => fn ($query) => $rooms($query)->with('activeTenancy.tenant')])
             ->orderBy('name')
             ->get()
             ->map(fn (Property $property) => [
@@ -605,15 +614,16 @@ class ManagementController extends Controller
     private function occupancyCsvRows(User $user, ?int $ownerId): array
     {
         $rows = [['Property', 'Rooms', 'Occupied', 'Available', 'Occupancy (%)', 'Monthly rent of empty rooms (RWF)']];
+        $rooms = fn ($query) => $user->isManager() ? $query->visibleTo($user) : $query;
         Property::query()
-            ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+            ->visibleTo($user)
             ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId))
             ->withCount([
-                'units',
-                'units as occupied_units_count' => fn ($query) => $query->where('status', 'occupied'),
-                'units as available_units_count' => fn ($query) => $query->where('status', 'available'),
+                'units' => $rooms,
+                'units as occupied_units_count' => fn ($query) => $rooms($query)->where('status', 'occupied'),
+                'units as available_units_count' => fn ($query) => $rooms($query)->where('status', 'available'),
             ])
-            ->withSum(['units as vacant_rent' => fn ($query) => $query->where('status', 'available')], 'rent_amount')
+            ->withSum(['units as vacant_rent' => fn ($query) => $rooms($query)->where('status', 'available')], 'rent_amount')
             ->orderBy('name')
             ->each(function (Property $property) use (&$rows) {
                 $rows[] = [
@@ -637,7 +647,7 @@ class ManagementController extends Controller
         $owners = User::query()
             ->where('role', 'owner')
             ->whereNotNull('created_by')
-            ->when(! $user->isAdmin(), fn ($query) => $query->whereKey($user->id))
+            ->when(! $user->isAdmin(), fn ($query) => $query->whereKey($user->workspaceOwnerId()))
             ->when($ownerId, fn ($query) => $query->whereKey($ownerId))
             ->get(['id', 'name', 'created_by', 'role', 'management_fee_percent'])
             ->keyBy('id');
@@ -726,9 +736,8 @@ class ManagementController extends Controller
                 'rentCharges.payments',
                 'moveOutInspection',
             ])
-            ->whereHas('unit.property', fn ($query) => $query
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
-                ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId)))
+            ->whereHas('unit', fn ($room) => $room->visibleTo($user))
+            ->when($ownerId, fn ($query) => $query->whereHas('unit.property', fn ($property) => $property->where('owner_id', $ownerId)))
             ->orderByDesc('start_date')
             ->get();
 

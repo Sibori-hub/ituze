@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import BrandLockup from '@/Components/BrandLockup';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     AlertTriangle, ArrowUpRight, BarChart3, Building2, CalendarRange, CheckCircle2, Download, DoorOpen, FileText,
@@ -64,6 +64,7 @@ export default function ReportsIndex({
     overview = null, arrears = null, statements = null,
 }) {
     const { t, language } = useTranslation();
+    const { auth } = usePage().props;
     const locale = localeFor(language);
     const tab = filters.tab || 'overview';
     const money = value => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
@@ -168,7 +169,7 @@ export default function ReportsIndex({
 
             {/* Tabs */}
             <nav aria-label={t('Report sections')} className="mt-5 flex gap-1 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
-                {TABS.map(({ key, label, icon: Icon }) => (
+                {TABS.filter(({ key }) => !(key === 'owners' && auth?.user?.role === 'manager')).map(({ key, label, icon: Icon }) => (
                     <Link
                         key={key}
                         href={route('reports.index', { ...baseParams, tab: key === 'overview' ? undefined : key })}

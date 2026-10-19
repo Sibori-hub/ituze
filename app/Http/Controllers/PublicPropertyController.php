@@ -161,7 +161,7 @@ class PublicPropertyController extends Controller
 
     public function markRead(Request $request, PropertyInquiry $inquiry): RedirectResponse
     {
-        abort_unless($request->user()->isAdmin() || $inquiry->owner_id === $request->user()->id, 403);
+        abort_unless($request->user()->isAdmin() || ($inquiry->property && $request->user()->canAccessProperty($inquiry->property)), 403);
 
         $validated = $request->validate([
             'reply_message' => ['sometimes', 'nullable', 'string', 'max:2000'],

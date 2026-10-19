@@ -147,6 +147,137 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'admin';
     }
 
+    /** Staff account a self-registered owner created to run some of their buildings. */
+    public function isManager(): bool
+    {
+        return $this->role === 'manager';
+    }
+
+    /** The owner a manager works for. */
+    public function employer()
+    {
+        return $this->belongsTo(User::class, 'employer_id')->withTrashed();
+    }
+
+    public function managers()
+    {
+        return $this->hasMany(User::class, 'employer_id')->where('role', 'manager');
+    }
+
+    public function managerAssignments()
+    {
+        return $this->hasMany(ManagerAssignment::class, 'manager_id');
+    }
+
+    /** Only self-registered owners hire their own managers; Q.R.A runs managed owners' buildings. */
+    public function canHireManagers(): bool
+    {
+        return $this->isOwner() && ! $this->isManaged();
+    }
+
+    /** @var array{properties: list<int>, units: list<int>, unit_properties: list<int>}|null */
+    private ?array $managerScopeCache = null;
+
+    /**
+     * What a manager was given: whole properties, single units, and the
+     * properties those units belong to. Empty for everyone else.
+     *
+     * @return array{properties: list<int>, units: list<int>, unit_properties: list<int>}
+     */
+    public function managerScope(): array
+    {
+        if (! $this->isManager()) {
+            return ['properties' => [], 'units' => [], 'unit_properties' => []];
+        }
+
+        if ($this->managerScopeCache === null) {
+            // Only buildings the employer still owns count.
+            $rows = $this->managerAssignments()
+                ->whereHas('property', fn ($query) => $query->where('owner_id', $this->employer_id))
+                ->get(['property_id', 'property_unit_id']);
+            $this->managerScopeCache = [
+                'properties' => $rows->whereNull('property_unit_id')->pluck('property_id')->map(fn ($id) => (int) $id)->unique()->values()->all(),
+                'units' => $rows->whereNotNull('property_unit_id')->pluck('property_unit_id')->map(fn ($id) => (int) $id)->unique()->values()->all(),
+                'unit_properties' => $rows->whereNotNull('property_unit_id')->pluck('property_id')->map(fn ($id) => (int) $id)->unique()->values()->all(),
+            ];
+        }
+
+        return $this->managerScopeCache;
+    }
+
+    public function forgetManagerScope(): void
+    {
+        $this->managerScopeCache = null;
+    }
+
+    /** Can see this property (all of it, or some units of it for a manager). */
+    public function canAccessProperty(Property $property): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+        if ($this->isManager()) {
+            $scope = $this->managerScope();
+
+            return in_array($property->id, $scope['properties'], true) || in_array($property->id, $scope['unit_properties'], true);
+        }
+
+        return $property->owner_id === $this->id;
+    }
+
+    /** Can change the property itself (details, floors, new units): never a single-unit manager. */
+    public function canManageWholeProperty(Property $property): bool
+    {
+        if ($this->isManager()) {
+            return in_array($property->id, $this->managerScope()['properties'], true);
+        }
+
+        return $this->isAdmin() || $property->owner_id === $this->id;
+    }
+
+    /** Can work on this unit (category on a floor) and its rooms. */
+    public function canAccessPropertyUnit(PropertyUnit $propertyUnit): bool
+    {
+        if ($this->isManager()) {
+            $scope = $this->managerScope();
+
+            return in_array($propertyUnit->property_id, $scope['properties'], true) || in_array($propertyUnit->id, $scope['units'], true);
+        }
+
+        return $this->isAdmin() || $propertyUnit->property?->owner_id === $this->id;
+    }
+
+    /** Can work on this room. */
+    public function canAccessRoom(Unit $room): bool
+    {
+        if ($this->isManager()) {
+            $scope = $this->managerScope();
+
+            return in_array($room->property_id, $scope['properties'], true)
+                || ($room->property_unit_id !== null && in_array((int) $room->property_unit_id, $scope['units'], true));
+        }
+
+        return $this->isAdmin() || $room->property?->owner_id === $this->id;
+    }
+
+    /** The owner a manager works for still exists, is approved, enabled and paid up. */
+    public function employerWorkspaceIsActive(): bool
+    {
+        $employer = $this->employer;
+
+        return $employer !== null
+            && ! $employer->trashed()
+            && ! $employer->isDisabled()
+            && $employer->isApproved()
+            && ! $employer->isExpired();
+    }
+
+    /** Owner whose buildings this account works on: itself, or a manager's employer. */
+    public function workspaceOwnerId(): ?int
+    {
+        return $this->isManager() ? $this->employer_id : ($this->isOwner() ? $this->id : null);
+    }
+
     public function isApproved(): bool
     {
         return $this->isAdmin() || $this->status === 'approved';
@@ -162,6 +293,11 @@ class User extends Authenticatable implements MustVerifyEmail
         // is enough to use the advertiser workspace for now.
         if ($this->isAdvertiser()) {
             return false;
+        }
+
+        // A manager can work only while their owner's account is active.
+        if ($this->isManager()) {
+            return ! $this->employerWorkspaceIsActive();
         }
 
         // Managed owners pay a management fee on collected rent, not a subscription.
@@ -235,6 +371,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return match ($this->role) {
             'admin' => 'Administrator',
             'advertiser' => 'Advertiser',
+            'manager' => 'Manager',
             default => 'Property Owner',
         };
     }

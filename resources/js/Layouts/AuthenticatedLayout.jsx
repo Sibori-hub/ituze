@@ -22,6 +22,8 @@ import {
     ChevronDown,
     ChevronRight,
     Eye,
+    UserCog,
+    Briefcase,
 } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
@@ -51,7 +53,7 @@ const adminNavigation = [
     { name: 'Reports', href: 'reports.index', icon: BarChart3 },
 ];
 
-const ROLE_LABELS = { admin: 'Administrator', owner: 'Property Owner', advertiser: 'Advertiser' };
+const ROLE_LABELS = { admin: 'Administrator', owner: 'Property Owner', advertiser: 'Advertiser', manager: 'Manager' };
 
 export default function AuthenticatedLayout({ header, children }) {
     const page = usePage();
@@ -68,7 +70,9 @@ export default function AuthenticatedLayout({ header, children }) {
             ? adminNavigation
             : user.role === 'advertiser'
               ? advertiserNavigation
-              : ownerNavigation;
+              : pageProps.auth.canHireManagers
+                ? [...ownerNavigation, { name: 'Managers', href: 'managers.index', icon: UserCog }]
+                : ownerNavigation;
 
     useEffect(() => {
         // Success messages get the success dialog instead of a toast.
@@ -267,6 +271,12 @@ export default function AuthenticatedLayout({ header, children }) {
                     {/* Page content */}
                     <main className="authenticated-page-content flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-smooth" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
                         <div className="flex-1 p-4 sm:p-6">
+                        {user.role === 'manager' && pageProps.auth.employer && (
+                            <div className="mx-auto mb-4 flex max-w-7xl items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" role="note">
+                                <Briefcase size={18} className="shrink-0 text-emerald-700" aria-hidden="true" />
+                                <p>{t('You manage buildings for :owner. You only see the properties and units they gave you.', { owner: pageProps.auth.employer.name })}</p>
+                            </div>
+                        )}
                         {pageProps.auth.readOnly && (
                             <div className="mx-auto mb-4 flex max-w-7xl items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950" role="note">
                                 <Eye size={18} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" />

@@ -31,6 +31,7 @@ class UnitController extends Controller
 
         $units = Unit::with(['unitType', 'images', 'activeTenancy.tenant'])
             ->where('property_id', $property->id)
+            ->visibleTo($request->user())
             ->when($request->status, function ($query, $status) {
                 return $query->where('status', $status);
             })
@@ -43,14 +44,7 @@ class UnitController extends Controller
 
         $unitTypes = $this->availableUnitTypes();
         $tenants = \App\Models\Tenant::where('status', 'active')
-            ->when(!$request->user()->isAdmin(), function ($query) use ($request) {
-                $query->where(function ($query) use ($request) {
-                    $query->where('created_by', $request->user()->id)
-                        ->orWhereHas('tenancies.unit.property', function ($property) use ($request) {
-                            $property->where('owner_id', $request->user()->id);
-                    });
-                });
-            })
+            ->visibleTo($request->user())
             ->when($request->tenant_search, function ($query, $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
@@ -169,6 +163,7 @@ class UnitController extends Controller
         if ($unit->property_id !== $property->id) {
             abort(404);
         }
+        $this->authorizeRoom($request->user(), $unit);
 
         $unit->load([
             'unitType',
@@ -212,6 +207,7 @@ class UnitController extends Controller
         if ($unit->property_id !== $property->id) {
             abort(404);
         }
+        $this->authorizeRoom($request->user(), $unit);
 
         $unitTypes = $this->availableUnitTypes();
 
@@ -234,6 +230,7 @@ class UnitController extends Controller
             if ($unit->property_id !== $property->id) {
                 abort(404);
             }
+            $this->authorizeRoom($request->user(), $unit);
             $this->applyParentUnit($request, $property);
 
             $isApartment = $this->isApartmentUnitType($request->input('unit_type_id'));
@@ -343,6 +340,7 @@ class UnitController extends Controller
             if ($unit->property_id !== $property->id) {
                 abort(404);
             }
+            $this->authorizeRoom($request->user(), $unit);
 
             $imagePaths = DB::transaction(function () use ($unit) {
                 $lockedUnit = Unit::query()->whereKey($unit->id)->lockForUpdate()->firstOrFail();
@@ -399,7 +397,16 @@ class UnitController extends Controller
      */
     private function applyParentUnit(Request $request, Property $property): void
     {
+        $user = $request->user();
+
         if (! $request->filled('property_unit_id')) {
+            // A manager given single units must put every room in one of them.
+            if ($user->isManager() && ! $user->canManageWholeProperty($property)) {
+                throw ValidationException::withMessages([
+                    'property_unit_id' => 'Choose one of the units assigned to you.',
+                ]);
+            }
+
             return;
         }
 
@@ -410,6 +417,12 @@ class UnitController extends Controller
         if (! $parent) {
             throw ValidationException::withMessages([
                 'property_unit_id' => 'Choose one of this property\'s units.',
+            ]);
+        }
+
+        if (! $user->canAccessPropertyUnit($parent)) {
+            throw ValidationException::withMessages([
+                'property_unit_id' => 'Choose one of the units assigned to you.',
             ]);
         }
 
@@ -430,7 +443,7 @@ class UnitController extends Controller
      */
     private function propertyUnitOptions(Property $property)
     {
-        return $property->propertyUnits()->with('unitType:id,name')->get()->map(fn (PropertyUnit $unit) => [
+        return $property->propertyUnits()->visibleTo(request()->user())->with('unitType:id,name')->get()->map(fn (PropertyUnit $unit) => [
             'id' => $unit->id,
             'unit_type_id' => $unit->unit_type_id,
             'category' => $unit->unitType?->name,
@@ -449,9 +462,14 @@ class UnitController extends Controller
 
     private function authorizePropertyAccess($user, $property)
     {
-        if (!$user->isAdmin() && $property->owner_id !== $user->id) {
+        if (! $user->canAccessProperty($property)) {
             abort(403, 'You do not have permission to access this property.');
         }
+    }
+
+    private function authorizeRoom($user, Unit $unit): void
+    {
+        abort_unless($user->canAccessRoom($unit), 403, 'This room is not assigned to you.');
     }
 
     private function availableUnitTypes()

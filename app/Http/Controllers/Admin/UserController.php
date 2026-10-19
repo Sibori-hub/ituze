@@ -31,7 +31,7 @@ class UserController extends Controller
         $source = $request->input('source');
 
         return User::query()
-            ->with(['sector.district.province', 'creator:id,name'])
+            ->with(['sector.district.province', 'creator:id,name', 'employer:id,name'])
             ->when($source === 'managed', fn ($query) => $query->whereNotNull('created_by'))
             ->when($source === 'self', fn ($query) => $query->whereNull('created_by')->where('role', '!=', 'admin'))
             ->when($search, function ($query) use ($search) {

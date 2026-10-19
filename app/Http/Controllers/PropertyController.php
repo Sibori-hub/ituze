@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Property;
+use App\Models\PropertyUnit;
 use App\Models\PropertyImage;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -34,21 +35,18 @@ class PropertyController extends Controller
             $owners = User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name']);
         }
 
+        // A manager given single units only counts the rooms in those units.
+        $rooms = fn ($q) => $user->isManager() ? $q->visibleTo($user) : $q;
         $query = Property::with(['owner', 'cell.sector.district.province', 'images'])
             ->withCount([
-                'units',
-                'units as units_available_count' => function ($q) { $q->where('status', 'available'); },
-                'units as units_occupied_count' => function ($q) { $q->where('status', 'occupied'); },
-                'units as units_maintenance_count' => function ($q) { $q->where('status', 'maintenance'); },
+                'units' => $rooms,
+                'units as units_available_count' => function ($q) use ($rooms) { $rooms($q)->where('status', 'available'); },
+                'units as units_occupied_count' => function ($q) use ($rooms) { $rooms($q)->where('status', 'occupied'); },
+                'units as units_maintenance_count' => function ($q) use ($rooms) { $rooms($q)->where('status', 'maintenance'); },
             ])
-            ->withSum('units as units_monthly_rent_sum', 'rent_amount')
-            ->when($user->isAdmin(), function ($query) {
-                // Admins can see all properties
-                return $query;
-            }, function ($query) use ($user) {
-                // Regular owners can only see their own properties
-                return $query->where('owner_id', $user->id);
-            })
+            ->withSum(['units as units_monthly_rent_sum' => $rooms], 'rent_amount')
+            // Admins see every property, owners their own, managers the ones assigned to them.
+            ->visibleTo($user)
             ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId))
             ->when($request->search, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {
@@ -69,6 +67,7 @@ class PropertyController extends Controller
             'isAdmin' => $user->isAdmin(),
             'currentUserId' => $user->id,
             'owners' => $owners,
+            'canCreate' => ! $user->isManager(),
         ]);
     }
 
@@ -78,6 +77,7 @@ class PropertyController extends Controller
     public function create(Request $request): Response
     {
         $user = $request->user();
+        abort_if($user->isManager(), 403, 'Only the owner can add a property.');
         $ownerId = null;
         $owners = collect();
 
@@ -101,6 +101,8 @@ class PropertyController extends Controller
      */
     public function store(Request $request): JsonResponse|RedirectResponse
     {
+        abort_if($request->user()->isManager(), 403, 'Only the owner can add a property.');
+
         try {
             $user = $request->user();
             $rules = [
@@ -233,12 +235,33 @@ class PropertyController extends Controller
             'units as units_maintenance_count' => function ($q) { $q->where('status', 'maintenance'); },
         ]);
         $property->loadSum('units as units_monthly_rent_sum', 'rent_amount');
+        $user = $request->user();
+
+        // A manager given single units sees only those units and their rooms.
+        if ($user->isManager() && ! $user->canManageWholeProperty($property)) {
+            $units = $property->propertyUnits->filter(fn (PropertyUnit $unit) => $user->canAccessPropertyUnit($unit))->values();
+            $rooms = $property->units->filter(fn ($room) => $user->canAccessRoom($room))->values();
+            $property->setRelation('propertyUnits', $units);
+            $property->setRelation('units', $rooms);
+            $property->units_count = $rooms->count();
+            $property->units_available_count = $rooms->where('status', 'available')->count();
+            $property->units_occupied_count = $rooms->where('status', 'occupied')->count();
+            $property->units_maintenance_count = $rooms->where('status', 'maintenance')->count();
+            $property->units_monthly_rent_sum = $rooms->sum('rent_amount');
+        }
 
         return Inertia::render('Properties/Show', [
             'property' => $property,
-            'floorNumbers' => $property->floorNumbers(),
-            'isAdmin' => $request->user()->isAdmin(),
-            'canEdit' => $request->user()->isAdmin() || ($property->owner_id === $request->user()->id && ! $request->user()->isReadOnly()),
+            // A manager given single units only sees the floors of those units.
+            'floorNumbers' => $user->isManager() && ! $user->canManageWholeProperty($property)
+                ? $property->propertyUnits->pluck('floor_number')->unique()->sort()->values()->all()
+                : $property->floorNumbers(),
+            'isAdmin' => $user->isAdmin(),
+            // Rooms (and the units given to a manager) can be changed.
+            'canEdit' => ! $user->isReadOnly(),
+            // The property itself: details, floors and new units.
+            'canEditProperty' => ! $user->isReadOnly() && $user->canManageWholeProperty($property),
+            'canDeleteProperty' => ! $user->isReadOnly() && ! $user->isManager(),
         ]);
     }
 
@@ -248,13 +271,14 @@ class PropertyController extends Controller
     public function edit(Request $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request->user(), $property);
+        abort_unless($request->user()->canManageWholeProperty($property), 403, 'Only the owner or a manager of the whole property can change it.');
 
         $property->load(['owner', 'cell.sector.district.province', 'images']);
 
         return Inertia::render('Properties/Edit', [
             'property' => $property,
             'isAdmin' => $request->user()->isAdmin(),
-            'canEdit' => $request->user()->isAdmin() || ($property->owner_id === $request->user()->id && ! $request->user()->isReadOnly()),
+            'canEdit' => ! $request->user()->isReadOnly() && $request->user()->canManageWholeProperty($property),
         ]);
     }
 
@@ -264,6 +288,7 @@ class PropertyController extends Controller
     public function update(Request $request, Property $property): JsonResponse|RedirectResponse
     {
         $this->authorizePropertyAccess($request->user(), $property);
+        abort_unless($request->user()->canManageWholeProperty($property), 403, 'Only the owner or a manager of the whole property can change it.');
 
         $request->validate(
             [
@@ -351,6 +376,7 @@ class PropertyController extends Controller
     public function destroy(Request $request, Property $property): JsonResponse|RedirectResponse
     {
         $this->authorizePropertyAccess($request->user(), $property);
+        abort_if($request->user()->isManager(), 403, 'Only the owner can delete a property.');
 
         // Delete associated images
         foreach ($property->images as $image) {
@@ -372,7 +398,7 @@ class PropertyController extends Controller
      */
     private function authorizePropertyAccess($user, $property)
     {
-        if (!$user->isAdmin() && $property->owner_id !== $user->id) {
+        if (! $user->canAccessProperty($property)) {
             abort(403, 'You do not have permission to access this property.');
         }
     }

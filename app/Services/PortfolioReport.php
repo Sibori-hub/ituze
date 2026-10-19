@@ -54,8 +54,27 @@ class PortfolioReport
             ->join('tenancies', 'tenancies.id', '=', 'rent_charges.tenancy_id')
             ->join('units', 'units.id', '=', 'tenancies.unit_id')
             ->join('properties', 'properties.id', '=', 'units.property_id')
-            ->when(! $this->user->isAdmin(), fn ($query) => $query->where('properties.owner_id', $this->user->id))
+            ->where(fn ($query) => $this->limitToViewer($query))
             ->when($this->ownerId, fn ($query) => $query->where('properties.owner_id', $this->ownerId));
+    }
+
+    /**
+     * Only the rooms this account works on: all (admin), its own buildings
+     * (owner), or the properties and units assigned to it (manager).
+     */
+    private function limitToViewer($query)
+    {
+        if ($this->user->isAdmin()) {
+            return $query;
+        }
+        if ($this->user->isManager()) {
+            $scope = $this->user->managerScope();
+
+            return $query->whereIn('properties.id', $scope['properties'] ?: [0])
+                ->orWhereIn('units.property_unit_id', $scope['units'] ?: [0]);
+        }
+
+        return $query->where('properties.owner_id', $this->user->id);
     }
 
     private function chargesQuery(): Builder
@@ -65,7 +84,7 @@ class PortfolioReport
             ->join('units', 'units.id', '=', 'tenancies.unit_id')
             ->join('properties', 'properties.id', '=', 'units.property_id')
             ->whereNull('rent_charges.voided_at')
-            ->when(! $this->user->isAdmin(), fn ($query) => $query->where('properties.owner_id', $this->user->id))
+            ->where(fn ($query) => $this->limitToViewer($query))
             ->when($this->ownerId, fn ($query) => $query->where('properties.owner_id', $this->ownerId));
     }
 
@@ -233,7 +252,7 @@ class PortfolioReport
     {
         $received = $this->receivedByOwner($from, $to)->groupBy('owner_id');
         $ownerIds = DB::table('properties')
-            ->when(! $this->user->isAdmin(), fn ($query) => $query->where('owner_id', $this->user->id))
+            ->when(! $this->user->isAdmin(), fn ($query) => $query->where('owner_id', $this->user->workspaceOwnerId()))
             ->when($this->ownerId, fn ($query) => $query->where('owner_id', $this->ownerId))
             ->distinct()
             ->pluck('owner_id');

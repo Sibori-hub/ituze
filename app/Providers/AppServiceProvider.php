@@ -23,6 +23,20 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
+        // Owner monitoring: who added, changed or recorded what.
+        foreach ([
+            \App\Models\Tenant::class,
+            \App\Models\Tenancy::class,
+            \App\Models\RentPayment::class,
+            \App\Models\Unit::class,
+            \App\Models\PropertyUnit::class,
+            \App\Models\Property::class,
+            \App\Models\Lease::class,
+            \App\Models\MoveOutInspection::class,
+        ] as $model) {
+            $model::observe(\App\Observers\ActivityObserver::class);
+        }
+
         $this->configurePasswordPolicy();
     }
 

@@ -46,6 +46,25 @@ class Tenant extends Model
         return $this->belongsTo(Sector::class);
     }
 
+    /**
+     * Tenants this account may see: everyone (admin), tenants it (or, for a
+     * manager, its owner) added, and tenants renting rooms it can work on.
+     */
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+        // An owner also sees the tenants their managers added.
+        $creators = $user->isManager()
+            ? array_values(array_filter([$user->id, $user->employer_id]))
+            : User::query()->select('id')->whereKey($user->id)->orWhere('employer_id', $user->id);
+
+        return $query->where(fn ($inner) => $inner
+            ->whereIn($query->qualifyColumn('created_by'), $creators)
+            ->orWhereHas('tenancies.unit', fn ($room) => $room->visibleTo($user)));
+    }
+
     public function tenancies()
     {
         return $this->hasMany(Tenancy::class);

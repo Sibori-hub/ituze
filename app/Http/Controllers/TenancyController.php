@@ -90,6 +90,7 @@ class TenancyController extends Controller
         if ($unit->property_id !== $property->id) {
             abort(404);
         }
+        abort_unless($request->user()->canAccessRoom($unit), 403, 'This room is not assigned to you.');
 
         $unit->loadMissing('unitType');
         $isApartment = $unit->isApartmentAccommodation();
@@ -195,11 +196,8 @@ class TenancyController extends Controller
                 ]);
                 $tenantQuery = Tenant::whereKey($tenant->id);
             }
-            if (! $request->user()->isAdmin() && isset($tenantQuery)) {
-                $tenantQuery->where(function ($query) use ($request) {
-                    $query->where('created_by', $request->user()->id)
-                        ->orWhereHas('tenancies.unit.property', fn ($property) => $property->where('owner_id', $request->user()->id));
-                });
+            if (isset($tenantQuery)) {
+                $tenantQuery->visibleTo($request->user());
             }
             $tenant = $tenantQuery->first();
             if (! $tenant) {
@@ -832,7 +830,7 @@ class TenancyController extends Controller
 
     private function authorizeTenancyAccess($user, Property $property, Unit $unit, Tenancy $tenancy): void
     {
-        if (! $user->isAdmin() && $property->owner_id !== $user->id) {
+        if (! $user->canAccessProperty($property) || ! $user->canAccessRoom($unit)) {
             Log::warning('Unauthorized lease access attempt.', [
                 'user_id' => $user->id,
                 'property_id' => $property->id,
@@ -925,7 +923,7 @@ class TenancyController extends Controller
 
     private function authorizePropertyAccess($user, Property $property): void
     {
-        if (! $user->isAdmin() && $property->owner_id !== $user->id) {
+        if (! $user->canAccessProperty($property)) {
             abort(403, 'You do not have permission to access this property.');
         }
 
@@ -933,7 +931,7 @@ class TenancyController extends Controller
 
     private function authorizeManager($user): void
     {
-        if (! $user || ! in_array($user->role, ['admin', 'owner'], true)) {
+        if (! $user || ! in_array($user->role, ['admin', 'owner', 'manager'], true)) {
             abort(403, 'Only administrators and owners can manage tenancies.');
         }
     }

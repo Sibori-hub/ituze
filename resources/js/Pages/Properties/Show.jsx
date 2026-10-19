@@ -14,13 +14,13 @@ const imageSource = (path) => {
     return /^https?:\/\//i.test(path) ? path : `/storage/${path}`;
 };
 
-export default function PropertyShow({ property, isAdmin, canEdit, floorNumbers = [] }) {
+export default function PropertyShow({ property, isAdmin, canEdit, canEditProperty = canEdit, canDeleteProperty = canEdit, floorNumbers = [] }) {
     const { t } = useTranslation();
     const floorLabel = useFloorLabel();
     const upperFloors = Number(property.total_floors) || 0;
     const basements = Number(property.basement_floors) || 0;
     const confirmDelete = () => {
-        if (!canEdit) return;
+        if (!canDeleteProperty) return;
         
         if (confirm('Are you sure you want to delete this property? This action cannot be undone and will also delete all associated units and images.')) {
             router.delete(route('properties.destroy', property), {
@@ -121,22 +121,22 @@ export default function PropertyShow({ property, isAdmin, canEdit, floorNumbers 
                                     </p>
                                 )}
                             </div>
-                            {canEdit && (
+                            {(canEditProperty || canDeleteProperty) && (
                                 <div className="flex items-center gap-2">
-                                    <Link
+                                    {canEditProperty && <Link
                                         href={route('properties.edit', property)}
                                         className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
                                     >
                                         <Edit size={16} />
-                                        Edit
-                                    </Link>
-                                    <button
+                                        {t('Edit')}
+                                    </Link>}
+                                    {canDeleteProperty && <button
                                         onClick={confirmDelete}
                                         className="flex items-center gap-1.5 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
                                     >
                                         <Trash2 size={16} />
-                                        Delete
-                                    </button>
+                                        {t('Delete')}
+                                    </button>}
                                 </div>
                             )}
                         </div>
@@ -258,7 +258,7 @@ export default function PropertyShow({ property, isAdmin, canEdit, floorNumbers 
                     </div>
                 )}
 
-                <PropertyUnitsSection property={property} floorNumbers={floorNumbers} canEdit={canEdit} />
+                <PropertyUnitsSection property={property} floorNumbers={floorNumbers} canEdit={canEdit} canEditProperty={canEditProperty} />
             </div>
         </AuthenticatedLayout>
     );

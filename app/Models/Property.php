@@ -34,6 +34,21 @@ class Property extends Model
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    /** Properties this account may see: all (admin), its own (owner) or the assigned ones (manager). */
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+        if ($user->isManager()) {
+            $scope = $user->managerScope();
+
+            return $query->whereIn($query->qualifyColumn('id'), array_values(array_unique([...$scope['properties'], ...$scope['unit_properties']])) ?: [0]);
+        }
+
+        return $query->where($query->qualifyColumn('owner_id'), $user->id);
+    }
+
     public function cell()
     {
         return $this->belongsTo(Cell::class);

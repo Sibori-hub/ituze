@@ -20,6 +20,7 @@ class PropertyUnitController extends Controller
     public function store(Request $request, Property $property): JsonResponse|RedirectResponse
     {
         $this->authorizePropertyAccess($request, $property);
+        abort_unless($request->user()->canManageWholeProperty($property), 403, 'Only the owner or a manager of the whole property can add units.');
         $data = $this->validated($request, $property);
 
         $unit = PropertyUnit::create([
@@ -36,6 +37,7 @@ class PropertyUnitController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
         abort_unless($propertyUnit->property_id === $property->id, 404);
+        abort_unless($request->user()->canAccessPropertyUnit($propertyUnit), 403, 'This unit is not assigned to you.');
         $data = $this->validated($request, $property, $propertyUnit);
 
         $previousCategory = $propertyUnit->unit_type_id;
@@ -60,6 +62,7 @@ class PropertyUnitController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
         abort_unless($propertyUnit->property_id === $property->id, 404);
+        abort_unless($request->user()->canManageWholeProperty($property), 403, 'Only the owner or a manager of the whole property can delete units.');
 
         if ($propertyUnit->rooms()->exists()) {
             throw ValidationException::withMessages([
@@ -149,6 +152,6 @@ class PropertyUnitController extends Controller
     private function authorizePropertyAccess(Request $request, Property $property): void
     {
         $user = $request->user();
-        abort_unless($user->isAdmin() || $property->owner_id === $user->id, 403, 'You do not have permission to access this property.');
+        abort_unless($user->canAccessProperty($property), 403, 'You do not have permission to access this property.');
     }
 }

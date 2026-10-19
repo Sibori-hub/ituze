@@ -568,12 +568,18 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
     const month = report.month;
     const thisMonth = month.from ? monthName(month.from, 'long') : '';
     const rate = month.collection_rate;
-    const chartMax = Math.max(1, ...report.months.flatMap((item) => [item.expected, item.collected]));
+    const chartData = Math.max(0, ...report.months.flatMap((item) => [item.expected, item.collected]));
+    const chartMax = Math.max(1, chartData);
     const statementHref = route('reports.index', { tab: 'owners' });
     const lastMonthStatementHref = route('reports.index', { tab: 'owners', period: 'last_month' });
     const daysUntil = (date) => Math.max(0, Math.ceil((new Date(`${String(date).slice(0, 10)}T12:00:00`) - new Date()) / 86400000));
 
-    const moneyCards = [
+    const isManager = !!report.is_manager;
+    const moneyCards = isManager ? [
+        { label: 'Rent collected', value: month.rent_collected, note: t('Received in :month', { month: thisMonth }), icon: CreditCard, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100', highlight: true },
+        { label: 'Deposits held for tenants', value: month.deposits_received, note: t('Refundable at move-out'), icon: ShieldCheck, tone: 'bg-violet-50 text-violet-800 ring-violet-100' },
+        { label: 'Overdue rent', value: report.arrears.total, note: Number(report.arrears.total) > 0 ? t(':count tenants late', { count: report.arrears.tenants }) : t('Nobody is late with rent'), icon: Clock3, tone: 'bg-red-50 text-red-700 ring-red-100' },
+    ] : [
         { label: 'Rent collected', value: month.rent_collected, note: t('Received in :month', { month: thisMonth }), icon: CreditCard, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100' },
         ...(report.managed ? [{ label: 'Q.R.A management fee', value: month.commission, note: t(':rate% of rent collected', { rate: Number(report.fee_rate) }), icon: BadgeCheck, tone: 'bg-amber-50 text-amber-800 ring-amber-100' }] : []),
         { label: report.managed ? 'Your payout' : 'Your income', value: month.payout, note: report.managed ? t('Rent collected less the management fee') : t('Rent collected this month'), icon: TrendingUp, tone: 'bg-[#0E3B2E] text-white ring-[#0E3B2E]', highlight: true },
@@ -597,7 +603,9 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8a6420]">{today}</p>
                                 <h1 className="mt-1 font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900 sm:text-[1.7rem]">{t(greetingFor(new Date().getHours()), { name: firstName })}</h1>
                                 <p className="mt-1 text-sm text-gray-600">
-                                    {report.managed ? t('Q.R.A manages your buildings. Here is how they are doing.') : t('Here’s what’s happening across your portfolio.')}
+                                    {isManager
+                                        ? t('Here is how the buildings you manage for :owner are doing.', { owner: report.employer || t('the owner') })
+                                        : report.managed ? t('Q.R.A manages your buildings. Here is how they are doing.') : t('Here’s what’s happening across your portfolio.')}
                                 </p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {report.managed && (
@@ -605,7 +613,7 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                                             <ShieldCheck size={13} aria-hidden="true" /> {t('Managed by Q.R.A · :rate% fee', { rate: Number(report.fee_rate) })}
                                         </span>
                                     )}
-                                    {!report.managed && daysLeft !== null && (
+                                    {!report.managed && !isManager && daysLeft !== null && (
                                         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${daysLeft > 30 ? 'bg-emerald-50 text-emerald-800 ring-emerald-100' : 'bg-amber-50 text-amber-800 ring-amber-100'}`}>
                                             <BadgeCheck size={13} aria-hidden="true" /> {t('Plan active · :days days left', { days: Math.max(0, daysLeft) })}
                                         </span>
@@ -614,13 +622,13 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
-                            <Link href={statementHref} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgba(14,59,46,0.8)] transition hover:bg-[#124B3A]">
+                            {!isManager && <Link href={statementHref} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgba(14,59,46,0.8)] transition hover:bg-[#124B3A]">
                                 <FileText size={16} aria-hidden="true" /> {t('My statement')}
-                            </Link>
+                            </Link>}
                             <Link href={route('reports.index')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-800 ring-1 ring-inset ring-gray-200 transition hover:bg-white hover:text-[#0E3B2E]">
                                 <BarChart3 size={16} aria-hidden="true" /> {t('Reports')}
                             </Link>
-                            {canEdit && (
+                            {canEdit && !isManager && (
                                 <Link href={route('properties.create')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-800 ring-1 ring-inset ring-gray-200 transition hover:bg-white hover:text-[#0E3B2E]">
                                     <Plus size={16} aria-hidden="true" /> {t('Add property')}
                                 </Link>
@@ -632,10 +640,10 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                 {/* Money this month */}
                 <section aria-labelledby="owner-money-title">
                     <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                        <h2 id="owner-money-title" className="font-[Sora] text-lg font-bold text-gray-900">{t('Your money in :month', { month: thisMonth })}</h2>
-                        <Link href={lastMonthStatementHref} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Last month’s statement')} →</Link>
+                        <h2 id="owner-money-title" className="font-[Sora] text-lg font-bold text-gray-900">{isManager ? t('Money in :month', { month: thisMonth }) : t('Your money in :month', { month: thisMonth })}</h2>
+                        {!isManager && <Link href={lastMonthStatementHref} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Last month’s statement')} →</Link>}
                     </div>
-                    <div className={`grid gap-3 sm:grid-cols-2 ${moneyCards.length === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+                    <div className={`grid gap-3 sm:grid-cols-2 ${moneyCards.length === 4 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
                         {moneyCards.map(({ label, value, note, icon: Icon, tone, highlight }) => (
                             <div key={label} className={`rounded-2xl p-5 shadow-sm ring-1 ${highlight ? 'bg-gradient-to-br from-[#0E3B2E] to-[#145240] text-white ring-[#0E3B2E]' : 'bg-white ring-black/[0.04]'}`}>
                                 <div className="flex items-start justify-between gap-3">
@@ -666,7 +674,7 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                             {[0, 0.5, 1].map((step) => (
                                 <g key={step}>
                                     <line x1="44" x2="592" y1={186 - step * 160} y2={186 - step * 160} stroke="#e5e7eb" strokeDasharray={step ? '4 5' : undefined} />
-                                    <text x="38" y={190 - step * 160} textAnchor="end" fontSize="10" fill="#6b7280">{short(chartMax * step)}</text>
+                                    <text x="38" y={190 - step * 160} textAnchor="end" fontSize="10" fill="#6b7280">{chartData > 0 || step === 0 ? short(chartMax * step) : ''}</text>
                                 </g>
                             ))}
                             {report.months.map((item, index) => {

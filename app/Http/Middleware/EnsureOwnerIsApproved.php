@@ -16,6 +16,13 @@ class EnsureOwnerIsApproved
             return $next($request);
         }
 
+        // Managers work in their owner's workspace while that owner's account is active and paid.
+        if ($user->isManager()) {
+            abort_unless($role === null || $role === 'owner', 403);
+
+            return $user->employerWorkspaceIsActive() ? $next($request) : redirect()->route('account.status');
+        }
+
         abort_unless($user->isAccountHolder(), 403);
 
         // The owner workspace passes the role through the alias, e.g.

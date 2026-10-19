@@ -17,7 +17,7 @@ class TenantController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
+        abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
         $data = $request->validate([
             ...app(TenantLocationService::class)->validationRules($request),
             'type' => ['required', 'in:individual,company'],
@@ -53,7 +53,7 @@ class TenantController extends Controller
     public function update(Request $request, Tenant $tenant): JsonResponse|RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
+        abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
         $this->authorizeTenantAccess($user, $tenant);
 
         $data = $request->validate([
@@ -95,7 +95,7 @@ class TenantController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
+        abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
         $ownerId = null;
         $owners = collect();
         if ($user->isAdmin()) {
@@ -108,12 +108,7 @@ class TenantController extends Controller
         $query = Tenant::query()
             ->with(['activeTenancies.unit.property'])
             ->withCount('activeTenancies')
-            ->when(! $user->isAdmin(), function ($query) use ($user) {
-                $query->where(function ($query) use ($user) {
-                    $query->where('created_by', $user->id)
-                        ->orWhereHas('tenancies.unit.property', fn ($property) => $property->where('owner_id', $user->id));
-                });
-            })
+            ->visibleTo($user)
             ->when($ownerId, function ($query, $ownerId) {
                 $query->where(function ($query) use ($ownerId) {
                     $query->where('created_by', $ownerId)
@@ -139,20 +134,13 @@ class TenantController extends Controller
     public function show(Request $request, Tenant $tenant): Response
     {
         $user = $request->user();
-        abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
+        abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
 
-        $tenantQuery = Tenant::query()->whereKey($tenant->id);
-        if (! $user->isAdmin()) {
-            $tenantQuery->where(function ($query) use ($user) {
-                $query->where('created_by', $user->id)
-                    ->orWhereHas('tenancies.unit.property', fn ($property) => $property->where('owner_id', $user->id));
-            });
-        }
-
-        $tenant = $tenantQuery
+        $tenant = Tenant::query()->whereKey($tenant->id)->visibleTo($user)
             ->with([
+                // Only the leases in rooms this account can work on.
                 'tenancies' => fn ($query) => $query->when(! $user->isAdmin(), fn ($tenancies) => $tenancies
-                    ->whereHas('unit.property', fn ($property) => $property->where('owner_id', $user->id))),
+                    ->whereHas('unit', fn ($room) => $room->visibleTo($user))),
                 'tenancies.unit.property',
                 'tenancies.rentCharges.payments',
                 'tenancies.leases',
@@ -162,9 +150,7 @@ class TenantController extends Controller
 
         $availableUnits = Unit::query()
             ->with(['property:id,name,owner_id', 'unitType:id,name'])
-            ->whereHas('property', function ($query) use ($user) {
-                $query->when(! $user->isAdmin(), fn ($properties) => $properties->where('owner_id', $user->id));
-            })
+            ->visibleTo($user)
             ->where(function ($query) {
                 $query->where(function ($available) {
                     $available->where('status', 'available')
@@ -188,10 +174,7 @@ class TenantController extends Controller
     {
         if (! $user->isAdmin() && ! $tenant->newQuery()
             ->whereKey($tenant->id)
-            ->where(function ($query) use ($user) {
-                $query->where('created_by', $user->id)
-                    ->orWhereHas('tenancies.unit.property', fn ($property) => $property->where('owner_id', $user->id));
-            })
+            ->visibleTo($user)
             ->exists()) {
             abort(404);
         }

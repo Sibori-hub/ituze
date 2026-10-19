@@ -20,6 +20,7 @@ class LeaseNoteGenerationController extends Controller
     ): JsonResponse {
         $this->authorizePropertyManager($request, $property);
         abort_unless($unit->property_id === $property->id, 404);
+        abort_unless($request->user()->canAccessRoom($unit), 403);
         $unit->loadMissing('unitType');
         $isApartment = $unit->isApartmentAccommodation();
 
@@ -80,8 +81,8 @@ class LeaseNoteGenerationController extends Controller
     private function authorizePropertyManager(Request $request, Property $property): void
     {
         $user = $request->user();
-        abort_unless($user && in_array($user->role, ['admin', 'owner'], true), 403);
-        abort_unless($user->isAdmin() || $property->owner_id === $user->id, 403);
+        abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
+        abort_unless($user->canAccessProperty($property), 403);
     }
 
     private function authorizeTenancyManager(
@@ -95,5 +96,6 @@ class LeaseNoteGenerationController extends Controller
             $unit->property_id === $property->id && $tenancy->unit_id === $unit->id,
             404,
         );
+        abort_unless($request->user()->canAccessRoom($unit), 403);
     }
 }

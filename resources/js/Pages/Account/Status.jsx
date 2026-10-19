@@ -3,17 +3,21 @@ import { Head, Link } from '@inertiajs/react';
 import { Clock3, ShieldCheck, XCircle } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
-export default function Status({ status, expired }) {
+export default function Status({ status, expired, managerPaused = false, employerName = null }) {
     const { t } = useTranslation();
     const rejected = status === 'rejected';
-    const isExpired = expired && status === 'approved';
+    const isExpired = expired && status === 'approved' && !managerPaused;
     const Icon = rejected ? XCircle : isExpired ? Clock3 : ShieldCheck;
-    const title = rejected
+    const title = managerPaused
+        ? 'Your workspace is paused'
+        : rejected
         ? 'Your account was not approved'
         : isExpired
           ? 'Your subscription has expired'
           : 'Welcome to ITUZE GREEN PLATFORM';
-    const message = rejected
+    const message = managerPaused
+        ? 'The account of the owner you work for is not active right now, usually because the monthly subscription is unpaid. Please contact :owner.'
+        : rejected
         ? 'Please contact ITUZE GREEN PLATFORM for help with your account.'
         : isExpired
           ? 'Your owner subscription has ended. Please contact ITUZE GREEN PLATFORM to renew access.'
@@ -30,9 +34,9 @@ export default function Status({ status, expired }) {
                     {t(title)}
                 </h1>
                 <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-600">
-                    {t(message)}
+                    {t(message, { owner: employerName || t('the owner') })}
                 </p>
-                {!rejected && !isExpired && (
+                {!rejected && !isExpired && !managerPaused && (
                     <p className="mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
                         {t('Your one-year subscription begins on the day an administrator approves your account.')}
                     </p>
