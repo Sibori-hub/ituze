@@ -44,4 +44,11 @@ return [
     // Days after the paid-until date before the owner (and their managers) are blocked.
     'owner_subscription_grace_days' => 7,
 
+    // Where owners send subscription payments by bank transfer (shown on the payment page).
+    'qra_bank' => [
+        'bank' => env('QRA_BANK_NAME'),
+        'account_name' => env('QRA_BANK_ACCOUNT_NAME', 'Q.R.A GROUP LTD'),
+        'account_number' => env('QRA_BANK_ACCOUNT_NUMBER'),
+    ],
+
 ];

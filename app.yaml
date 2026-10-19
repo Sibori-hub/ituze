@@ -13,6 +13,35 @@ jobs:
   action:
     execute:
       command: after_deploy
+# Laravel's scheduled tasks (routes/console.php), one job each. Times are UTC: Kigali is UTC+2.
+- name: tenancies_every_10_minutes
+  trigger: '*/10 * * * *'
+  action:
+    execute:
+      command: bash
+      cli_args: ['-lc', 'cd /app && php artisan tenancies:activate-scheduled && php artisan tenancies:complete-apartment-stays']
+      timeout: 5m
+- name: rent_charges_daily
+  trigger: '10 22 * * *'
+  action:
+    execute:
+      command: bash
+      cli_args: ['-lc', 'cd /app && php artisan rent:generate-charges']
+      timeout: 10m
+- name: lease_reminders_daily
+  trigger: '0 6 * * *'
+  action:
+    execute:
+      command: bash
+      cli_args: ['-lc', 'cd /app && php artisan leases:send-reminders']
+      timeout: 10m
+- name: subscription_reminders_daily
+  trigger: '5 6 * * *'
+  action:
+    execute:
+      command: bash
+      cli_args: ['-lc', 'cd /app && php artisan subscriptions:send-reminders']
+      timeout: 10m
 annotations:
   anybuild.run/config:
     composer_build_script: post-update-cmd

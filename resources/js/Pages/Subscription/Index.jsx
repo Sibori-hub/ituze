@@ -34,7 +34,7 @@ const STATUS_STYLE = {
 };
 const METHOD_LABEL = { mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
 
-export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone }) {
+export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null }) {
     const { t, language } = useTranslation();
     const locale = localeFor(language);
     const money = (value) => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
@@ -139,7 +139,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                         <div className="mt-5">
                             {method === 'mobile_money'
                                 ? <MobileMoneyPay months={months} total={total} defaultPhone={ownerPhone} money={money} onPaid={(status) => { setSubscription(status); router.reload({ only: ['payments', 'subscription'] }); }} />
-                                : <TransferPay key={method} months={months} method={method} total={total} money={money} />}
+                                : <TransferPay key={method} months={months} method={method} total={total} money={money} bank={bank} />}
                         </div>
                     </section>
 
@@ -303,7 +303,7 @@ function MobileMoneyPay({ months, total, defaultPhone, money, onPaid }) {
 }
 
 /** Bank transfer or cheque: reference plus a photo / PDF of the slip or cheque. */
-function TransferPay({ months, method, total, money }) {
+function TransferPay({ months, method, total, money, bank }) {
     const { t } = useTranslation();
     const form = useForm({ months, method, reference: '', proof: null });
     const [submitted, setSubmitted] = useState(false);
@@ -333,6 +333,19 @@ function TransferPay({ months, method, total, money }) {
                     ? t('Write the cheque to Q.R.A GROUP LTD for :amount, then send its number and a photo here.', { amount: money(total) })
                     : t('Pay :amount to the Q.R.A GROUP LTD bank account, then send the slip reference and a photo of the slip here.', { amount: money(total) })}
             </p>
+            {!isCheque && bank && (
+                <dl className="grid gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-sm sm:grid-cols-3">
+                    {[[t('Bank'), bank.bank], [t('Account name'), bank.account_name], [t('Account number'), bank.account_number]].filter(([, value]) => value).map(([label, value]) => (
+                        <div key={label}>
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-800">{label}</dt>
+                            <dd className="mt-0.5 flex items-center gap-2 break-all font-semibold text-gray-900">
+                                {value}
+                                <button type="button" onClick={() => navigator.clipboard?.writeText(value)} className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-[#0E3B2E] ring-1 ring-emerald-200 hover:bg-white">{t('Copy')}</button>
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+            )}
             <label className="block text-sm font-medium text-gray-800">
                 {isCheque ? t('Cheque number') : t('Bank slip reference')}
                 <input value={form.data.reference} onChange={(event) => form.setData('reference', event.target.value)}

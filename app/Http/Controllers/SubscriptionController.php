@@ -55,6 +55,7 @@ class SubscriptionController extends Controller
                 ->get()
                 ->map(fn (SubscriptionPayment $payment) => $this->paymentRow($payment)),
             'phone' => $owner->phone,
+            'bank' => filled(config('legal.qra_bank.account_number')) ? config('legal.qra_bank') : null,
         ]);
     }
 
