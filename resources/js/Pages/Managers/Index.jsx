@@ -297,7 +297,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
         if (!data.last_name.trim()) found.last_name = t('Enter the last name.');
         if (!/^\S+@\S+\.\S+$/.test(data.email.trim())) found.email = t('Enter a valid email address.');
         if (!phoneValid) found.phone = t('Enter 10 digits starting with 078, 079, 072, or 073.');
-        if (isNew && !(data.password.length >= 10 && /[a-z]/.test(data.password) && /[A-Z]/.test(data.password) && /d/.test(data.password) && /[^A-Za-z0-9]/.test(data.password))) found.password = t('Use at least 10 characters with upper and lower case letters, a number and a symbol.');
+        if (isNew && !(data.password.length >= 10 && /[a-z]/.test(data.password) && /[A-Z]/.test(data.password) && /\d/.test(data.password) && /[^A-Za-z0-9]/.test(data.password))) found.password = t('Use at least 10 characters with upper and lower case letters, a number and a symbol.');
         if (isNew && data.password !== data.password_confirmation) found.password_confirmation = t('The two passwords do not match.');
         if (!data.assignments.length) found.assignments = t('Give the manager at least one property or unit.');
         return found;

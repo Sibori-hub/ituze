@@ -205,6 +205,18 @@ class ManagerAccessTest extends TestCase
 
         // A manager cannot hire managers.
         $this->actingAs($manager)->get(route('managers.index'))->assertForbidden();
+        $this->actingAs($manager)->post(route('managers.store'), [
+            'first_name' => 'Sub', 'last_name' => 'Manager', 'email' => 'sub@example.com', 'phone' => '0788 555 999',
+            'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
+            'assignments' => [['property_id' => $this->whole->id, 'property_unit_id' => null]],
+        ])->assertForbidden();
+        $this->assertDatabaseMissing('users', ['email' => 'sub@example.com']);
+
+        // The subscription belongs to the owner: a manager neither sees nor pays it.
+        $this->actingAs($manager)->get(route('subscription.show'))->assertForbidden();
+        $this->actingAs($manager)->postJson(route('subscription.momo.start'), ['months' => 1, 'phone' => '0788123456'])->assertForbidden();
+        $this->actingAs($manager)->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page->where('auth.canHireManagers', false)->where('auth.subscription', null));
 
         // An admin can open an owner's team.
         $this->actingAs($admin)->get(route('managers.index', ['owner_id' => $this->owner->id]))
