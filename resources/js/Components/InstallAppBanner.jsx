@@ -4,16 +4,9 @@ import { useEffect, useState } from 'react';
 
 const DISMISS_KEY = 'ituze.install-dismissed';
 
-// Chrome/Edge/Android fire this when one-tap install is possible; keep it for
-// the button even if the banner mounts later (after an Inertia page change).
-let deferredPrompt = null;
-if (typeof window !== 'undefined') {
-    window.addEventListener('beforeinstallprompt', (event) => {
-        event.preventDefault();
-        deferredPrompt = event;
-        window.dispatchEvent(new Event('ituze:installable'));
-    });
-}
+// app.jsx catches Chrome's one-tap install offer as early as possible and
+// keeps it on window.ituzeInstallPrompt.
+const installOffer = () => (typeof window === 'undefined' ? null : window.ituzeInstallPrompt || null);
 
 export const isStandalone = () => typeof window !== 'undefined'
     && (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true);
@@ -25,10 +18,11 @@ const isInAppBrowser = () => /FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(agent()
 
 /** Opens the install prompt when the browser allows it; returns false otherwise. */
 export async function promptInstall() {
-    if (!deferredPrompt) return false;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    deferredPrompt = null;
+    const offer = installOffer();
+    if (!offer) return false;
+    window.ituzeInstallPrompt = null;
+    offer.prompt();
+    const { outcome } = await offer.userChoice;
     return outcome === 'accepted';
 }
 
@@ -39,7 +33,7 @@ export async function promptInstall() {
  */
 export default function InstallAppBanner({ className = '', force = false }) {
     const { t } = useTranslation();
-    const [canInstall, setCanInstall] = useState(Boolean(deferredPrompt));
+    const [canInstall, setCanInstall] = useState(Boolean(installOffer()));
     const [hidden, setHidden] = useState(true);
     const [showSteps, setShowSteps] = useState(false);
 
@@ -50,7 +44,7 @@ export default function InstallAppBanner({ className = '', force = false }) {
         } catch {
             /* storage blocked: show the banner */
         }
-        setHidden(isStandalone() || (!force && dismissed) || (!force && !isPhone() && !deferredPrompt));
+        setHidden(isStandalone() || (!force && dismissed) || (!force && !isPhone() && !installOffer()));
         const onInstallable = () => {
             setCanInstall(true);
             if (!isStandalone()) setHidden(false);
@@ -80,7 +74,8 @@ export default function InstallAppBanner({ className = '', force = false }) {
     };
 
     const install = async () => {
-        if (canInstall) {
+        // Check at tap time: the offer may have arrived after the banner appeared.
+        if (canInstall || installOffer()) {
             const accepted = await promptInstall();
             setCanInstall(false);
             if (accepted) setHidden(true);

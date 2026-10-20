@@ -8,6 +8,17 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { LanguageProvider } from '@/localization';
 
+// Install (PWA): Chrome may offer one-tap install as soon as the page loads,
+// before the install banner's code has arrived. Catch it here, first.
+window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    window.ituzeInstallPrompt = event;
+    window.dispatchEvent(new Event('ituze:installable'));
+});
+window.addEventListener('appinstalled', () => {
+    window.ituzeInstallPrompt = null;
+});
+
 const appName = import.meta.env.VITE_APP_NAME || 'ITUZE GREEN PLATFORM';
 
 /**
