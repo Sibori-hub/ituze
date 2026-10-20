@@ -1,5 +1,5 @@
 import { useTranslation } from '@/localization';
-import { Download, EllipsisVertical, Share, SquarePlus, X } from 'lucide-react';
+import { Download, EllipsisVertical, Share, Smartphone, SquarePlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const DISMISS_KEY = 'ituze.install-dismissed';
@@ -12,6 +12,8 @@ export const isStandalone = () => typeof window !== 'undefined'
     && (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true);
 const agent = () => (typeof navigator === 'undefined' ? '' : navigator.userAgent);
 const isIos = () => /iphone|ipad|ipod/i.test(agent());
+const isAndroid = () => /android/i.test(agent());
+const APK_URL = '/downloads/ituze.apk';
 const isPhone = () => /android|iphone|ipad|ipod|mobile/i.test(agent());
 // Pages opened inside WhatsApp, Facebook or Instagram cannot be installed.
 const isInAppBrowser = () => /FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(agent());
@@ -106,6 +108,15 @@ export default function InstallAppBanner({ className = '', force = false }) {
                     <X size={16} aria-hidden="true" />
                 </button>
             </div>
+            {isAndroid() && !canInstall && !isInAppBrowser() && (
+                <div className="mt-2 rounded-xl bg-white px-3 py-2.5 text-xs text-gray-700 ring-1 ring-emerald-100">
+                    <p className="font-semibold text-gray-900">{t('No install option on your phone? Get the Android app:')}</p>
+                    <a href={APK_URL} download="ITUZE.apk" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#D9A441] px-3 py-2 font-semibold text-[#0E3B2E] hover:bg-[#c99535]">
+                        <Smartphone size={14} aria-hidden="true" />{t('Download the Android app (1.6 MB)')}
+                    </a>
+                    <p className="mt-2 text-gray-600">{t('Then open the downloaded file and tap Install. If your phone asks, allow installing apps from this source.')}</p>
+                </div>
+            )}
             {(showSteps || (!canInstall && isIos())) && (
                 <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-gray-700 ring-1 ring-emerald-100" role="status">{steps}</p>
             )}

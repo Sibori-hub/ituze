@@ -5,7 +5,7 @@
  * - Pages and data always come from the server, so nobody sees stale or
  *   someone else's information; without internet an offline page shows.
  */
-const VERSION = 'ituze-v3';
+const VERSION = 'ituze-v4';
 const STATIC_CACHE = `${VERSION}-static`;
 const IMAGE_CACHE = `${VERSION}-images`;
 const OFFLINE_URL = '/offline.html';

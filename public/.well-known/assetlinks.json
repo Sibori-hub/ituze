@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.qragroup.ituze",
+        "sha256_cert_fingerprints": ["E8:1C:E8:E7:8A:65:71:29:4C:0A:C2:30:B3:A9:24:18:55:87:0E:0B:0B:28:56:7C:A6:30:92:7B:53:FF:CB:43"]
+      }
+    }]
