@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { checkDescriptionResponse, descriptionErrorMessage } from '@/lib/descriptionRequest';
+import { csrfFetch } from '@/lib/csrf';
 
 export const AMENITIES = [
     { key: 'wifi', label: 'WiFi', icon: Wifi },
@@ -48,8 +49,6 @@ const toBooleans = (source, keys) => {
 
 const isWholeNumber = (value, min, max) => /^\d+$/.test(String(value).trim()) && Number(value) >= min && Number(value) <= max;
 
-const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    || decodeURIComponent(document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/)?.[2] || '');
 
 const fetchJson = (url) => fetch(url, { headers: { Accept: 'application/json' } }).then(res => (res.ok ? res.json() : []));
 
@@ -235,11 +234,10 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
         setAi({ busy: true, message: '', tone: 'info' });
         const name = (list, id) => list.find(item => String(item.id) === String(id))?.name || '';
         try {
-            const token = getCsrfToken();
-            const res = await fetch('/api/ai/generate-property-description', {
+            const res = await csrfFetch('/api/ai/generate-property-description', {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token, 'X-XSRF-TOKEN': token },
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify({
                     name: data.name,
                     address: data.address,

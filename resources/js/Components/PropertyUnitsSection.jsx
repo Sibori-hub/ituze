@@ -8,6 +8,7 @@ import { Building2, ChevronRight, ChevronsDownUp, ChevronsUpDown, DoorOpen, Edit
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { checkDescriptionResponse, descriptionErrorMessage } from '@/lib/descriptionRequest';
+import { csrfFetch } from '@/lib/csrf';
 
 const inputClass = 'mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm transition-all focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15';
 
@@ -460,12 +461,10 @@ function UnitDialog({ open, property, floorNumbers, unit, initialFloor, onClose 
         }
         setAi({ busy: true, message: '', tone: 'info' });
         try {
-            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                || decodeURIComponent(document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/)?.[2] || '');
-            const res = await fetch(route('properties.property-units.describe', property.id), {
+            const res = await csrfFetch(route('properties.property-units.describe', property.id), {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token, 'X-XSRF-TOKEN': token },
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify({ category_name: data.category_name.trim(), floor_number: data.floor_number }),
             });
             checkDescriptionResponse(res);

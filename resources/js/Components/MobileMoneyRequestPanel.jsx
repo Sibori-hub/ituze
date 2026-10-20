@@ -3,15 +3,14 @@ import { formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/l
 import { useTranslation } from '@/localization';
 import { AlertCircle, CheckCircle2, Loader2, RotateCcw, Send, Smartphone, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { csrfFetch } from '@/lib/csrf';
 
-const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    || decodeURIComponent(document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/)?.[2] || '');
 
 const call = async (url, options = {}) => {
-    const res = await fetch(url, {
+    const res = await csrfFetch(url, {
         credentials: 'same-origin',
         ...options,
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf(), 'X-XSRF-TOKEN': csrf(), ...(options.headers || {}) },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) },
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {

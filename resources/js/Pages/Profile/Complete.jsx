@@ -9,6 +9,25 @@ import { useTranslation } from '@/localization';
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024; // matches max:2048 on the server
 
+/** Resizes a large photo to at most 1280 px as JPEG; returns the original if the browser cannot read it. */
+async function shrinkPhoto(file) {
+    try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close?.();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+        if (!blob) return file;
+
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    } catch {
+        return file;
+    }
+}
+
 function Stepper() {
     const { t } = useTranslation();
     const steps = [
@@ -102,15 +121,17 @@ export default function Complete({ registrationDetails, locations }) {
 
     const initials = `${registration.first_name?.[0] ?? ''}${registration.last_name?.[0] ?? ''}`.toUpperCase();
 
-    const choosePhoto = (file) => {
-        if (!file) return;
+    const choosePhoto = async (picked) => {
+        if (!picked) return;
 
         // Some phones and gallery apps report no type; fall back to the extension (the server re-checks).
-        const looksLikeImage = file.type ? file.type.startsWith('image/') : /\.(jpe?g|png|webp)$/i.test(file.name);
+        const looksLikeImage = picked.type ? picked.type.startsWith('image/') : /\.(jpe?g|png|webp)$/i.test(picked.name);
         if (!looksLikeImage) {
             setPhotoError(t('Please choose an image file (JPG, PNG or WEBP).'));
             return;
         }
+        // Phone camera photos are often 3–8 MB: make them smaller here instead of refusing them.
+        const file = picked.size > MAX_PHOTO_BYTES ? await shrinkPhoto(picked) : picked;
         if (file.size > MAX_PHOTO_BYTES) {
             setPhotoError(t('This photo is :size MB. The maximum is 2 MB, so please choose a smaller one.', { size: (file.size / 1048576).toFixed(1) }));
             return;

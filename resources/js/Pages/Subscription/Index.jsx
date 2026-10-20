@@ -8,15 +8,14 @@ import {
     Loader2, Receipt, Send, ShieldCheck, Smartphone, Upload, Wallet, XCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { csrfFetch } from '@/lib/csrf';
 
 const localeFor = (language) => ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
-const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    || decodeURIComponent(document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/)?.[2] || '');
 const call = async (url, options = {}) => {
-    const res = await fetch(url, {
+    const res = await csrfFetch(url, {
         credentials: 'same-origin',
         ...options,
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf(), 'X-XSRF-TOKEN': csrf() },
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {

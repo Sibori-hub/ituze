@@ -107,6 +107,10 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     ]);
 });
 
+// A fresh CSRF token (and XSRF cookie) for pages left open too long, e.g. on a phone.
+Route::get('/csrf-token', fn (\Illuminate\Http\Request $request) => response()->json(['token' => $request->session()->token()])
+    ->header('Cache-Control', 'no-store'))->name('csrf.token');
+
 // Digital Asset Links: proves the ITUZE Android app belongs to this site (full-screen app).
 Route::get('/.well-known/assetlinks.json', fn () => response()->json([[
     'relation' => ['delegate_permission/common.handle_all_urls'],

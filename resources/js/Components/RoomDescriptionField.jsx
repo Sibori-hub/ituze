@@ -2,9 +2,7 @@ import { useTranslation } from '@/localization';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { checkDescriptionResponse, descriptionErrorMessage } from '@/lib/descriptionRequest';
-
-const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    || decodeURIComponent(document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/)?.[2] || '');
+import { csrfFetch } from '@/lib/csrf';
 
 /**
  * Room description, typed or drafted by AI from the room's details and its
@@ -22,11 +20,10 @@ export default function RoomDescriptionField({ property, data, setData, error })
         }
         setState({ busy: true, message: '', tone: 'info' });
         try {
-            const token = getCsrfToken();
-            const res = await fetch(route('properties.units.describe', property.id), {
+            const res = await csrfFetch(route('properties.units.describe', property.id), {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token, 'X-XSRF-TOKEN': token },
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify({
                     property_unit_id: data.property_unit_id,
                     unit_number: data.unit_number,
