@@ -167,6 +167,12 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
             ->get(['amount', 'paid_at'])
             ->groupBy(fn ($payment) => $payment->paid_at->format('Y-m'))
             ->map(fn ($payments) => $payments->sum(fn ($payment) => (float) $payment->amount));
+        $subscriptionsByMonth = (clone $approvedSubscriptionPayments)
+            ->where('reviewed_at', '>=', $chartStart)
+            ->get(['amount', 'reviewed_at'])
+            ->groupBy(fn ($payment) => $payment->reviewed_at->format('Y-m'))
+            ->map(fn ($payments) => $payments->sum(fn ($payment) => (float) $payment->amount));
+        $activeTenancies = \App\Models\Tenancy::query()->where('status', 'active');
         $unitCounts = \App\Models\Unit::query()
             ->selectRaw('status, COUNT(*) as aggregate')
             ->whereHas('property')
@@ -208,6 +214,35 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                     'amount' => round((float) $rentCollectedByMonth->get($month->format('Y-m'), 0), 2),
                 ])->values(),
                 'rejectedOwners' => (clone $owners)->where('status', 'rejected')->count(),
+                'subscriptionCollections' => $months->map(fn ($month) => [
+                    'month' => $month->format('Y-m'),
+                    'amount' => round((float) $subscriptionsByMonth->get($month->format('Y-m'), 0), 2),
+                ])->values(),
+                'leasesEndingSoon' => (clone $activeTenancies)->whereNotNull('end_date')
+                    ->whereBetween('end_date', [today(), today()->addDays(\App\Http\Controllers\ManagementController::ENDING_SOON_DAYS)])->count(),
+                'leasesExpired' => (clone $activeTenancies)->whereNotNull('end_date')->where('end_date', '<', today())->count(),
+                'owners' => [
+                    'managed' => (clone $owners)->whereNotNull('created_by')->where('status', 'approved')->count(),
+                    'paying' => (clone $activeSubscriptions)->count(),
+                    'grace' => (clone $approvedOwners)->whereBetween('expires_at', [now()->subDays($graceDays), now()])->count(),
+                    'unpaid' => (clone $approvedOwners)->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '<', now()->subDays($graceDays)))->count(),
+                    'pending' => $pendingApprovals->count(),
+                    'managers' => \App\Models\User::query()->where('role', 'manager')->count(),
+                ],
+                'recentActivity' => \App\Models\ActivityLog::query()
+                    ->with(['actor:id,name,role', 'property:id,name'])
+                    ->latest('created_at')
+                    ->latest('id')
+                    ->take(8)
+                    ->get()
+                    ->map(fn ($log) => [
+                        'id' => $log->id,
+                        'at' => $log->created_at?->toIso8601String(),
+                        'actor' => $log->actor?->name,
+                        'role' => $log->actor?->role,
+                        'description' => $log->description,
+                        'amount' => $log->amount,
+                    ]),
                 'subscriptionMoney' => [
                     'month' => (float) (clone $approvedSubscriptionPayments)->where('reviewed_at', '>=', now()->startOfMonth())->sum('amount'),
                     'total' => (float) (clone $approvedSubscriptionPayments)->sum('amount'),

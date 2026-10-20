@@ -286,278 +286,300 @@ function VisitorInquiries({ inquiries }) {
 function AdminDashboard({ overview, inquiries, user, language }) {
     const { t } = useTranslation();
     const locale = localeForLanguage(language);
-    const dateLabel = new Intl.DateTimeFormat(localeForLanguage(language), {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    }).format(new Date());
-    const metrics = [
-        { label: 'Platform accounts', value: overview.totalAccounts, detail: t(':count owner accounts', { count: overview.totalOwners }), icon: UsersRound, tone: 'bg-blue-50 text-blue-700' },
-        { label: 'Awaiting approval', value: overview.pendingApprovals, detail: t('Complete profiles ready for review'), icon: Clock3, tone: 'bg-amber-50 text-amber-700', href: route('admin.approvals'), urgent: overview.pendingApprovals > 0 },
-        { label: 'Active subscriptions', value: overview.activeSubscriptions, detail: t(':count expired accounts', { count: overview.expiredSubscriptions }), icon: BadgeCheck, tone: 'bg-emerald-50 text-emerald-700' },
-        { label: 'New owners this month', value: overview.newOwnersThisMonth, detail: t('Out of :count registered owners', { count: overview.totalOwners }), icon: CalendarDays, tone: 'bg-violet-50 text-violet-700' },
+    const [moneyView, setMoneyView] = useState('rent');
+    const money = (value) => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
+    const short = (value) => (value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${Math.round(value / 1000)}k` : `${Math.round(value)}`);
+    const monthLabel = (value, style = 'short') => new Intl.DateTimeFormat(locale, { month: style, ...(style === 'long' ? { year: 'numeric' } : {}) }).format(new Date(`${value}-01T12:00:00`));
+    const when = (value) => {
+        if (!value) return '';
+        const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000);
+        if (minutes < 1) return t('just now');
+        if (minutes < 60) return t(':count min ago', { count: minutes });
+        if (minutes < 1440) return t(':count h ago', { count: Math.round(minutes / 60) });
+        return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(value));
+    };
+    const firstName = user.first_name || user.name?.split(' ')[0];
+    const today = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+
+    const rent = overview.rentCollections || [];
+    const subs = overview.subscriptionCollections || [];
+    const series = moneyView === 'rent' ? rent : subs;
+    const seriesMax = Math.max(0, ...series.map((item) => Number(item.amount)));
+    const chartMax = Math.max(1, seriesMax);
+    const rentNow = Number(rent.at(-1)?.amount || 0);
+    const rentBefore = Number(rent.at(-2)?.amount || 0);
+    const rentChange = rentBefore > 0 ? Math.round(((rentNow - rentBefore) / rentBefore) * 100) : null;
+    const owners = overview.owners || {};
+    const subscriptionMoney = overview.subscriptionMoney || {};
+    const units = overview.occupancy.occupied + overview.occupancy.available + overview.occupancy.maintenance;
+    const occupancy = units ? Math.round((overview.occupancy.occupied / units) * 100) : 0;
+
+    const attention = [
+        { count: overview.pendingApprovals, label: overview.pendingApprovals === 1 ? t('owner waiting for approval') : t('owners waiting for approval'), href: route('admin.approvals'), icon: ShieldCheck, tone: 'amber' },
+        { count: subscriptionMoney.to_check || 0, label: subscriptionMoney.to_check === 1 ? t('bank slip to check') : t('bank slips to check'), href: route('admin.subscriptions'), icon: Wallet, tone: 'amber' },
+        { count: overview.newInquiries, label: overview.newInquiries === 1 ? t('new visitor inquiry') : t('new visitor inquiries'), href: '#visitor-inquiries', icon: MessageSquare, tone: 'sky' },
+        { count: overview.leasesExpired || 0, label: overview.leasesExpired === 1 ? t('lease expired, not renewed') : t('leases expired, not renewed'), href: route('leases.index', { status: 'expired' }), icon: CalendarX, tone: 'red' },
+        { count: overview.leasesEndingSoon || 0, label: overview.leasesEndingSoon === 1 ? t('lease ending in 60 days') : t('leases ending in 60 days'), href: route('leases.index', { status: 'ending_soon' }), icon: CalendarDays, tone: 'violet' },
+    ].filter((item) => Number(item.count) > 0);
+    const tones = {
+        amber: 'bg-amber-50 text-amber-900 ring-amber-200 hover:bg-amber-100',
+        sky: 'bg-sky-50 text-sky-900 ring-sky-200 hover:bg-sky-100',
+        red: 'bg-red-50 text-red-800 ring-red-200 hover:bg-red-100',
+        violet: 'bg-violet-50 text-violet-900 ring-violet-200 hover:bg-violet-100',
+    };
+
+    const ownerSlices = [
+        { key: 'managed', label: t('Managed by Q.R.A (10%)'), value: owners.managed || 0, color: '#0E3B2E' },
+        { key: 'paying', label: t('Self-registered, paid up'), value: owners.paying || 0, color: '#1F9D6B' },
+        { key: 'grace', label: t('Overdue (grace)'), value: owners.grace || 0, color: '#D9A441' },
+        { key: 'unpaid', label: t('Not paid / paused'), value: owners.unpaid || 0, color: '#E5484D' },
+        { key: 'pending', label: t('Waiting for approval'), value: owners.pending || 0, color: '#94A3B8' },
     ];
-    const managementCards = [
-        { title: 'Owner accounts', description: 'Manage owner profiles, subscriptions, and account access.', href: route('admin.users'), icon: UsersRound, count: overview.totalOwners, tone: 'bg-blue-50 text-blue-700' },
-        { title: 'Approval queue', description: 'Review complete profiles and approve eligible owners.', href: route('admin.approvals'), icon: ShieldCheck, count: overview.pendingApprovals, tone: 'bg-amber-50 text-amber-700', attention: overview.pendingApprovals > 0 },
-        { title: 'Properties & units', description: 'Manage properties and units across all owner portfolios.', href: route('properties.index'), icon: Building2, count: overview.properties, detail: t(':count units', { count: overview.units }), tone: 'bg-emerald-50 text-emerald-700' },
-        { title: 'Tenants', description: 'View and manage tenants across the platform.', href: route('tenants.index'), icon: Users, count: overview.tenants, tone: 'bg-violet-50 text-violet-700' },
-        { title: 'Lease records', description: 'Review lease documents and tenancy records.', href: route('leases.index'), icon: FileText, count: overview.leases, tone: 'bg-cyan-50 text-cyan-700' },
-        { title: 'Payments', description: 'Review payment history and owner collections.', href: route('payments.index'), icon: CreditCard, count: overview.payments, tone: 'bg-indigo-50 text-indigo-700' },
-        { title: 'Visitor inquiries', description: 'Review visitor requests and reply about listed properties.', href: `${route('dashboard')}#visitor-inquiries`, icon: MessageSquare, count: overview.newInquiries, tone: 'bg-amber-50 text-amber-700', attention: overview.newInquiries > 0 },
-        { title: 'Platform reports', description: 'View financial and portfolio reports across all owners.', href: route('reports.index'), icon: BarChart3, tone: 'bg-rose-50 text-rose-700' },
+    const ownerTotal = ownerSlices.reduce((sum, slice) => sum + slice.value, 0);
+    let offset = 0;
+    const ring = ownerSlices.map((slice) => {
+        const length = ownerTotal ? (slice.value / ownerTotal) * 264 : 0;
+        const piece = { ...slice, dash: `${length} ${264 - length}`, offset: -offset };
+        offset += length;
+        return piece;
+    });
+
+    const shortcuts = [
+        { label: 'All Users', href: route('admin.users'), icon: UsersRound, count: overview.totalAccounts },
+        { label: 'Approvals', href: route('admin.approvals'), icon: ShieldCheck, count: overview.pendingApprovals, alert: overview.pendingApprovals > 0 },
+        { label: 'Subscriptions', href: route('admin.subscriptions'), icon: Wallet, count: subscriptionMoney.to_check, alert: subscriptionMoney.to_check > 0 },
+        { label: 'Properties', href: route('properties.index'), icon: Building2, count: overview.properties },
+        { label: 'Tenants', href: route('tenants.index'), icon: Users, count: overview.tenants },
+        { label: 'Leases', href: route('leases.index'), icon: FileText, count: overview.leases },
+        { label: 'Payments', href: route('payments.index'), icon: CreditCard, count: overview.payments },
+        { label: 'Reports', href: route('reports.index'), icon: BarChart3 },
     ];
-    const monthLabel = value => new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(`${value}-01T12:00:00`));
-    const moneyLabel = value => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
-    const maxRent = Math.max(1, ...overview.rentCollections.map(item => Number(item.amount)));
-    const maxOwnerGrowth = Math.max(1, ...overview.ownerGrowth.map(item => Number(item.count)));
-    const unitTotal = overview.occupancy.occupied + overview.occupancy.available + overview.occupancy.maintenance;
-    const occupancyRate = unitTotal ? Math.round((overview.occupancy.occupied / unitTotal) * 100) : 0;
-    const circumference = 2 * Math.PI * 42;
-    const occupiedArc = unitTotal ? (overview.occupancy.occupied / unitTotal) * circumference : 0;
-    const availableArc = unitTotal ? (overview.occupancy.available / unitTotal) * circumference : 0;
-    const maintenanceArc = unitTotal ? (overview.occupancy.maintenance / unitTotal) * circumference : 0;
-    const subscriptionStatuses = [
-        { label: 'Active subscriptions', value: overview.activeSubscriptions, color: 'bg-emerald-500' },
-        { label: 'Expired subscriptions', value: overview.expiredSubscriptions, color: 'bg-rose-500' },
-        { label: 'Awaiting approval', value: overview.pendingApprovals, color: 'bg-amber-400' },
-        { label: 'Rejected applications', value: overview.rejectedOwners, color: 'bg-slate-400' },
-    ];
-    const subscriptionTotal = subscriptionStatuses.reduce((sum, item) => sum + Number(item.value || 0), 0);
 
     return (
         <AuthenticatedLayout header="Admin control center">
-            <Head title={t('Admin control center')} />
-            <div className="mx-auto max-w-7xl space-y-6">
-                <section className="relative overflow-hidden rounded-3xl bg-[#102b27] px-6 py-7 text-white shadow-xl shadow-emerald-950/10 sm:px-8 sm:py-9">
-                    <div className="pointer-events-none absolute -right-10 -top-24 h-72 w-72 rounded-full border border-white/10" />
-                    <div className="pointer-events-none absolute -right-1 top-2 h-48 w-48 rounded-full border border-[#D9A441]/20" />
-                    <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-                        <div className="max-w-2xl">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100">
-                                <ShieldCheck size={14} />
-                                {t('Platform administration')}
+            <Head title={t('Dashboard')} />
+            <div className="mx-auto max-w-7xl space-y-5">
+                {/* Welcome and today's to-do */}
+                <section className="relative animate-fade-in overflow-hidden rounded-3xl bg-gradient-to-br from-white via-white to-emerald-50 p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-7">
+                    <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#D9A441]/15 blur-3xl" />
+                    <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-emerald-300/20 blur-3xl" />
+                    <div className="relative flex flex-wrap items-start justify-between gap-5">
+                        <div className="flex items-center gap-4">
+                            <UserAvatar user={user} size="xl" className="ring-4 ring-white shadow-lg shadow-[#0E3B2E]/15" />
+                            <div>
+                                <p className="inline-flex items-center gap-1.5 rounded-full bg-[#0E3B2E]/[0.06] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#0E3B2E]">
+                                    <ShieldCheck size={13} aria-hidden="true" />{t('Platform administration')}
+                                </p>
+                                <h1 className="mt-2 font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900 sm:text-3xl">{t(greetingFor(new Date().getHours()), { name: firstName })}</h1>
+                                <p className="mt-1 text-sm text-gray-600">{today}</p>
                             </div>
-                            <div className="mt-5 flex items-center gap-4">
-                                <Link href={route('profile.edit')} className="shrink-0 rounded-full" title={t('Edit profile')}>
-                                    <UserAvatar user={user} size="lg" className="ring-4 ring-white/15 transition hover:scale-[1.03]" />
-                                </Link>
-                                <h1 className="font-[Sora] text-3xl font-bold tracking-tight sm:text-4xl">
-                                    {t('Welcome back, :name', { name: user.first_name || user.name?.split(' ')[0] })}
-                                </h1>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-white/65 sm:text-base">
-                                {t('Your overview of owners, approvals, subscriptions, and platform activity.')}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Link href={route('admin.users')} className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgba(14,59,46,0.8)] transition hover:bg-[#124B3A] active:scale-[0.98]">
+                                <UsersRound size={16} aria-hidden="true" />{t('Manage accounts')}
+                            </Link>
+                            <Link href={route('reports.index')} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 ring-1 ring-gray-200 transition hover:text-[#0E3B2E] hover:ring-[#0E3B2E]/30 active:scale-[0.98]">
+                                <BarChart3 size={16} aria-hidden="true" />{t('Reports')}
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="relative mt-6 border-t border-gray-200/70 pt-5">
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">{t('Needs your attention')}</p>
+                        {attention.length ? (
+                            <ul className="mt-3 flex flex-wrap gap-2">
+                                {attention.map(({ count, label, href, icon: Icon, tone }) => (
+                                    <li key={label}>
+                                        <Link href={href} className={`group inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium ring-1 transition ${tones[tone]}`}>
+                                            <Icon size={16} aria-hidden="true" />
+                                            <span className="font-[Sora] font-bold">{count}</span> {label}
+                                            <ArrowUpRight size={14} className="opacity-60 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:opacity-100" aria-hidden="true" />
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-2 text-sm font-medium text-emerald-900 ring-1 ring-emerald-200">
+                                <CheckCircle2 size={16} aria-hidden="true" />{t('All clear: nothing is waiting for you.')}
                             </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white/75">
-                                <CalendarDays size={16} className="text-[#D9A441]" />
-                                {dateLabel}
-                            </span>
-                            <Link href={route('admin.users')} className="inline-flex items-center gap-2 rounded-xl bg-[#D9A441] px-4 py-2.5 text-sm font-bold text-[#18342d] transition hover:bg-amber-300">
-                                <UsersRound size={16} />
-                                {t('Manage accounts')}
-                            </Link>
-                        </div>
-                    </div>
-                    <div className="relative mt-7 flex flex-wrap gap-x-6 gap-y-2 border-t border-white/10 pt-5 text-sm text-white/65">
-                        <span className="inline-flex items-center gap-2"><Building2 size={15} className="text-emerald-300" />{t(':count properties', { count: overview.properties })}</span>
-                        <span className="inline-flex items-center gap-2"><DoorOpen size={15} className="text-emerald-300" />{t(':count units', { count: overview.units })}</span>
-                        <span className="inline-flex items-center gap-2"><MessageSquare size={15} className="text-emerald-300" />{t(':count new inquiries', { count: overview.newInquiries })}</span>
+                        )}
                     </div>
                 </section>
 
-                <section aria-label={t('Platform overview')} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {metrics.map(({ label, value, detail, icon: Icon, tone, href, urgent }) => {
-                        const cardClassName = `group rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${urgent ? 'border-amber-200 ring-1 ring-amber-100' : 'border-gray-100'}`;
-                        const content = (
-                            <>
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}><Icon size={20} /></div>
-                                    {href && <ArrowUpRight size={17} className="text-gray-300 transition group-hover:text-[#0E3B2E]" />}
-                                </div>
-                                <p className="mt-5 font-[Sora] text-3xl font-bold tracking-tight text-gray-900"><CountUp value={value} /></p>
-                                <p className="mt-1 text-sm font-semibold text-gray-700">{t(label)}</p>
-                                <p className="mt-1 text-xs text-gray-500">{detail}</p>
-                            </>
-                        );
-
-                        return (
-                            href
-                                ? <Link key={label} href={href} className={cardClassName}>{content}</Link>
-                                : <div key={label} className={cardClassName}>{content}</div>
-                        );
-                    })}
-                </section>
-
-                {overview.subscriptionMoney && (
-                    <section aria-labelledby="admin-subscriptions-title" className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
-                            <div className="flex items-center gap-3">
-                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0E3B2E] text-white" aria-hidden="true"><Wallet size={18} /></span>
-                                <div>
-                                    <h2 id="admin-subscriptions-title" className="font-[Sora] font-semibold text-gray-900">{t('Owner subscriptions')}</h2>
-                                    <p className="text-xs text-gray-600">{t(':price per month for each self-registered owner', { price: moneyLabel(overview.subscriptionMoney.monthly_price) })}</p>
-                                </div>
+                {/* Key figures */}
+                <section aria-label={t('Key figures')} className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                    {[
+                        {
+                            label: t('Rent collected this month'), value: money(rentNow), icon: TrendingUp, tone: 'from-emerald-500/15 to-emerald-500/5 text-emerald-800',
+                            note: rentChange === null ? t('No rent last month to compare') : t(':change% vs last month', { change: rentChange > 0 ? `+${rentChange}` : rentChange }),
+                            noteTone: rentChange === null ? 'text-gray-500' : rentChange >= 0 ? 'text-emerald-700' : 'text-red-700',
+                        },
+                        { label: t('Subscriptions this month'), value: money(subscriptionMoney.month), icon: Wallet, tone: 'from-amber-500/20 to-amber-500/5 text-amber-800', note: owners.paying === 1 ? t('1 paying owner') : t(':count paying owners', { count: owners.paying || 0 }) },
+                        { label: t('Occupancy'), value: `${occupancy}%`, icon: Home, tone: 'from-sky-500/15 to-sky-500/5 text-sky-800', note: t(':occupied of :total rooms rented', { occupied: overview.occupancy.occupied, total: units }), bar: occupancy },
+                        { label: t('Owners'), value: overview.totalOwners, icon: UsersRound, tone: 'from-violet-500/15 to-violet-500/5 text-violet-800', note: owners.managers === 1 ? t('1 manager working for owners') : t(':count managers working for owners', { count: owners.managers || 0 }) },
+                    ].map(({ label, value, icon: Icon, tone, note, noteTone, bar }, index) => (
+                        <div key={label} className="animate-fade-in rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.04] transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5" style={{ animationDelay: `${index * 60}ms` }}>
+                            <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</p>
+                                <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-gradient-to-br ${tone}`} aria-hidden="true"><Icon size={18} /></span>
                             </div>
-                            <Link href={route('admin.subscriptions')} className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold ${overview.subscriptionMoney.to_check > 0 ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-gray-50 text-[#0E3B2E] ring-1 ring-gray-200 hover:bg-white'}`}>
-                                {overview.subscriptionMoney.to_check > 0 ? t(':count to check', { count: overview.subscriptionMoney.to_check }) : t('Open subscriptions')} <ArrowUpRight size={15} aria-hidden="true" />
-                            </Link>
+                            <p className="mt-3 break-words font-[Sora] text-xl font-bold tabular-nums tracking-tight text-gray-900 sm:text-2xl">{value}</p>
+                            {bar !== undefined && (
+                                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-gradient-to-r from-[#1F7A5A] to-[#D9A441] transition-all duration-700" style={{ width: `${bar}%` }} /></div>
+                            )}
+                            <p className={`mt-1.5 text-xs ${noteTone || 'text-gray-600'}`}>{note}</p>
                         </div>
-                        <dl className="grid grid-cols-2 gap-px bg-gray-100 lg:grid-cols-5">
-                            {[
-                                [t('Received this month'), moneyLabel(overview.subscriptionMoney.month), t(overview.subscriptionMoney.payments_month === 1 ? '1 payment' : ':count payments', { count: overview.subscriptionMoney.payments_month }), 'text-emerald-800'],
-                                [t('Received in total'), moneyLabel(overview.subscriptionMoney.total), t('All approved payments'), 'text-gray-900'],
-                                [t('Paying owners'), overview.subscriptionMoney.paying_owners, t('Paid up today'), 'text-gray-900'],
-                                [t('Overdue (grace)'), overview.subscriptionMoney.overdue_owners, t('Will be paused if not paid'), 'text-amber-800'],
-                                [t('Not paid / paused'), overview.subscriptionMoney.unpaid_owners, t('Only see the pay page'), 'text-red-700'],
-                            ].map(([label, value, note, tone]) => (
-                                <div key={label} className="bg-white px-5 py-4">
-                                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</dt>
-                                    <dd className={`mt-1 font-[Sora] text-xl font-bold tabular-nums ${tone}`}>{value}</dd>
-                                    <dd className="text-xs text-gray-500">{note}</dd>
-                                </div>
-                            ))}
+                    ))}
+                </section>
+
+                <div className="grid gap-5 lg:grid-cols-5">
+                    {/* Money chart */}
+                    <section aria-labelledby="admin-money-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <h2 id="admin-money-title" className="font-[Sora] font-semibold text-gray-900">{t('Money received')}</h2>
+                                <p className="mt-0.5 text-xs text-gray-600">{t('Last six months')}</p>
+                            </div>
+                            <div role="tablist" aria-label={t('Money received')} className="flex rounded-xl bg-gray-100 p-1 text-sm">
+                                {[['rent', t('Rent')], ['subscriptions', t('Subscriptions')]].map(([key, label]) => (
+                                    <button key={key} type="button" role="tab" aria-selected={moneyView === key} onClick={() => setMoneyView(key)}
+                                        className={`rounded-lg px-3 py-1.5 font-semibold transition ${moneyView === key ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="mt-4 font-[Sora] text-2xl font-bold tabular-nums text-gray-900">
+                            {money(series.reduce((sum, item) => sum + Number(item.amount), 0))}
+                            <span className="ml-2 text-sm font-medium text-gray-500">{t('in 6 months')}</span>
+                        </p>
+                        <div className="mt-4 flex h-48 items-end gap-2 sm:gap-3" role="img" aria-label={t('Money received')}>
+                            {series.map((item, index) => {
+                                const value = Number(item.amount);
+                                const height = value > 0 ? Math.max(4, (value / chartMax) * 100) : 0;
+                                const current = index === series.length - 1;
+                                return (
+                                    <div key={item.month} className="group flex h-full flex-1 flex-col items-center justify-end gap-1.5">
+                                        <span className="text-[10px] font-semibold tabular-nums text-gray-500 opacity-0 transition group-hover:opacity-100">{value ? short(value) : ''}</span>
+                                        <div className="relative w-full flex-1 overflow-hidden rounded-xl bg-gray-50">
+                                            <div
+                                                className={`absolute inset-x-0 bottom-0 rounded-xl transition-all duration-700 ease-out ${moneyView === 'rent' ? (current ? 'bg-gradient-to-t from-[#0E3B2E] to-[#1F9D6B]' : 'bg-[#0E3B2E]/70') : (current ? 'bg-gradient-to-t from-[#b9862c] to-[#F2C46D]' : 'bg-[#D9A441]/70')}`}
+                                                style={{ height: `${height}%` }}
+                                                title={`${monthLabel(item.month, 'long')}: ${money(value)}`}
+                                            />
+                                        </div>
+                                        <span className={`text-xs ${current ? 'font-bold text-gray-900' : 'text-gray-500'}`}>{monthLabel(item.month)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {seriesMax === 0 && <p className="mt-3 text-center text-xs text-gray-500">{t('Nothing received in this period yet.')}</p>}
+                    </section>
+
+                    {/* Owners */}
+                    <section aria-labelledby="admin-owners-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-2">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h2 id="admin-owners-title" className="font-[Sora] font-semibold text-gray-900">{t('Owners at a glance')}</h2>
+                                <p className="mt-0.5 text-xs text-gray-600">{t(':count owner accounts', { count: ownerTotal })}</p>
+                            </div>
+                            <Link href={route('admin.users', { role: 'owner' })} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('View all')}</Link>
+                        </div>
+                        <div className="mt-4 flex items-center gap-5">
+                            <svg viewBox="0 0 100 100" className="h-32 w-32 flex-none -rotate-90" role="img" aria-label={t('Owners at a glance')}>
+                                <circle cx="50" cy="50" r="42" fill="none" stroke="#F1F5F9" strokeWidth="12" />
+                                {ring.map((slice) => slice.value > 0 && (
+                                    <circle key={slice.key} cx="50" cy="50" r="42" fill="none" stroke={slice.color} strokeWidth="12" strokeDasharray={slice.dash} strokeDashoffset={slice.offset} className="transition-all duration-700" />
+                                ))}
+                            </svg>
+                            <ul className="min-w-0 flex-1 space-y-2 text-sm">
+                                {ownerSlices.map((slice) => (
+                                    <li key={slice.key} className="flex items-center justify-between gap-2">
+                                        <span className="flex min-w-0 items-center gap-2 text-gray-700"><span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: slice.color }} /><span className="truncate">{slice.label}</span></span>
+                                        <span className="font-[Sora] font-bold tabular-nums text-gray-900">{slice.value}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <dl className="mt-5 grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3 text-center">
+                            <div><dt className="text-[11px] text-gray-600">{t('Subscriptions in total')}</dt><dd className="font-[Sora] text-sm font-bold text-gray-900">{money(subscriptionMoney.total)}</dd></div>
+                            <div><dt className="text-[11px] text-gray-600">{t('New owners this month')}</dt><dd className="font-[Sora] text-sm font-bold text-gray-900">{overview.newOwnersThisMonth}</dd></div>
                         </dl>
                     </section>
-                )}
+                </div>
 
-                <section aria-label={t('Platform analytics')} className="grid gap-5 xl:grid-cols-2">
-                    <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900"><TrendingUp size={17} className="text-emerald-700" />{t('Rent collected')}</div>
-                                <p className="mt-1 text-xs text-gray-500">{t('Monthly platform rent collections · last six months')}</p>
-                            </div>
-                            <Link href={route('reports.index')} className="text-xs font-semibold text-[#0E3B2E] hover:underline">{t('View reports')}</Link>
+                <div className="grid gap-5 lg:grid-cols-5">
+                    {/* Activity */}
+                    <section aria-labelledby="admin-activity-title" className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04] lg:col-span-3">
+                        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+                            <h2 id="admin-activity-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900">
+                                <span className="relative flex h-2.5 w-2.5" aria-hidden="true"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>
+                                {t('Latest activity')}
+                            </h2>
+                            <span className="text-xs text-gray-500">{t('Across all buildings')}</span>
                         </div>
-                        <div className="mt-5 grid grid-cols-6 items-end gap-2 sm:gap-4">
-                            {overview.rentCollections.map(item => {
-                                const amount = Number(item.amount || 0);
-                                const height = amount ? Math.max(8, (amount / maxRent) * 120) : 4;
-                                return (
-                                    <div key={item.month} className="flex min-w-0 flex-col items-center gap-2">
-                                        <span className="max-w-full truncate text-center text-[10px] font-medium text-gray-500">{amount ? moneyLabel(amount) : '—'}</span>
-                                        <div className="flex h-32 w-full items-end justify-center rounded-t-lg bg-gray-50">
-                                            <div className="w-full max-w-10 rounded-t-lg bg-gradient-to-t from-[#0E3B2E] to-emerald-500 transition-all" style={{ height: `${height}px` }} title={`${monthLabel(item.month)}: ${moneyLabel(amount)}`} />
+                        {(overview.recentActivity || []).length ? (
+                            <ol className="divide-y divide-gray-100">
+                                {overview.recentActivity.map((item) => (
+                                    <li key={item.id} className="flex gap-3 px-5 py-3 transition hover:bg-gray-50/70">
+                                        <span className={`mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full text-[11px] font-bold ${item.role === 'manager' ? 'bg-sky-100 text-sky-900' : item.role === 'admin' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}`} aria-hidden="true">
+                                            {(item.actor || '?').split(' ').map((part) => part[0]).slice(0, 2).join('')}
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm text-gray-800"><span className="font-semibold text-gray-900">{item.actor || t('Someone')}</span> · {item.description}</p>
+                                            <p className="text-xs text-gray-500">{when(item.at)}</p>
                                         </div>
-                                        <span className="text-[11px] font-medium text-gray-500">{monthLabel(item.month)}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </article>
-
-                    <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900"><Building2 size={17} className="text-emerald-700" />{t('Platform occupancy')}</div>
-                                <p className="mt-1 text-xs text-gray-500">{t('Unit status across all owner properties')}</p>
-                            </div>
-                            <Link href={route('properties.index')} className="text-xs font-semibold text-[#0E3B2E] hover:underline">{t('View properties')}</Link>
-                        </div>
-                        <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row sm:justify-center">
-                            <div className="relative h-40 w-40 shrink-0">
-                                <svg viewBox="0 0 112 112" role="img" aria-label={t('Platform occupancy: :rate% occupied', { rate: occupancyRate })} className="h-full w-full -rotate-90">
-                                    <circle cx="56" cy="56" r="42" fill="none" stroke="#f1f5f9" strokeWidth="12" />
-                                    {occupiedArc > 0 && <circle cx="56" cy="56" r="42" fill="none" stroke="#0E3B2E" strokeWidth="12" strokeDasharray={`${occupiedArc} ${circumference - occupiedArc}`} />}
-                                    {availableArc > 0 && <circle cx="56" cy="56" r="42" fill="none" stroke="#D9A441" strokeWidth="12" strokeDasharray={`${availableArc} ${circumference - availableArc}`} strokeDashoffset={-occupiedArc} />}
-                                    {maintenanceArc > 0 && <circle cx="56" cy="56" r="42" fill="none" stroke="#94a3b8" strokeWidth="12" strokeDasharray={`${maintenanceArc} ${circumference - maintenanceArc}`} strokeDashoffset={-(occupiedArc + availableArc)} />}
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className="font-[Sora] text-3xl font-bold text-gray-900">{occupancyRate}%</span>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{t('Occupied')}</span>
-                                </div>
-                            </div>
-                            <div className="grid w-full gap-3 sm:max-w-xs">
-                                {[
-                                    ['Occupied', overview.occupancy.occupied, 'bg-[#0E3B2E]'],
-                                    ['Available', overview.occupancy.available, 'bg-[#D9A441]'],
-                                    ['Maintenance', overview.occupancy.maintenance, 'bg-slate-400'],
-                                ].map(([label, value, color]) => (
-                                    <div key={label} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2.5">
-                                        <span className="flex items-center gap-2 text-sm text-gray-600"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{t(label)}</span>
-                                        <span className="font-[Sora] text-sm font-bold text-gray-900">{Number(value).toLocaleString()}</span>
-                                    </div>
+                                        {item.amount !== null && item.amount !== undefined && <span className="shrink-0 self-center text-sm font-semibold tabular-nums text-emerald-800">{money(item.amount)}</span>}
+                                    </li>
                                 ))}
-                                <p className="text-center text-xs text-gray-400">{t(':count total units across the platform', { count: unitTotal })}</p>
-                            </div>
-                        </div>
-                    </article>
+                            </ol>
+                        ) : (
+                            <p className="px-5 py-10 text-center text-sm text-gray-500">{t('Activity will appear here as owners, managers and admins work.')}</p>
+                        )}
+                    </section>
 
-                    <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900"><BarChart3 size={17} className="text-violet-700" />{t('Owner growth')}</div>
-                                <p className="mt-1 text-xs text-gray-500">{t('New owner accounts registered each month')}</p>
+                    {/* Occupancy and shortcuts */}
+                    <div className="space-y-5 lg:col-span-2">
+                        <section aria-labelledby="admin-occupancy-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6">
+                            <div className="flex items-start justify-between gap-3">
+                                <h2 id="admin-occupancy-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Activity size={17} className="text-[#1F7A5A]" aria-hidden="true" />{t('Rooms across the platform')}</h2>
+                                <Link href={route('properties.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('View all')}</Link>
                             </div>
-                            <Link href={route('admin.users')} className="text-xs font-semibold text-[#0E3B2E] hover:underline">{t('All accounts')}</Link>
-                        </div>
-                        <div className="mt-5 grid grid-cols-6 items-end gap-2 sm:gap-4">
-                            {overview.ownerGrowth.map(item => {
-                                const count = Number(item.count || 0);
-                                const height = count ? Math.max(8, (count / maxOwnerGrowth) * 120) : 4;
-                                return (
-                                    <div key={item.month} className="flex min-w-0 flex-col items-center gap-2">
-                                        <span className="text-xs font-semibold text-gray-600">{count}</span>
-                                        <div className="flex h-32 w-full items-end justify-center rounded-t-lg bg-violet-50">
-                                            <div className="w-full max-w-10 rounded-t-lg bg-gradient-to-t from-violet-700 to-violet-400 transition-all" style={{ height: `${height}px` }} title={`${monthLabel(item.month)}: ${count}`} />
-                                        </div>
-                                        <span className="text-[11px] font-medium text-gray-500">{monthLabel(item.month)}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </article>
+                            <div className="mt-4 flex items-center gap-5">
+                                <OccupancyRing
+                                    occupied={overview.occupancy.occupied}
+                                    available={overview.occupancy.available}
+                                    maintenance={overview.occupancy.maintenance}
+                                    label={t('Portfolio occupancy: :rate% occupied', { rate: occupancy })}
+                                />
+                                <ul className="flex-1 space-y-2.5 text-sm">
+                                    {[
+                                        ['Rented', overview.occupancy.occupied, 'bg-[#0E3B2E]'],
+                                        ['Empty', overview.occupancy.available, 'bg-[#D9A441]'],
+                                        ['Maintenance', overview.occupancy.maintenance, 'bg-slate-400'],
+                                    ].map(([label, value, color]) => (
+                                        <li key={label} className="flex items-center justify-between gap-2">
+                                            <span className="flex items-center gap-2 text-gray-700"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{t(label)}</span>
+                                            <span className="font-[Sora] font-bold tabular-nums text-gray-900">{value}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </section>
 
-                    <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900"><ShieldCheck size={17} className="text-amber-700" />{t('Approval & subscription status')}</div>
-                                <p className="mt-1 text-xs text-gray-500">{t('Owner account status across the platform')}</p>
-                            </div>
-                            <Link href={route('admin.approvals')} className="text-xs font-semibold text-[#0E3B2E] hover:underline">{t('Review approvals')}</Link>
-                        </div>
-                        <div className="mt-6 space-y-5">
-                            {subscriptionStatuses.map(item => (
-                                <div key={item.label}>
-                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
-                                        <span className="font-medium text-gray-600">{t(item.label)}</span>
-                                        <span className="font-bold tabular-nums text-gray-800">{Number(item.value || 0).toLocaleString()}</span>
-                                    </div>
-                                    <div className="h-2.5 overflow-hidden rounded-full bg-gray-100">
-                                        <div className={`h-full rounded-full ${item.color} transition-all`} style={{ width: `${subscriptionTotal ? (Number(item.value || 0) / subscriptionTotal) * 100 : 0}%` }} />
-                                    </div>
-                                </div>
+                        <nav aria-label={t('Shortcuts')} className="grid grid-cols-4 gap-2">
+                            {shortcuts.map(({ label, href, icon: Icon, count, alert }) => (
+                                <Link key={label} href={href} className="group relative flex flex-col items-center gap-1.5 rounded-2xl bg-white px-1 py-3 text-center shadow-sm ring-1 ring-black/[0.04] transition hover:-translate-y-0.5 hover:shadow-md hover:ring-[#0E3B2E]/20">
+                                    {alert && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />}
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-[#0E3B2E] transition group-hover:bg-[#0E3B2E] group-hover:text-white" aria-hidden="true"><Icon size={17} /></span>
+                                    <span className="text-[11px] font-semibold leading-tight text-gray-800">{t(label)}</span>
+                                    {count !== undefined && count !== null && <span className="text-[10px] tabular-nums text-gray-500">{count}</span>}
+                                </Link>
                             ))}
-                        </div>
-                    </article>
-                </section>
+                        </nav>
+                    </div>
+                </div>
 
-                <section>
-                    <div className="mb-4">
-                        <h2 className="font-[Sora] text-lg font-semibold text-gray-900">{t('Platform management')}</h2>
-                        <p className="mt-1 text-sm text-gray-500">{t('Open any area to manage records across all owners, or filter by owner.')}</p>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {managementCards.map(({ title, description, href, icon: Icon, count, detail, tone, attention }) => (
-                            <Link key={title} href={href} className="group rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#0E3B2E]/20 hover:shadow-md">
-                                <div className="flex items-start justify-between gap-3">
-                                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}><Icon size={20} /></span>
-                                    {count !== undefined && <span className={`rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${attention ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{Number(count).toLocaleString()}</span>}
-                                </div>
-                                <h3 className="mt-4 font-[Sora] text-base font-semibold text-gray-900 group-hover:text-[#0E3B2E]">{t(title)}</h3>
-                                <p className="mt-1 min-h-10 text-sm leading-5 text-gray-500">{t(description)}</p>
-                                <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-semibold text-[#0E3B2E]">
-                                    <span>{detail || t('Open management')}</span>
-                                    <ArrowUpRight size={16} className="transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </section>
                 <VisitorInquiries inquiries={inquiries} />
             </div>
         </AuthenticatedLayout>
