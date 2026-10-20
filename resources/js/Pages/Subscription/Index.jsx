@@ -38,7 +38,8 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
     const { t, language } = useTranslation();
     const locale = localeFor(language);
     const money = (value) => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
-    const longDate = (value) => (value ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value)) : '—');
+    // A plain date (2026-11-19) is read at midday so no time zone moves it to another day.
+    const longDate = (value) => (value ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(typeof value === 'string' && value.length === 10 ? `${value}T12:00:00` : value)) : '—');
     const [subscription, setSubscription] = useState(initial);
     useEffect(() => setSubscription(initial), [initial]);
 
@@ -334,16 +335,17 @@ function TransferPay({ months, method, total, money, bank }) {
                     : t('Pay :amount to the Q.R.A GROUP LTD bank account, then send the slip reference and a photo of the slip here.', { amount: money(total) })}
             </p>
             {!isCheque && bank && (
-                <dl className="grid gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-sm sm:grid-cols-3">
+                <dl className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-sm sm:grid-cols-2">
                     {[[t('Bank'), bank.bank], [t('Account name'), bank.account_name], [t('Account number'), bank.account_number]].filter(([, value]) => value).map(([label, value]) => (
                         <div key={label}>
                             <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-800">{label}</dt>
-                            <dd className="mt-0.5 flex items-center gap-2 break-all font-semibold text-gray-900">
-                                {value}
-                                <button type="button" onClick={() => navigator.clipboard?.writeText(value)} className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-[#0E3B2E] ring-1 ring-emerald-200 hover:bg-white">{t('Copy')}</button>
+                            <dd className="mt-0.5 flex items-center justify-between gap-2 font-semibold text-gray-900">
+                                <span className="min-w-0 break-words">{value}</span>
+                                <button type="button" onClick={() => navigator.clipboard?.writeText(value)} className="shrink-0 whitespace-nowrap rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold text-[#0E3B2E] ring-1 ring-emerald-200 hover:bg-emerald-50">{t('Copy')}</button>
                             </dd>
                         </div>
                     ))}
+                    {!bank.account_number && <p className="text-xs text-emerald-900 sm:col-span-2">{t('Ask ITUZE GREEN PLATFORM for the account number before paying.')}</p>}
                 </dl>
             )}
             <label className="block text-sm font-medium text-gray-800">

@@ -46,7 +46,7 @@ return [
 
     // Where owners send subscription payments by bank transfer (shown on the payment page).
     'qra_bank' => [
-        'bank' => env('QRA_BANK_NAME'),
+        'bank' => env('QRA_BANK_NAME', 'Equity Bank Rwanda'),
         'account_name' => env('QRA_BANK_ACCOUNT_NAME', 'Q.R.A GROUP LTD'),
         'account_number' => env('QRA_BANK_ACCOUNT_NUMBER'),
     ],
