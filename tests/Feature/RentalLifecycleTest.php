@@ -31,7 +31,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['activity_logs', 'subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -218,6 +218,20 @@ class RentalLifecycleTest extends TestCase
             $table->text('notes')->nullable();
             $table->timestamp('paid_at');
             $table->timestamps();
+        });
+        // Activity shown on the admin dashboard.
+        Schema::create('activity_logs', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('actor_id')->nullable();
+            $table->unsignedBigInteger('owner_id')->nullable();
+            $table->unsignedBigInteger('property_id')->nullable();
+            $table->string('action', 60);
+            $table->string('subject_type', 60)->nullable();
+            $table->unsignedBigInteger('subject_id')->nullable();
+            $table->string('description', 500);
+            $table->decimal('amount', 14, 2)->nullable();
+            $table->string('group_key', 80)->nullable();
+            $table->timestamp('created_at')->nullable();
         });
         // Owner subscription payments (counted on the admin dashboard).
         Schema::create('subscription_payments', function (Blueprint $table) {
