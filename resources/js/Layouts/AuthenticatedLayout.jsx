@@ -27,6 +27,7 @@ import {
     Briefcase,
     Wallet,
     AlertTriangle,
+    Leaf,
 } from 'lucide-react';
 import { useTranslation } from '@/localization';
 
@@ -38,6 +39,7 @@ const ownerNavigation = [
     { name: 'Payments', href: 'payments.index', icon: CreditCard },
     { name: 'Visitor inquiries', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
     { name: 'Reports', href: 'reports.index', icon: BarChart3 },
+    { name: 'Utilities', href: 'utilities.index', icon: Leaf },
 ];
 
 const advertiserNavigation = [
@@ -57,6 +59,7 @@ const adminNavigation = [
     { name: 'Payments', href: 'payments.index', icon: CreditCard },
     { name: 'Visitor inquiries', href: 'dashboard', anchor: '#visitor-inquiries', icon: MessageSquare },
     { name: 'Reports', href: 'reports.index', icon: BarChart3 },
+    { name: 'Utilities', href: 'utilities.index', icon: Leaf },
 ];
 
 const ROLE_LABELS = { admin: 'Administrator', owner: 'Property Owner', advertiser: 'Advertiser', manager: 'Manager' };

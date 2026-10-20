@@ -195,6 +195,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                 ->latest()
                 ->take(20)
                 ->get(),
+            'utilitySnapshot' => \App\Services\UtilityReport::snapshot($user),
             'adminOverview' => [
                 'totalAccounts' => \App\Models\User::query()->count(),
                 'totalOwners' => (clone $owners)->count(),
@@ -311,6 +312,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $recentPayments = $portfolio->ownerStatements(now()->subMonthsNoOverflow(3)->startOfDay()->toImmutable(), today()->toImmutable())['lines'] ?? [];
 
     return Inertia::render('Dashboard', [
+        'utilitySnapshot' => \App\Services\UtilityReport::snapshot($user),
         'ownerReport' => [
             'is_manager' => $user->isManager(),
             'employer' => $user->isManager() ? $user->employer?->name : null,
@@ -453,6 +455,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/payments', [ManagementController::class, 'payments'])->name('payments.index');
         Route::get('/reports', [ManagementController::class, 'reports'])->name('reports.index');
         Route::get('/reports/export', [ManagementController::class, 'exportReport'])->middleware('throttle:20,1')->name('reports.export');
+
+        // Environmental and utility management (water, electricity, waste, green score).
+        Route::get('/utilities', [\App\Http\Controllers\UtilityController::class, 'index'])->name('utilities.index');
+        Route::post('/utilities/readings', [\App\Http\Controllers\UtilityController::class, 'storeReading'])->name('utilities.readings.store');
+        Route::delete('/utilities/readings/{reading}', [\App\Http\Controllers\UtilityController::class, 'destroyReading'])->name('utilities.readings.destroy');
+        Route::post('/utilities/waste-schedules', [\App\Http\Controllers\UtilityController::class, 'storeSchedule'])->name('utilities.schedules.store');
+        Route::delete('/utilities/waste-schedules/{schedule}', [\App\Http\Controllers\UtilityController::class, 'destroySchedule'])->name('utilities.schedules.destroy');
+        Route::post('/utilities/waste-collections', [\App\Http\Controllers\UtilityController::class, 'storeCollection'])->name('utilities.collections.store');
+        Route::delete('/utilities/waste-collections/{collection}', [\App\Http\Controllers\UtilityController::class, 'destroyCollection'])->name('utilities.collections.destroy');
 
         // A self-registered owner's managers (admins can open any owner's team with ?owner_id).
         Route::get('/managers', [\App\Http\Controllers\ManagerController::class, 'index'])->name('managers.index');

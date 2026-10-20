@@ -2,8 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Activity, ArrowUpRight, BadgeCheck, BarChart3, Building2, CalendarDays, CalendarX,
-    CheckCircle2, Clock3, CreditCard, DoorOpen, FileText, Home, Mail, MessageSquare,
-    Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound, Wallet, X,
+    AlertTriangle, CheckCircle2, Clock3, CreditCard, DoorOpen, Droplets, FileText, Home, Leaf, Mail, MessageSquare,
+    Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound, Wallet, X, Zap,
 } from 'lucide-react';
 import UserAvatar from '@/Components/UserAvatar';
 import useCanEdit from '@/hooks/useCanEdit';
@@ -283,6 +283,51 @@ function VisitorInquiries({ inquiries }) {
     );
 }
 
+/** Utilities at a glance: green score, alerts and this month against last. */
+function UtilityCard({ snapshot, locale }) {
+    const { t } = useTranslation();
+    if (!snapshot) return null;
+    const number = (value) => Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 1 });
+    const change = (value) => (value === null || value === undefined ? t('no data last month') : value > 0 ? `+${value}%` : `${value}%`);
+    const tone = (value) => (value > 0 ? 'text-red-700' : value < 0 ? 'text-emerald-700' : 'text-gray-600');
+    const score = snapshot.score;
+
+    return (
+        <section aria-labelledby="utility-card-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+                <h2 id="utility-card-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Leaf size={17} className="text-emerald-700" aria-hidden="true" />{t('Utilities & environment')}</h2>
+                <Link href={route('utilities.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Open')}</Link>
+            </div>
+            <div className="mt-4 flex items-center gap-4">
+                <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-2xl bg-emerald-50 ring-1 ring-emerald-100">
+                    <span className="font-[Sora] text-xl font-bold text-[#0E3B2E]">{score ?? '—'}</span>
+                    <span className="text-[10px] font-semibold text-emerald-800">/100</span>
+                </div>
+                <div className="min-w-0 text-sm">
+                    <p className="font-semibold text-gray-900">{t('Green score')}</p>
+                    {snapshot.alerts > 0 ? (
+                        <p className="mt-0.5 flex items-center gap-1.5 font-medium text-amber-800"><AlertTriangle size={14} aria-hidden="true" />{t(':count high-use alerts', { count: snapshot.alerts })}</p>
+                    ) : (
+                        <p className="mt-0.5 flex items-center gap-1.5 text-emerald-800"><CheckCircle2 size={14} aria-hidden="true" />{t('No unusual use')}</p>
+                    )}
+                </div>
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                {[
+                    [Droplets, t('Water'), `${number(snapshot.water.current)} m³`, snapshot.water.change],
+                    [Zap, t('Electricity'), `${number(snapshot.electricity.current)} kWh`, snapshot.electricity.change],
+                ].map(([Icon, label, value, delta]) => (
+                    <div key={label} className="rounded-xl bg-gray-50 p-3">
+                        <dt className="flex items-center gap-1.5 text-xs text-gray-600"><Icon size={13} aria-hidden="true" />{label} · {t('this month')}</dt>
+                        <dd className="mt-1 font-[Sora] font-bold tabular-nums text-gray-900">{value}</dd>
+                        <dd className={`text-xs font-semibold ${tone(delta)}`}>{change(delta)}</dd>
+                    </div>
+                ))}
+            </dl>
+        </section>
+    );
+}
+
 function AdminDashboard({ overview, inquiries, user, language }) {
     const { t } = useTranslation();
     const locale = localeForLanguage(language);
@@ -541,6 +586,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
 
                     {/* Occupancy and shortcuts */}
                     <div className="space-y-5 lg:col-span-2">
+                        <UtilityCard snapshot={overview.utilitySnapshot} locale={locale} />
                         <section aria-labelledby="admin-occupancy-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6">
                             <div className="flex items-start justify-between gap-3">
                                 <h2 id="admin-occupancy-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Activity size={17} className="text-[#1F7A5A]" aria-hidden="true" />{t('Rooms across the platform')}</h2>
@@ -587,7 +633,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
     );
 }
 
-export default function Dashboard({ summary, recentProperties = [], recentTenancies = [], recentInquiries = [], adminOverview, ownerReport }) {
+export default function Dashboard({ summary, recentProperties = [], recentTenancies = [], recentInquiries = [], adminOverview, ownerReport, utilitySnapshot = null }) {
     const { auth } = usePage().props;
     const { t, language } = useTranslation();
     const user = auth.user;
@@ -598,10 +644,10 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
         return <AuthenticatedLayout header="Dashboard"><Head title={t('Dashboard')} /><div className="mx-auto max-w-lg rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50"><CalendarX size={30} className="text-red-500" /></div><h2 className="mt-4 font-[Sora] text-xl font-bold text-gray-800">{t('Your account has expired')}</h2><p className="mt-2 text-sm text-gray-500">{t('Your subscription ended on :date. Please contact support to renew access.', { date: formatDate(user.expires_at, language) })}</p></div></AuthenticatedLayout>;
     }
     if (isAdmin) {
-        return <AdminDashboard overview={adminOverview} inquiries={recentInquiries} user={user} language={language} />;
+        return <AdminDashboard overview={{ ...adminOverview, utilitySnapshot }} inquiries={recentInquiries} user={user} language={language} />;
     }
 
-    return <OwnerDashboard {...{ user, language, summary, recentProperties, recentTenancies, recentInquiries, ownerReport }} />;
+    return <OwnerDashboard {...{ user, language, summary, recentProperties, recentTenancies, recentInquiries, ownerReport, utilitySnapshot }} />;
 }
 
 /**
@@ -609,7 +655,7 @@ export default function Dashboard({ summary, recentProperties = [], recentTenanc
  * owed, occupancy, leases ending and recent payments. Managed owners only
  * read; Q.R.A does the work.
  */
-function OwnerDashboard({ user, language, summary, recentProperties, recentTenancies, recentInquiries, ownerReport }) {
+function OwnerDashboard({ user, language, summary, recentProperties, recentTenancies, recentInquiries, ownerReport, utilitySnapshot }) {
     const { t } = useTranslation();
     const canEdit = useCanEdit();
     const locale = localeForLanguage(language);
@@ -754,7 +800,8 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                         </div>
                     </section>
 
-                    {/* Occupancy */}
+                    {/* Occupancy and utilities */}
+                    <div className="space-y-5">
                     <section aria-labelledby="owner-occupancy-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6">
                         <h2 id="owner-occupancy-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Activity size={17} className="text-[#1F7A5A]" aria-hidden="true" />{t('Occupancy')}</h2>
                         <p className="mt-1 text-xs text-gray-600">{t(':occupied of :total rooms rented', { occupied: summary?.occupiedUnits ?? 0, total: summary?.units ?? 0 })}</p>
@@ -784,6 +831,8 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                             </p>
                         )}
                     </section>
+                    <UtilityCard snapshot={utilitySnapshot} locale={locale} />
+                    </div>
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-2">
