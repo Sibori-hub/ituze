@@ -40,7 +40,9 @@ const ownerNavigation = [
 ];
 
 const advertiserNavigation = [
-    { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
+    { name: 'Listings', href: 'dashboard', icon: LayoutDashboard },
+    { name: 'My buildings', href: 'properties.index', icon: Building2 },
+    { name: 'Visitor inquiries', href: 'dashboard', anchor: '#ad-inquiries', icon: MessageSquare },
 ];
 
 const adminNavigation = [

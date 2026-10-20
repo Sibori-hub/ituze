@@ -113,7 +113,7 @@ Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'i
     ->middleware('throttle:5,1')
     ->name('public.properties.inquiries.store');
 Route::post('/inquiries/{inquiry}/read', [PublicPropertyController::class, 'markRead'])
-    ->middleware(['auth', 'verified', 'profile.complete', 'owner.approved:owner'])
+    ->middleware(['auth', 'verified', 'profile.complete', 'owner.approved:owner,advertiser'])
     ->name('inquiries.read');
 
 Route::get('/account/status', function (\Illuminate\Http\Request $request) {
@@ -134,11 +134,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
 
     if ($user->isAdvertiser()) {
-        return Inertia::render('Advertiser/Dashboard', [
-            'status' => $user->status,
-            'adUnitPrice' => config('legal.ad_unit_price_rwf'),
-            'welcomeBonusUnits' => config('legal.ad_welcome_bonus_units'),
-        ]);
+        return app(\App\Http\Controllers\AdvertiserController::class)->dashboard($request);
     }
 
     if ($user->isAdmin()) {
@@ -172,6 +168,10 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
             ->get(['amount', 'reviewed_at'])
             ->groupBy(fn ($payment) => $payment->reviewed_at->format('Y-m'))
             ->map(fn ($payments) => $payments->sum(fn ($payment) => (float) $payment->amount));
+        $adsByMonth = \App\Models\AdPurchase::query()->where('status', 'approved')->where('paid_at', '>=', $chartStart)
+            ->get(['amount', 'paid_at'])
+            ->groupBy(fn ($purchase) => $purchase->paid_at->format('Y-m'))
+            ->map(fn ($purchases) => $purchases->sum(fn ($purchase) => (float) $purchase->amount));
         $activeTenancies = \App\Models\Tenancy::query()->where('status', 'active');
         $unitCounts = \App\Models\Unit::query()
             ->selectRaw('status, COUNT(*) as aggregate')
@@ -218,6 +218,12 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                     'month' => $month->format('Y-m'),
                     'amount' => round((float) $subscriptionsByMonth->get($month->format('Y-m'), 0), 2),
                 ])->values(),
+                'adCollections' => $months->map(fn ($month) => [
+                    'month' => $month->format('Y-m'),
+                    'amount' => round((float) $adsByMonth->get($month->format('Y-m'), 0), 2),
+                ])->values(),
+                'advertisers' => \App\Models\User::query()->where('role', 'advertiser')->where('status', 'approved')->count(),
+                'listedBuildings' => \App\Models\Property::query()->where('listed_until', '>', now())->count(),
                 'leasesEndingSoon' => (clone $activeTenancies)->whereNotNull('end_date')
                     ->whereBetween('end_date', [today(), today()->addDays(\App\Http\Controllers\ManagementController::ENDING_SOON_DAYS)])->count(),
                 'leasesExpired' => (clone $activeTenancies)->whereNotNull('end_date')->where('end_date', '<', today())->count(),
@@ -375,7 +381,8 @@ Route::middleware('auth')->group(function () {
     })->name('api.property-types');
 
     // Property management routes (requires verified email and completed profile)
-    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->prefix('properties')->name('properties.')->group(function () {
+    // Advertisers manage their buildings and rooms here too; tenancy routes below stay owner-only.
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser'])->prefix('properties')->name('properties.')->group(function () {
         Route::get('/', [PropertyController::class, 'index'])->name('index');
         Route::get('/create', [PropertyController::class, 'create'])->name('create');
         Route::post('/', [PropertyController::class, 'store'])->name('store');
@@ -402,6 +409,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/{unit}/edit', [UnitController::class, 'edit'])->name('edit');
             Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
             Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
+            Route::middleware('owner.approved:owner')->group(function () {
             Route::post('/{unit}/tenancy', [TenancyController::class, 'store'])->name('tenancy.store');
             Route::post('/{unit}/tenancy/lease-note', [\App\Http\Controllers\LeaseNoteGenerationController::class, 'forAssignment'])->name('tenancy.lease-notes.generate');
             Route::post('/{unit}/tenancy/{tenancy}/lease-note', [\App\Http\Controllers\LeaseNoteGenerationController::class, 'forTenancy'])->name('tenancy.lease-notes.generate-for-tenancy');
@@ -412,9 +420,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/{unit}/tenancy/{tenancy}/leases', [TenancyController::class, 'uploadLease'])->name('tenancy.leases.store');
             Route::get('/{unit}/tenancy/{tenancy}/leases/{lease}', [TenancyController::class, 'downloadLease'])->name('tenancy.leases.download');
             Route::delete('/{unit}/tenancy/{tenancy}/leases/{lease}', [TenancyController::class, 'deleteLease'])->name('tenancy.leases.destroy');
+            });
         });
 
-        Route::post('/{property}/tenants', [TenancyController::class, 'storeTenant'])->name('tenants.store');
+        Route::post('/{property}/tenants', [TenancyController::class, 'storeTenant'])->middleware('owner.approved:owner')->name('tenants.store');
     });
 
     // Mobile money payment requests pushed to a tenant's phone.
@@ -446,8 +455,15 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])
-        ->middleware(['verified', 'profile.complete', 'owner.approved:owner', 'throttle:10,1'])
+        ->middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser', 'throttle:10,1'])
         ->name('api.ai.generate-property-description');
+});
+
+// Advertisers buy listings by mobile money and publish their buildings.
+Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete', 'owner.approved:advertiser'])->prefix('advertising')->name('advertising.')->group(function () {
+    Route::post('/purchases', [\App\Http\Controllers\AdvertiserController::class, 'startPurchase'])->middleware('throttle:6,1')->name('purchases.start');
+    Route::get('/purchases/{purchase}', [\App\Http\Controllers\AdvertiserController::class, 'purchaseStatus'])->middleware('throttle:60,1')->name('purchases.status');
+    Route::post('/properties/{property}/publish', [\App\Http\Controllers\AdvertiserController::class, 'publish'])->middleware('throttle:20,1')->name('publish');
 });
 
 // Self-registered owners pay here; open even while the account is paused for non-payment.

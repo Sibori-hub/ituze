@@ -31,7 +31,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['activity_logs', 'subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['ad_purchases', 'activity_logs', 'subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -80,6 +80,8 @@ class RentalLifecycleTest extends TestCase
         });
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            $table->boolean('requires_listing')->default(false);
+            $table->timestamp('listed_until')->nullable();
             $table->unsignedSmallInteger('total_floors')->default(0);
             $table->unsignedTinyInteger('basement_floors')->default(0);
             $table->unsignedBigInteger('created_by')->nullable();
@@ -217,6 +219,14 @@ class RentalLifecycleTest extends TestCase
             $table->string('reference')->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('paid_at');
+            $table->timestamps();
+        });
+        Schema::create('ad_purchases', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('advertiser_id');
+            $table->decimal('amount', 12, 2);
+            $table->string('status', 20)->default('pending');
+            $table->timestamp('paid_at')->nullable();
             $table->timestamps();
         });
         // Activity shown on the admin dashboard.

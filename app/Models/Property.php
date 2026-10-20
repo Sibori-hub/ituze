@@ -20,6 +20,7 @@ class Property extends Model
         'proximity',
         'total_floors',
         'basement_floors',
+        'requires_listing',
     ];
 
     protected $casts = [
@@ -27,6 +28,8 @@ class Property extends Model
         'proximity' => 'array',
         'total_floors' => 'integer',
         'basement_floors' => 'integer',
+        'listed_until' => 'datetime',
+        'requires_listing' => 'boolean',
     ];
 
     public function owner()

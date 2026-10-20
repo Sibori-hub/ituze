@@ -303,7 +303,8 @@ function AdminDashboard({ overview, inquiries, user, language }) {
 
     const rent = overview.rentCollections || [];
     const subs = overview.subscriptionCollections || [];
-    const series = moneyView === 'rent' ? rent : subs;
+    const ads = overview.adCollections || [];
+    const series = moneyView === 'rent' ? rent : moneyView === 'ads' ? ads : subs;
     const seriesMax = Math.max(0, ...series.map((item) => Number(item.amount)));
     const chartMax = Math.max(1, seriesMax);
     const rentNow = Number(rent.at(-1)?.amount || 0);
@@ -438,10 +439,10 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h2 id="admin-money-title" className="font-[Sora] font-semibold text-gray-900">{t('Money received')}</h2>
-                                <p className="mt-0.5 text-xs text-gray-600">{t('Last six months')}</p>
+                                <p className="mt-0.5 text-xs text-gray-600">{moneyView === 'ads' ? t(':count advertisers · :listed buildings on the homepage now', { count: overview.advertisers || 0, listed: overview.listedBuildings || 0 }) : t('Last six months')}</p>
                             </div>
                             <div role="tablist" aria-label={t('Money received')} className="flex rounded-xl bg-gray-100 p-1 text-sm">
-                                {[['rent', t('Rent')], ['subscriptions', t('Subscriptions')]].map(([key, label]) => (
+                                {[['rent', t('Rent')], ['subscriptions', t('Subscriptions')], ['ads', t('Ads')]].map(([key, label]) => (
                                     <button key={key} type="button" role="tab" aria-selected={moneyView === key} onClick={() => setMoneyView(key)}
                                         className={`rounded-lg px-3 py-1.5 font-semibold transition ${moneyView === key ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
                                         {label}
@@ -463,7 +464,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                                         <span className="text-[10px] font-semibold tabular-nums text-gray-500 opacity-0 transition group-hover:opacity-100">{value ? short(value) : ''}</span>
                                         <div className="relative w-full flex-1 overflow-hidden rounded-xl bg-gray-50">
                                             <div
-                                                className={`absolute inset-x-0 bottom-0 rounded-xl transition-all duration-700 ease-out ${moneyView === 'rent' ? (current ? 'bg-gradient-to-t from-[#0E3B2E] to-[#1F9D6B]' : 'bg-[#0E3B2E]/70') : (current ? 'bg-gradient-to-t from-[#b9862c] to-[#F2C46D]' : 'bg-[#D9A441]/70')}`}
+                                                className={`absolute inset-x-0 bottom-0 rounded-xl transition-all duration-700 ease-out ${moneyView === 'rent' ? (current ? 'bg-gradient-to-t from-[#0E3B2E] to-[#1F9D6B]' : 'bg-[#0E3B2E]/70') : moneyView === 'ads' ? (current ? 'bg-gradient-to-t from-violet-700 to-violet-400' : 'bg-violet-500/60') : (current ? 'bg-gradient-to-t from-[#b9862c] to-[#F2C46D]' : 'bg-[#D9A441]/70')}`}
                                                 style={{ height: `${height}%` }}
                                                 title={`${monthLabel(item.month, 'long')}: ${money(value)}`}
                                             />

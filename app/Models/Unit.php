@@ -89,6 +89,10 @@ class Unit extends Model
     public function scopePubliclyListed($query)
     {
         return $query->where('status', 'available')
+            // An advertiser's building only while its paid listing runs.
+            ->whereHas('property', fn ($property) => $property->where(fn ($inner) => $inner
+                ->where('requires_listing', false)
+                ->orWhere('listed_until', '>', now())))
             ->whereDoesntHave('activeTenancy')
             ->whereDoesntHave('scheduledTenancy');
     }

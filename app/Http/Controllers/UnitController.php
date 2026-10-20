@@ -25,9 +25,13 @@ class UnitController extends Controller
     /**
      * Display a listing of units for a property.
      */
-    public function index(Request $request, Property $property): Response
+    public function index(Request $request, Property $property): Response|RedirectResponse
     {
         $this->authorizePropertyAccess($request->user(), $property);
+        // Advertisers have no tenants: their rooms are managed on the building page.
+        if ($request->user()->isAdvertiser()) {
+            return redirect()->route('properties.show', $property);
+        }
 
         $units = Unit::with(['unitType', 'images', 'activeTenancy.tenant'])
             ->where('property_id', $property->id)
@@ -156,9 +160,12 @@ class UnitController extends Controller
     /**
      * Display the specified unit.
      */
-    public function show(Request $request, Property $property, Unit $unit): Response
+    public function show(Request $request, Property $property, Unit $unit): Response|RedirectResponse
     {
         $this->authorizePropertyAccess($request->user(), $property);
+        if ($request->user()->isAdvertiser()) {
+            return redirect()->route('properties.show', $property);
+        }
         
         if ($unit->property_id !== $property->id) {
             abort(404);

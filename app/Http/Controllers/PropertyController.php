@@ -139,6 +139,7 @@ class PropertyController extends Controller
 
             $property = Property::create([
                 'owner_id' => $user->isAdmin() ? $data['owner_id'] : $user->id,
+                'requires_listing' => $user->isAdvertiser(),
                 'created_by' => $user->id,
                 'cell_id' => $data['cell_id'],
                 'name' => $data['name'],

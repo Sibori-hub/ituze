@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureOwnerIsApproved
 {
-    public function handle(Request $request, Closure $next, ?string $role = null): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
@@ -18,7 +18,7 @@ class EnsureOwnerIsApproved
 
         // Managers work in their owner's workspace while that owner's account is active and paid.
         if ($user->isManager()) {
-            abort_unless($role === null || $role === 'owner', 403);
+            abort_unless($roles === [] || in_array('owner', $roles, true), 403);
 
             return $user->employerWorkspaceIsActive() ? $next($request) : redirect()->route('account.status');
         }
@@ -27,8 +27,8 @@ class EnsureOwnerIsApproved
 
         // The owner workspace passes the role through the alias, e.g.
         // middleware('owner.approved:owner'), so advertisers are kept out.
-        if ($role !== null) {
-            abort_unless($user->role === $role, 403);
+        if ($roles !== []) {
+            abort_unless(in_array($user->role, $roles, true), 403);
         }
 
         if (!$user->isApproved() || $user->isExpired()) {

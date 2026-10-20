@@ -78,6 +78,9 @@ class MobileMoneyService
         if ($result->purpose === 'subscription' && ! $result->isPending()) {
             app(\App\Services\SubscriptionService::class)->syncMobileMoney($result);
         }
+        if ($result->purpose === 'ad_listings' && ! $result->isPending()) {
+            app(\App\Services\AdvertisingService::class)->syncMobileMoney($result);
+        }
 
         return $result;
     }

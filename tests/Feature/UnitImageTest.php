@@ -51,6 +51,8 @@ class UnitImageTest extends TestCase
 
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            $table->boolean('requires_listing')->default(false);
+            $table->timestamp('listed_until')->nullable();
             $table->unsignedSmallInteger('total_floors')->default(0);
             $table->unsignedTinyInteger('basement_floors')->default(0);
             $table->unsignedBigInteger('created_by')->nullable();
