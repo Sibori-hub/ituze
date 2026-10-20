@@ -121,6 +121,15 @@ class AdvertiserListingTest extends TestCase
         $this->assertTrue(Property::query()->where('name', 'Form Tower')->firstOrFail()->requires_listing);
     }
 
+    public function test_android_app_link_file_names_the_app_and_its_key(): void
+    {
+        $this->get('/.well-known/assetlinks.json')
+            ->assertOk()
+            ->assertJsonPath('0.target.package_name', 'com.qragroup.ituze')
+            ->assertJsonPath('0.relation.0', 'delegate_permission/common.handle_all_urls')
+            ->assertJsonCount(1, '0.target.sha256_cert_fingerprints');
+    }
+
     public function test_owner_buildings_stay_on_the_homepage_without_a_listing(): void
     {
         $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'expires_at' => now()->addMonth(), 'phone' => '0788000007']);

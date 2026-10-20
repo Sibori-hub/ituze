@@ -107,6 +107,16 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     ]);
 });
 
+// Digital Asset Links: proves the ITUZE Android app belongs to this site (full-screen app).
+Route::get('/.well-known/assetlinks.json', fn () => response()->json([[
+    'relation' => ['delegate_permission/common.handle_all_urls'],
+    'target' => [
+        'namespace' => 'android_app',
+        'package_name' => config('android.package'),
+        'sha256_cert_fingerprints' => array_values(config('android.sha256_fingerprints')),
+    ],
+]], 200, [], JSON_UNESCAPED_SLASHES))->name('android.assetlinks');
+
 Route::get('/spaces/{property}', [PublicPropertyController::class, 'show'])->name('public.properties.show');
 Route::get('/spaces/{property}/units/{unit}', [PublicPropertyController::class, 'showUnit'])->name('public.units.show');
 Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'inquire'])
