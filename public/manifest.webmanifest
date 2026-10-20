@@ -1,0 +1,24 @@
+{
+    "name": "ITUZE GREEN PLATFORM",
+    "short_name": "ITUZE",
+    "description": "Manage buildings, rooms, tenants, leases and payments, and find spaces to rent in Rwanda.",
+    "id": "/",
+    "start_url": "/dashboard?source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#ffffff",
+    "theme_color": "#0E3B2E",
+    "lang": "en",
+    "categories": ["business", "productivity", "finance"],
+    "icons": [
+        { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        { "name": "Dashboard", "url": "/dashboard?source=pwa", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+        { "name": "Properties", "url": "/properties?source=pwa", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+        { "name": "Payments", "url": "/payments?source=pwa", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    ]
+}

@@ -1,6 +1,7 @@
 import BrandLockup from '@/Components/BrandLockup';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
+import InstallAppBanner from '@/Components/InstallAppBanner';
 import InlineAlert from '@/Components/InlineAlert';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import SuccessModal from '@/Components/SuccessModal';
@@ -276,6 +277,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     {/* Page content */}
                     <main className="authenticated-page-content flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-smooth" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
                         <div className="flex-1 p-4 sm:p-6">
+                        <InstallAppBanner />
                         {pageProps.auth.subscription && (pageProps.auth.subscription.in_grace || (pageProps.auth.subscription.days_left !== null && pageProps.auth.subscription.days_left <= 7)) && !route().current('subscription.show') && (
                             <div className={`mx-auto mb-4 flex max-w-7xl flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${pageProps.auth.subscription.in_grace ? 'border-red-200 bg-red-50 text-red-950' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="status">
                                 <AlertTriangle size={18} className={`shrink-0 ${pageProps.auth.subscription.in_grace ? 'text-red-700' : 'text-amber-700'}`} aria-hidden="true" />

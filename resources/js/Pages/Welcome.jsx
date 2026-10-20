@@ -1,5 +1,6 @@
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/react';
 import BrandLockup from '@/Components/BrandLockup';
+import InstallAppBanner from '@/Components/InstallAppBanner';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import LegalModal from '@/Components/LegalModal';
 import {
@@ -263,6 +264,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                 </header>
 
                 <main>
+                    <div className="px-4 pt-3 sm:hidden"><InstallAppBanner className="!mb-3" /></div>
                     <section className="relative h-[31rem] overflow-hidden bg-[#0e3b2e]">
                         {heroSlides.map((item, index) => <img key={item.image} src={item.image} alt="" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === slide ? 'opacity-60' : 'opacity-0'}`} />)}
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent" />

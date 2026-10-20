@@ -63,3 +63,10 @@ createInertiaApp({
     },
     progress: false,
 });
+
+// Installable app (PWA): register the service worker once the page has loaded.
+if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('Service worker not registered', error));
+    });
+}
