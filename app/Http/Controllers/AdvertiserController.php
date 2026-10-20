@@ -62,6 +62,7 @@ class AdvertiserController extends Controller
             'adUnitPrice' => AdvertisingService::price(),
             'welcomeBonusUnits' => (int) config('legal.ad_welcome_bonus_units', 3),
             'bonusAvailable' => AdvertisingService::bonusFor($advertiser) > 0,
+            'hasPaid' => $advertiser->hasPaidForListings(),
             'listingDays' => AdvertisingService::LISTING_DAYS,
             'credits' => (int) $advertiser->ad_credits,
             'buildings' => $buildings,

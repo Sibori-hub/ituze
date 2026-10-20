@@ -89,8 +89,24 @@ class AdvertiserListingTest extends TestCase
         $this->get(route('public.properties.show', $this->building))->assertNotFound();
     }
 
+    public function test_nothing_with_buildings_is_allowed_before_the_first_payment(): void
+    {
+        $this->actingAs($this->advertiser);
+        foreach ([route('properties.index'), route('properties.create'), route('properties.show', $this->building)] as $url) {
+            $this->get($url)->assertRedirect(route('dashboard'));
+        }
+        $this->post(route('properties.store'), ['name' => 'Too early'])->assertRedirect(route('dashboard'));
+        $this->assertDatabaseMissing('properties', ['name' => 'Too early']);
+        $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('hasPaid', false));
+
+        $this->buy(1);
+        $this->get(route('properties.index'))->assertOk();
+        $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('hasPaid', true));
+    }
+
     public function test_advertisers_manage_buildings_but_have_no_tenants_or_leases(): void
     {
+        $this->buy(1);
         $this->actingAs($this->advertiser);
         $this->get(route('properties.index'))->assertOk();
         $this->get(route('properties.create'))->assertOk();
@@ -111,6 +127,7 @@ class AdvertiserListingTest extends TestCase
 
     public function test_a_building_an_advertiser_adds_waits_for_a_paid_listing(): void
     {
+        $this->buy(1);
         $province = \Illuminate\Support\Facades\DB::table('provinces')->insertGetId(['name' => 'Kigali City', 'created_at' => now(), 'updated_at' => now()]);
         $district = \Illuminate\Support\Facades\DB::table('districts')->insertGetId(['name' => 'Gasabo', 'province_id' => $province, 'created_at' => now(), 'updated_at' => now()]);
         $sector = \Illuminate\Support\Facades\DB::table('sectors')->insertGetId(['name' => 'Remera', 'district_id' => $district, 'created_at' => now(), 'updated_at' => now()]);

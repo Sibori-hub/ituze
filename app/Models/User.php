@@ -309,6 +309,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return ! $this->expires_at || $this->subscriptionGraceEndsAt()->isPast();
     }
 
+    /** An advertiser has paid for listings at least once (needed before adding buildings). */
+    public function hasPaidForListings(): bool
+    {
+        return $this->isAdvertiser()
+            && \App\Models\AdPurchase::query()->where('advertiser_id', $this->id)->where('status', \App\Models\AdPurchase::APPROVED)->exists();
+    }
+
     /** Self-registered owners pay a monthly subscription. */
     public function paysSubscription(): bool
     {

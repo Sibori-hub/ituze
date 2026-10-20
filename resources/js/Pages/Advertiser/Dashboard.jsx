@@ -30,7 +30,7 @@ const imageSource = (path) => (!path ? null : /^https?:\/\//i.test(path) ? path 
 
 export default function AdvertiserDashboard({
     status, adUnitPrice = 25000, welcomeBonusUnits = 3, bonusAvailable = true, listingDays = 60,
-    credits = 0, buildings = [], purchases = [], inquiries = [], phone,
+    credits = 0, buildings = [], purchases = [], inquiries = [], phone, hasPaid = false,
 }) {
     const { t, language } = useTranslation();
     const user = usePage().props.auth.user;
@@ -75,11 +75,22 @@ export default function AdvertiserDashboard({
                                 <p className="mt-1 text-sm text-gray-600">{t('Show your buildings to people looking for a space on the ITUZE homepage.')}</p>
                             </div>
                         </div>
-                        <Link href={route('properties.create')} className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgba(14,59,46,0.8)] transition hover:bg-[#124B3A]">
+                        {hasPaid && <Link href={route('properties.create')} className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgba(14,59,46,0.8)] transition hover:bg-[#124B3A]">
                             <Plus size={16} aria-hidden="true" />{t('Add a building')}
-                        </Link>
+                        </Link>}
                     </div>
                 </section>
+
+                {!hasPaid && (
+                    <section className="flex flex-wrap items-center gap-4 rounded-3xl border-2 border-dashed border-amber-300 bg-amber-50/70 p-5 sm:p-6" role="status">
+                        <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-[#D9A441] font-[Sora] text-xl font-bold text-[#0E3B2E]" aria-hidden="true">1</span>
+                        <div className="min-w-0 flex-1">
+                            <p className="font-[Sora] text-lg font-bold text-gray-900">{t('Start with your first payment')}</p>
+                            <p className="mt-0.5 text-sm text-gray-700">{t('Pay :price for your first listing (you also get :bonus free). Then you can add your buildings, rooms and photos and publish them.', { price: money(adUnitPrice), bonus: welcomeBonusUnits })}</p>
+                        </div>
+                        <a href="#buy-title" className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#124B3A]">{t('Pay now')}</a>
+                    </section>
+                )}
 
                 {/* Figures */}
                 <section aria-label={t('Summary')} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -103,7 +114,7 @@ export default function AdvertiserDashboard({
                     <section aria-labelledby="buildings-title" className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/[0.04] lg:col-span-3">
                         <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
                             <h2 id="buildings-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Building2 size={17} className="text-[#0E3B2E]" aria-hidden="true" />{t('Your buildings')}</h2>
-                            <Link href={route('properties.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Manage')}</Link>
+                            {hasPaid && <Link href={route('properties.index')} className="text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Manage')}</Link>}
                         </div>
                         {buildings.length ? (
                             <ul className="divide-y divide-gray-100">
@@ -137,8 +148,8 @@ export default function AdvertiserDashboard({
                             <div className="px-5 py-10 text-center">
                                 <Building2 size={30} className="mx-auto text-gray-300" aria-hidden="true" />
                                 <p className="mt-2 font-semibold text-gray-900">{t('No buildings yet')}</p>
-                                <p className="mt-1 text-sm text-gray-600">{t('Add a building with its rooms and photos, then publish it.')}</p>
-                                <Link href={route('properties.create')} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-semibold text-white"><Plus size={15} aria-hidden="true" />{t('Add a building')}</Link>
+                                <p className="mt-1 text-sm text-gray-600">{hasPaid ? t('Add a building with its rooms and photos, then publish it.') : t('Your buildings appear here after your first payment.')}</p>
+                                {hasPaid && <Link href={route('properties.create')} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2 text-sm font-semibold text-white"><Plus size={15} aria-hidden="true" />{t('Add a building')}</Link>}
                             </div>
                         )}
                     </section>
@@ -225,7 +236,7 @@ function BuyListings({ price, bonus, listingDays, defaultPhone, money }) {
                 if (result.request.status === 'successful') {
                     stop();
                     setState({ step: 'paid', error: '', purchase: result.purchase });
-                    router.reload({ only: ['credits', 'purchases', 'bonusAvailable'] });
+                    router.reload();
                 } else if (['failed', 'expired'].includes(result.request.status)) {
                     stop();
                     setState({ step: 'failed', error: result.request.failure_reason || t('The payment was not completed.'), purchase: null });

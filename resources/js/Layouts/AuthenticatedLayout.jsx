@@ -75,7 +75,8 @@ export default function AuthenticatedLayout({ header, children }) {
         user.role === 'admin'
             ? adminNavigation
             : user.role === 'advertiser'
-              ? advertiserNavigation
+              // Buildings open once the advertiser has paid for a first listing.
+              ? advertiserNavigation.filter((item) => pageProps.auth.advertiserPaid || item.href !== 'properties.index')
               : pageProps.auth.canHireManagers
                 ? [...ownerNavigation, { name: 'Managers', href: 'managers.index', icon: UserCog }, { name: 'Subscription', href: 'subscription.show', icon: Wallet }]
                 : ownerNavigation;

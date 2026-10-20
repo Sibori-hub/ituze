@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'phone.verified' => \App\Http\Middleware\EnsurePhoneIsVerified::class,
             'owner.approved' => \App\Http\Middleware\EnsureOwnerIsApproved::class,
             'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
+            'advertiser.paid' => \App\Http\Middleware\EnsureAdvertiserHasPaid::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -392,7 +392,7 @@ Route::middleware('auth')->group(function () {
 
     // Property management routes (requires verified email and completed profile)
     // Advertisers manage their buildings and rooms here too; tenancy routes below stay owner-only.
-    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser'])->prefix('properties')->name('properties.')->group(function () {
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser', 'advertiser.paid'])->prefix('properties')->name('properties.')->group(function () {
         Route::get('/', [PropertyController::class, 'index'])->name('index');
         Route::get('/create', [PropertyController::class, 'create'])->name('create');
         Route::post('/', [PropertyController::class, 'store'])->name('store');
@@ -465,7 +465,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])
-        ->middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser', 'throttle:10,1'])
+        ->middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser', 'advertiser.paid', 'throttle:10,1'])
         ->name('api.ai.generate-property-description');
 });
 
