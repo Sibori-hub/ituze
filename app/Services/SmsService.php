@@ -45,7 +45,8 @@ class SmsService
                 ->post('https://api.pindo.io/v1/sms/', [
                     'to' => $to,
                     'text' => $message,
-                    'sender' => (string) config('services.sms.pindo.sender', 'PindoTest'),
+                    // Pindo's own sender until our sender ID (e.g. ITUZE) is approved.
+                    'sender' => (string) (config('services.sms.pindo.sender') ?: 'PindoTest'),
                 ]),
             'africastalking' => Http::withHeaders(['apiKey' => (string) config('services.sms.africastalking.api_key')])
                 ->acceptJson()
