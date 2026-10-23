@@ -126,6 +126,9 @@ Route::get('/spaces/{property}/units/{unit}', [PublicPropertyController::class, 
 Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'inquire'])
     ->middleware('throttle:5,1')
     ->name('public.properties.inquiries.store');
+Route::post('/contact', [\App\Http\Controllers\ContactMessageController::class, 'store'])
+    ->middleware('throttle:10,10,contact-form')
+    ->name('contact.store');
 Route::post('/inquiries/{inquiry}/read', [PublicPropertyController::class, 'markRead'])
     ->middleware(['auth', 'verified', 'profile.complete', 'owner.approved:owner,advertiser'])
     ->name('inquiries.read');

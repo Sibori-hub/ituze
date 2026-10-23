@@ -1,5 +1,6 @@
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/react';
 import BrandLockup from '@/Components/BrandLockup';
+import ContactSection from '@/Components/ContactSection';
 import InstallAppBanner from '@/Components/InstallAppBanner';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import LegalModal from '@/Components/LegalModal';
@@ -161,7 +162,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     const [menuOpen, setMenuOpen] = useState(false);
     const [inquiryOpen, setInquiryOpen] = useState(false);
     const [legalDoc, setLegalDoc] = useState(null);
-    const [partnerContactSent, setPartnerContactSent] = useState(false);
     const [searchForm, setSearchForm] = useState({
         search: searchFilters.search || '',
         category: searchFilters.category || '',
@@ -172,7 +172,9 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     });
     const current = heroSlides[slide];
     const companyPhone = '+250793905166';
-    const companyPhoneDisplay = '0793905166';
+    const companyPhoneDisplay = '0793 905 166';
+    const companyEmail = 'info@qraltd.com';
+    const whatsappUrl = `https://wa.me/${companyPhone.replace('+', '')}?text=${encodeURIComponent(t('Hello Ituze, I am interested in finding a property for rent.'))}`;
     const companyAddress = 'KG 14 Ave, Kigali-Gisozi-Musezero: ULK-Kagugu Road, Source Oil Building';
     const companyMapUrl = 'https://www.google.com/maps/search/?api=1&query=KG%2014%20Ave%2C%20Kigali-Gisozi-Musezero%3A%20ULK-Kagugu%20Road%2C%20Source%20Oil%20Building';
 
@@ -253,6 +255,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Properties')}</a>
                             <a href="#cities" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Cities')}</a>
                             <a href="#enquiry" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Enquiry')}</a>
+                            <a href="#contact" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Contact us')}</a>
                         </nav>
                         <div className="flex items-center gap-2">
                             <LanguageSwitcher className="rounded-lg bg-[#0E3B2E] p-1" />
@@ -274,6 +277,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <a className="block py-2 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
                             <a className="block py-2 font-medium text-slate-700" href="#cities">{t('Cities')}</a>
                             <a className="block py-2 font-medium text-slate-700" href="#enquiry">{t('Enquiry')}</a>
+                            <a className="block py-2 font-medium text-slate-700" href="#contact">{t('Contact us')}</a>
                             {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-2 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
                             {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
                         </div>
@@ -426,7 +430,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </div>
                     </section>
 
-                    <section id="enquiry" className="mx-auto max-w-7xl px-6 py-12 lg:px-8"><div className="grid overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 lg:grid-cols-[1fr_420px]"><div className="relative min-h-80 bg-[#0e3b2e] p-8 text-white sm:p-12"><div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,59,46,.72),rgba(6,75,120,.8)),url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85')] bg-cover bg-center" /><div className="relative max-w-lg"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">{t('Need help finding a space?')}</p><h2 className="mt-4 text-4xl font-light">{t('Tell us what you are looking for.')}</h2><p className="mt-5 leading-7 text-white/75">{t('Our team can help you find an office, apartment, café, commercial building, or warehouse in Kigali.')}</p><button type="button" onClick={() => setInquiryOpen(true)} className="mt-8 inline-flex items-center gap-2 rounded bg-orange-500 px-6 py-3 font-bold hover:bg-orange-600">{t('Start an enquiry')} <MessageCircle size={17} /></button></div></div><div className="flex flex-col justify-center p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[.18em] text-orange-600">{t('Talk to Ituze')}</p><h3 className="mt-3 text-2xl font-bold">{t('A smoother way to rent.')}</h3><div className="mt-6 space-y-4 text-sm text-slate-600"><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('No account required to browse')}</p><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('Direct owner enquiries')}</p><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('WhatsApp-ready communication')}</p></div><div className="mt-7 flex flex-wrap gap-3 text-sm font-semibold text-[#0e3b2e]"><a href={`tel:${companyPhone}`}><Phone size={16} className="mr-1 inline" /> {t('Call us')}</a><a href="mailto:hello@ituze.rw"><Mail size={16} className="mr-1 inline" /> {t('Email us')}</a></div></div></div></section>
+                    <section id="enquiry" className="mx-auto max-w-7xl px-6 py-12 lg:px-8"><div className="grid overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 lg:grid-cols-[1fr_420px]"><div className="relative min-h-80 bg-[#0e3b2e] p-8 text-white sm:p-12"><div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,59,46,.72),rgba(6,75,120,.8)),url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85')] bg-cover bg-center" /><div className="relative max-w-lg"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">{t('Need help finding a space?')}</p><h2 className="mt-4 text-4xl font-light">{t('Tell us what you are looking for.')}</h2><p className="mt-5 leading-7 text-white/75">{t('Our team can help you find an office, apartment, café, commercial building, or warehouse in Kigali.')}</p><button type="button" onClick={() => setInquiryOpen(true)} className="mt-8 inline-flex items-center gap-2 rounded bg-orange-500 px-6 py-3 font-bold hover:bg-orange-600">{t('Start an enquiry')} <MessageCircle size={17} /></button></div></div><div className="flex flex-col justify-center p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[.18em] text-orange-600">{t('Talk to Ituze')}</p><h3 className="mt-3 text-2xl font-bold">{t('A smoother way to rent.')}</h3><div className="mt-6 space-y-4 text-sm text-slate-600"><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('No account required to browse')}</p><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('Direct owner enquiries')}</p><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('WhatsApp-ready communication')}</p></div><div className="mt-7 flex flex-wrap gap-3 text-sm font-semibold text-[#0e3b2e]"><a href={`tel:${companyPhone}`}><Phone size={16} className="mr-1 inline" /> {t('Call us')}</a><a href="mailto:info@qraltd.com"><Mail size={16} className="mr-1 inline" /> {t('Email us')}</a></div></div></div></section>
                     <section className="border-t border-slate-100 bg-[#f6f8fa]">
                         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
                             <div className="text-center">
@@ -453,45 +457,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             </div>
                         </div>
                     </section>
-                    <section id="partner-contact" className="bg-white">
-                        <div className="mx-auto grid max-w-7xl gap-0 px-6 py-14 lg:grid-cols-2 lg:px-8">
-                            <div className="rounded-l-2xl bg-[#0e3b2e] p-8 text-white sm:p-12">
-                                <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">{t('Partner with us')}</p>
-                                <h2 className="mt-3 text-3xl font-light sm:text-4xl">{t('Let’s work together')}</h2>
-                                <p className="mt-4 max-w-lg text-sm leading-7 text-white/75">{t('Tell us how you would like to work with ITUZE GREEN PLATFORM. Complete the form and our team will contact you.')}</p>
-                                {partnerContactSent ? (
-                                    <div className="mt-8 rounded-xl bg-white/10 p-5 text-sm leading-6 text-white">
-                                        {t('Thank you. Your partner enquiry has been received and our team will contact you soon.')}
-                                    </div>
-                                ) : (
-                                    <form className="mt-8 space-y-4" onSubmit={(event) => { event.preventDefault(); setPartnerContactSent(true); }}>
-                                        <div className="grid gap-4 sm:grid-cols-2">
-                                            <input required placeholder={t('Your name')} className="rounded-xl border-0 bg-white/95 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-300" />
-                                            <input required type="tel" placeholder={t('Phone number')} className="rounded-xl border-0 bg-white/95 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-300" />
-                                        </div>
-                                        <input required type="email" placeholder={t('Email address')} className="w-full rounded-xl border-0 bg-white/95 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-300" />
-                                        <select required defaultValue="" className="w-full rounded-xl border-0 bg-white/95 text-slate-900 focus:ring-2 focus:ring-orange-300">
-                                            <option value="" disabled>{t('How would you like to partner?')}</option>
-                                            <option>{t('List a property')}</option>
-                                            <option>{t('Relocation support')}</option>
-                                            <option>{t('Business partnership')}</option>
-                                            <option>{t('Other partnership')}</option>
-                                        </select>
-                                        <textarea required rows="4" placeholder={t('Tell us more about your partnership idea...')} className="w-full rounded-xl border-0 bg-white/95 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-300" />
-                                        <button type="submit" className="inline-flex items-center gap-2 rounded bg-orange-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-600">{t('Contact us')} <ArrowRight size={16} /></button>
-                                    </form>
-                                )}
-                            </div>
-                            <div className="relative min-h-[28rem] overflow-hidden rounded-r-2xl bg-slate-200">
-                                <iframe title={t('ITUZE GREEN PLATFORM location map')} src={`https://www.google.com/maps?q=${encodeURIComponent(companyAddress)}&output=embed`} className="h-full min-h-[28rem] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-                                <a href={companyMapUrl} target="_blank" rel="noreferrer" className="absolute bottom-4 left-4 right-4 flex items-center gap-3 rounded-xl bg-white/95 p-4 text-sm text-slate-700 shadow-lg transition hover:bg-white sm:right-auto sm:max-w-md">
-                                    <MapPin size={20} className="shrink-0 text-orange-600" />
-                                    <span className="min-w-0 flex-1"><span className="block font-bold text-slate-900">{t('Find us on Google Maps')}</span><span className="mt-0.5 block">{companyAddress}</span></span>
-                                    <ArrowRight size={16} className="shrink-0 text-[#064b78]" />
-                                </a>
-                            </div>
-                        </div>
-                    </section>
+                    <ContactSection phone={companyPhone} phoneDisplay={companyPhoneDisplay} email={companyEmail} address={companyAddress} mapUrl={companyMapUrl} whatsappUrl={whatsappUrl} />
                 </main>
 
                 <footer className="relative bg-[#063f67] text-white">
@@ -506,17 +472,17 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                 <p className="mt-4 max-w-xs text-sm leading-7 text-white/65">{t('Beautiful spaces, better business, and a simpler way to rent in Rwanda.')}</p>
                                 <div className="mt-6 flex gap-3">
                                     <a href={`tel:${companyPhone}`} aria-label={t('Call Ituze')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><Phone size={17} /></a>
-                                    <a href={`mailto:hello@ituze.rw`} aria-label={t('Email Ituze')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><Mail size={17} /></a>
+                                    <a href={`mailto:info@qraltd.com`} aria-label={t('Email Ituze')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><Mail size={17} /></a>
                                     <a href="#enquiry" aria-label={t('Send an enquiry')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><MessageCircle size={17} /></a>
                                 </div>
                             </div>
-                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#cities">{t('Explore by cities')}</a><a className="block transition hover:text-white" href="#enquiry">{t('Send an enquiry')}</a></div></div>
+                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#cities">{t('Explore by cities')}</a><a className="block transition hover:text-white" href="#enquiry">{t('Send an enquiry')}</a><a className="block transition hover:text-white" href="#contact">{t('Contact us')}</a></div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
-                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:hello@ituze.rw`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> hello@ituze.rw</a></div></div>
+                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:info@qraltd.com`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> {companyEmail}</a></div></div>
                         </div>
                         <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
                     </div>
-                    <a href={`https://web.whatsapp.com/send?phone=${companyPhone.replace('+', '')}&text=${encodeURIComponent(t('Hello Ituze, I am interested in finding a property for rent.'))}`} target="_blank" rel="noreferrer" aria-label={t('Chat with Ituze on WhatsApp Web')} className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-xl shadow-black/20 transition hover:scale-105 hover:bg-[#1fba59] sm:bottom-8 sm:right-10">
+                    <a href={whatsappUrl} target="_blank" rel="noreferrer" aria-label={t('Chat with Ituze on WhatsApp')} className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-xl shadow-black/20 transition hover:scale-105 hover:bg-[#1fba59] sm:bottom-8 sm:right-10">
                         <MessageCircle size={27} />
                     </a>
                 </footer>
