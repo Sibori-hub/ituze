@@ -48,23 +48,39 @@ class PhonePasswordResetTest extends TestCase
         $code = $this->lastSmsCode();
 
         $this->get(route('password.request'))
-            ->assertInertia(fn ($page) => $page->where('phoneReset.phone', '078****567'));
+            ->assertInertia(fn ($page) => $page->where('phoneReset.phone', '078****567')->where('phoneReset.verified', false));
+
+        // No new password before the code is confirmed.
+        $this->post(route('password.phone.reset'), [
+            'password' => 'New-password-2026',
+            'password_confirmation' => 'New-password-2026',
+        ])->assertSessionHasErrors('otp');
+        $this->assertTrue(Hash::check('old-password', $user->fresh()->password));
+        $this->post(route('password.phone.send'), ['phone' => '0781234567']);
+        $code = $this->lastSmsCode();
+
+        // A wrong code does not open the password step.
+        $this->post(route('password.phone.verify'), ['otp' => $code === '000000' ? '111111' : '000000'])->assertSessionHasErrors('otp');
+        $this->get(route('password.request'))->assertInertia(fn ($page) => $page->where('phoneReset.verified', false));
+
+        // The right code does.
+        $this->post(route('password.phone.verify'), ['otp' => $code])->assertSessionHasNoErrors();
+        $this->get(route('password.request'))->assertInertia(fn ($page) => $page->where('phoneReset.verified', true));
+        $this->assertNull($user->fresh()->password_otp, 'The code is used up once confirmed.');
 
         $this->post(route('password.phone.reset'), [
-            'otp' => $code,
             'password' => 'New-password-2026',
             'password_confirmation' => 'New-password-2026',
         ])->assertRedirect(route('login'));
-
         $this->assertTrue(Hash::check('New-password-2026', $user->fresh()->password));
-        $this->assertNull($user->fresh()->password_otp);
 
-        // The same code cannot be used a second time.
-        $this->withSession(['password_reset.phone' => '0781234567'])->post(route('password.phone.reset'), [
-            'otp' => $code,
+        // The step closes after saving, and the same code cannot be used again.
+        $this->post(route('password.phone.reset'), [
             'password' => 'Another-password-1',
             'password_confirmation' => 'Another-password-1',
         ])->assertSessionHasErrors('otp');
+        $this->withSession(['password_reset.phone' => '0781234567'])
+            ->post(route('password.phone.verify'), ['otp' => $code])->assertSessionHasErrors('otp');
         $this->assertTrue(Hash::check('New-password-2026', $user->fresh()->password));
     }
 
@@ -75,11 +91,7 @@ class PhonePasswordResetTest extends TestCase
             ->assertSessionHas('status', self::SENT);
         Http::assertNothingSent();
 
-        $this->post(route('password.phone.reset'), [
-            'otp' => '123456',
-            'password' => 'New-password-2026',
-            'password_confirmation' => 'New-password-2026',
-        ])->assertSessionHasErrors('otp');
+        $this->post(route('password.phone.verify'), ['otp' => '123456'])->assertSessionHasErrors('otp');
     }
 
     public function test_wrong_codes_lock_the_code_and_requests_are_limited(): void
@@ -92,19 +104,11 @@ class PhonePasswordResetTest extends TestCase
         $wrong = $code === '000000' ? '111111' : '000000';
 
         for ($i = 0; $i < 5; $i++) {
-            $this->post(route('password.phone.reset'), [
-                'otp' => $wrong,
-                'password' => 'New-password-2026',
-                'password_confirmation' => 'New-password-2026',
-            ])->assertSessionHasErrors('otp');
+            $this->post(route('password.phone.verify'), ['otp' => $wrong])->assertSessionHasErrors('otp');
         }
 
         // Five wrong tries burn the code, so even the right one fails now.
-        $this->post(route('password.phone.reset'), [
-            'otp' => $code,
-            'password' => 'New-password-2026',
-            'password_confirmation' => 'New-password-2026',
-        ])->assertSessionHasErrors('otp');
+        $this->post(route('password.phone.verify'), ['otp' => $code])->assertSessionHasErrors('otp');
         $this->assertTrue(Hash::check('old-password', $user->fresh()->password));
 
         // At most 3 codes per number every 10 minutes.

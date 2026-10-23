@@ -23,6 +23,8 @@ class PhonePasswordResetController extends Controller
 {
     public const SESSION_PHONE = 'password_reset.phone';
 
+    public const SESSION_VERIFIED = 'password_reset.verified';
+
     public function __construct(protected OtpService $otp)
     {
     }
@@ -53,19 +55,17 @@ class PhonePasswordResetController extends Controller
         }
 
         $request->session()->put(self::SESSION_PHONE, $phone);
+        $request->session()->forget(self::SESSION_VERIFIED);
 
         return back()->with('status', 'If this number has an account, we sent a 6-digit code by SMS.');
     }
 
     /**
-     * Check the code and save the new password.
+     * Check the code first; only a correct code opens the new-password step.
      */
-    public function update(Request $request): RedirectResponse
+    public function verify(Request $request): RedirectResponse
     {
-        $request->validate([
-            'otp' => ['required', 'string', 'size:6'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        $request->validate(['otp' => ['required', 'string', 'size:6']]);
 
         $phone = $request->session()->get(self::SESSION_PHONE);
         $user = $phone ? User::query()->where('phone', $phone)->first() : null;
@@ -75,13 +75,40 @@ class PhonePasswordResetController extends Controller
             throw ValidationException::withMessages(['otp' => OtpService::failureMessage($result)]);
         }
 
+        // The code is used up; this session may now set a new password for a short time.
+        $request->session()->put(self::SESSION_VERIFIED, [
+            'user_id' => $user->id,
+            'until' => now()->addMinutes(OtpService::CODE_TTL_MINUTES)->getTimestamp(),
+        ]);
+
+        return back()->with('status', 'Code confirmed. Now choose a new password.');
+    }
+
+    /**
+     * Save the new password, after a correct code.
+     */
+    public function update(Request $request): RedirectResponse
+    {
+        $user = self::verifiedUser($request);
+
+        if (! $user) {
+            $this->forget($request);
+
+            return redirect()->route('password.request')
+                ->withErrors(['otp' => 'This step has expired. Please request a new code.']);
+        }
+
+        $request->validate([
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
         $user->forceFill([
             'password' => Hash::make($request->input('password')),
             'remember_token' => Str::random(60),
         ])->save();
 
         event(new PasswordReset($user));
-        $request->session()->forget(self::SESSION_PHONE);
+        $this->forget($request);
 
         return redirect()->route('login')->with('status', __('passwords.reset'));
     }
@@ -91,15 +118,32 @@ class PhonePasswordResetController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        $request->session()->forget(self::SESSION_PHONE);
+        $this->forget($request);
 
         return back();
+    }
+
+    private function forget(Request $request): void
+    {
+        $request->session()->forget([self::SESSION_PHONE, self::SESSION_VERIFIED]);
+    }
+
+    /** The account whose code was confirmed in this session, while that step is still open. */
+    private static function verifiedUser(Request $request): ?User
+    {
+        $verified = $request->session()->get(self::SESSION_VERIFIED);
+
+        if (! is_array($verified) || ($verified['until'] ?? 0) < now()->getTimestamp()) {
+            return null;
+        }
+
+        return User::query()->find($verified['user_id'] ?? null);
     }
 
     /**
      * What the forgot-password page needs for the code step, if a code was requested.
      *
-     * @return array{phone: string, expiresIn: int}|null
+     * @return array{phone: string, expiresIn: int, verified: bool}|null
      */
     public static function pendingReset(Request $request): ?array
     {
@@ -114,6 +158,7 @@ class PhonePasswordResetController extends Controller
         return [
             'phone' => substr($phone, 0, 3).'****'.substr($phone, -3),
             'expiresIn' => $user ? OtpService::secondsLeft($user, 'password_otp') : OtpService::CODE_TTL_MINUTES * 60,
+            'verified' => self::verifiedUser($request) !== null,
         ];
     }
 }

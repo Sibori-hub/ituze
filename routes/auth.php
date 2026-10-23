@@ -46,13 +46,17 @@ Route::middleware('guest')->group(function () {
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
         ->name('password.email');
 
-    // Forgot password by phone: SMS code, then code + new password.
+    // Forgot password by phone: SMS code, check the code, then the new password.
     Route::post('forgot-password/phone', [PhonePasswordResetController::class, 'store'])
-        ->middleware('throttle:5,1')
+        ->middleware('throttle:5,1,password-sms-send')
         ->name('password.phone.send');
 
+    Route::post('forgot-password/phone/verify', [PhonePasswordResetController::class, 'verify'])
+        ->middleware('throttle:6,1,password-sms-verify')
+        ->name('password.phone.verify');
+
     Route::post('reset-password/phone', [PhonePasswordResetController::class, 'update'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:6,1,password-sms-save')
         ->name('password.phone.reset');
 
     Route::delete('forgot-password/phone', [PhonePasswordResetController::class, 'destroy'])

@@ -80,10 +80,63 @@ function PhoneSendCode() {
     );
 }
 
-function PhoneNewPassword({ phoneReset }) {
+function StartAgainButton() {
+    const { t } = useTranslation();
+
+    return (
+        <button
+            type="button"
+            onClick={() => router.delete(route('password.phone.cancel'), { preserveScroll: true })}
+            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E] focus-visible:ring-offset-2"
+        >
+            {t('Use another number or send a new code')}
+        </button>
+    );
+}
+
+/** Step 2: only the code. The new-password boxes appear after the code is confirmed. */
+function PhoneEnterCode({ phoneReset }) {
+    const { t } = useTranslation();
+    const { data, setData, post, processing, errors } = useForm({ otp: '' });
+
+    const submit = (e) => {
+        e.preventDefault();
+        post(route('password.phone.verify'), { preserveScroll: true, onError: () => setData('otp', '') });
+    };
+
+    return (
+        <form onSubmit={submit} noValidate>
+            <p className="mb-4 text-sm text-gray-600">
+                {t('Enter the 6-digit code we sent by SMS to :phone.', { phone: phoneReset.phone })}
+            </p>
+
+            <InputLabel htmlFor="otp" value={t('Code from the SMS')} />
+            <TextInput
+                id="otp"
+                name="otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={data.otp}
+                className="mt-1 block w-full text-center text-lg tracking-[0.4em]"
+                isFocused={true}
+                onChange={(e) => setData('otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                aria-describedby={errors.otp ? 'otp-error' : undefined}
+            />
+            <InputError id="otp-error" message={errors.otp ? t(errors.otp) : null} className="mt-2" role="alert" />
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <StartAgainButton />
+                <PrimaryButton disabled={processing || data.otp.length !== 6}>{t('Check code')}</PrimaryButton>
+            </div>
+        </form>
+    );
+}
+
+/** Step 3: reached only after a correct code. */
+function PhoneChoosePassword() {
     const { t } = useTranslation();
     const { data, setData, post, processing, errors, reset } = useForm({
-        otp: '',
         password: '',
         password_confirmation: '',
     });
@@ -97,39 +150,19 @@ function PhoneNewPassword({ phoneReset }) {
 
     return (
         <form onSubmit={submit} noValidate>
-            <p className="mb-4 text-sm text-gray-600">
-                {t('Enter the 6-digit code we sent by SMS to :phone, then choose a new password.', { phone: phoneReset.phone })}
-            </p>
-
-            <InputLabel htmlFor="otp" value={t('Code from the SMS')} />
+            <InputLabel htmlFor="password" value={t('New password')} />
             <TextInput
-                id="otp"
-                name="otp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={data.otp}
-                className="mt-1 block w-full tracking-[0.4em]"
+                id="password"
+                type="password"
+                name="password"
+                value={data.password}
+                className="mt-1 block w-full"
+                autoComplete="new-password"
                 isFocused={true}
-                onChange={(e) => setData('otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
-                aria-describedby={errors.otp ? 'otp-error' : undefined}
+                onChange={(e) => setData('password', e.target.value)}
+                aria-describedby={errors.password ? 'password-error' : undefined}
             />
-            <InputError id="otp-error" message={errors.otp ? t(errors.otp) : null} className="mt-2" />
-
-            <div className="mt-4">
-                <InputLabel htmlFor="password" value={t('New password')} />
-                <TextInput
-                    id="password"
-                    type="password"
-                    name="password"
-                    value={data.password}
-                    className="mt-1 block w-full"
-                    autoComplete="new-password"
-                    onChange={(e) => setData('password', e.target.value)}
-                    aria-describedby={errors.password ? 'password-error' : undefined}
-                />
-                <InputError id="password-error" message={errors.password ? t(errors.password) : null} className="mt-2" />
-            </div>
+            <InputError id="password-error" message={errors.password ? t(errors.password) : null} className="mt-2" />
 
             <div className="mt-4">
                 <InputLabel htmlFor="password_confirmation" value={t('Confirm Password')} />
@@ -145,14 +178,8 @@ function PhoneNewPassword({ phoneReset }) {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <button
-                    type="button"
-                    onClick={() => router.delete(route('password.phone.cancel'), { preserveScroll: true })}
-                    className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E] focus-visible:ring-offset-2"
-                >
-                    {t('Use another number or send a new code')}
-                </button>
-                <PrimaryButton disabled={processing || data.otp.length !== 6}>{t('Save new password')}</PrimaryButton>
+                <StartAgainButton />
+                <PrimaryButton disabled={processing}>{t('Save new password')}</PrimaryButton>
             </div>
         </form>
     );
@@ -200,7 +227,7 @@ export default function ForgotPassword({ status, phoneReset }) {
                 </div>
             )}
 
-            {method === 'email' ? <EmailReset /> : phoneReset ? <PhoneNewPassword phoneReset={phoneReset} /> : <PhoneSendCode />}
+            {method === 'email' ? <EmailReset /> : !phoneReset ? <PhoneSendCode /> : phoneReset.verified ? <PhoneChoosePassword /> : <PhoneEnterCode phoneReset={phoneReset} />}
         </GuestLayout>
     );
 }
