@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\MobileAuthController;
+use App\Models\User;
+use App\Notifications\NewRegistrationAwaitingApproval;
 use App\Support\IdentityNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
 class ProfileCompletionController extends Controller
@@ -54,6 +57,7 @@ class ProfileCompletionController extends Controller
 
             $user = $request->user();
             $previousDocument = $user->identity_document;
+            $firstSubmission = ! $user->profile_completed;
             $updated = $user->update([
                 'national_id'       => $validated['national_id'],
                 'identity_document_type' => $validated['identity_document_type'],
@@ -77,6 +81,14 @@ class ProfileCompletionController extends Controller
             // A resubmission replaces the earlier ID file.
             if ($previousDocument && $previousDocument !== $user->identity_document) {
                 Storage::disk('local')->delete($previousDocument);
+            }
+
+            // Tell every active admin once, so the new account can be reviewed.
+            if ($firstSubmission && $user->status === 'pending') {
+                Notification::send(
+                    User::query()->where('role', 'admin')->whereNull('disabled_at')->get(),
+                    new NewRegistrationAwaitingApproval($user),
+                );
             }
 
             Log::info('Profile completed successfully for user ID: ' . $request->user()->id);

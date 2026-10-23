@@ -333,6 +333,36 @@ class AuthSecurityTest extends TestCase
         \Illuminate\Support\Facades\Storage::disk('local')->assertExists($user->fresh()->identity_document);
     }
 
+    public function test_admins_get_one_sms_when_a_new_registration_waits_for_approval(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $sectorId = \Illuminate\Support\Facades\DB::table('sectors')->insertGetId(['name' => 'Kimihurura', 'district_id' => \Illuminate\Support\Facades\DB::table('districts')->insertGetId(['name' => 'Gasabo', 'province_id' => \Illuminate\Support\Facades\DB::table('provinces')->insertGetId(['name' => 'Kigali'])])]);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'phone' => '0783163187']);
+        $disabledAdmin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'phone' => '0788000001', 'disabled_at' => now()]);
+        $user = $this->owner(['first_name' => 'Jean', 'last_name' => 'Uwase', 'status' => 'pending', 'expires_at' => null, 'profile_completed' => false]);
+        $submit = fn () => $this->actingAs($user)->post(route('profile.complete.store'), [
+            'identity_document_type' => 'nida',
+            'national_id' => '1199080012345012',
+            'sector_id' => $sectorId,
+            'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->image('id.jpg'),
+        ])->assertSessionHasNoErrors();
+
+        $submit();
+        $submit(); // a resubmission does not alert the admins again
+
+        Notification::assertSentToTimes($admin, \App\Notifications\NewRegistrationAwaitingApproval::class, 1);
+        Notification::assertNotSentTo($disabledAdmin, \App\Notifications\NewRegistrationAwaitingApproval::class);
+        Notification::assertSentTo($admin, \App\Notifications\NewRegistrationAwaitingApproval::class, function ($notification, $channels) use ($admin) {
+            $sms = $notification->toSms($admin);
+
+            return in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true)
+                && str_starts_with($sms, 'Hello Admin, Jean Uwase (owner, 0781234567) registered on ITUZEAPP')
+                && mb_strlen($sms) <= 160;
+        });
+    }
+
     public function test_admin_can_approve_an_owner_from_the_mobile_api(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
