@@ -1,9 +1,22 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmActionModal from '@/Components/ConfirmActionModal';
 import { Head, router, usePage } from '@inertiajs/react';
-import { CheckCircle2, XCircle, IdCard, MapPin, Eye, X } from 'lucide-react';
+import { CheckCircle2, XCircle, IdCard, MapPin, Eye, X, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/localization';
+
+/** Image preview of an ID file; PDFs (which cannot show as an image) get a file icon. */
+function DocumentThumb({ url }) {
+    const [failed, setFailed] = useState(false);
+
+    return failed ? (
+        <span className="flex h-32 items-center justify-center bg-gray-50 text-gray-400" aria-hidden="true">
+            <FileText size={26} />
+        </span>
+    ) : (
+        <img src={url} alt="" onError={() => setFailed(true)} className="block h-32 w-full bg-gray-50 object-cover" />
+    );
+}
 
 function ProfileModal({ user, onClose, onApprove, onReject }) {
     const { t } = useTranslation();
@@ -40,6 +53,12 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
                 }),
         ],
     ].filter(([, value]) => Boolean(value));
+
+    const isPassport = user.identity_document_type === 'passport';
+    const sides = [
+        user.identity_documents?.front && { side: 'front', label: t(isPassport ? 'Passport photo page' : 'Front of the ID card') },
+        user.identity_documents?.back && { side: 'back', label: t('Back of the ID card') },
+    ].filter(Boolean);
 
     return (
         <div
@@ -109,6 +128,39 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
                             </div>
                         ))}
                     </dl>
+
+                    <section className="mt-6" aria-labelledby="identity-documents-title">
+                        <h3 id="identity-documents-title" className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                            <IdCard size={15} aria-hidden="true" />
+                            {t('Identity document files')}
+                        </h3>
+                        {sides.length === 0 ? (
+                            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                                {t('No ID files were uploaded (this account registered before ID uploads were required).')}
+                            </p>
+                        ) : (
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                {sides.map(({ side, label }) => {
+                                    const url = route('admin.approvals.identity-document', { user: user.id, side });
+                                    return (
+                                        <a
+                                            key={side}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="group block overflow-hidden rounded-xl border border-gray-200 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20"
+                                        >
+                                            <DocumentThumb url={url} />
+                                            <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700">
+                                                {label}
+                                                <span className="text-[#1F7A5A] group-hover:underline">{t('Open')}</span>
+                                            </span>
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
                 </div>
 
                 <footer className="flex gap-3 border-t border-black/5 bg-gray-50 px-5 py-4 sm:px-6">

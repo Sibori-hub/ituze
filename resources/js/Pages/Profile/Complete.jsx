@@ -2,18 +2,19 @@ import InputError from '@/Components/InputError';
 import RwandaFlag from '@/Components/RwandaFlag';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { ArrowRight, BadgeCheck, BookUser, Camera, Check, IdCard, Loader2, MapPin, Trash2, UploadCloud } from 'lucide-react';
+import { ArrowRight, BadgeCheck, BookUser, Camera, Check, FileText, IdCard, Loader2, MapPin, Trash2, UploadCloud } from 'lucide-react';
 import { displayPhone, formatNida } from '@/lib/rwanda';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024; // matches max:2048 on the server
+const MAX_ID_BYTES = 5 * 1024 * 1024; // matches max:5120 on the server
 
 /** Resizes a large photo to at most 1280 px as JPEG; returns the original if the browser cannot read it. */
-async function shrinkPhoto(file) {
+async function shrinkPhoto(file, maxSide = 1280) {
     try {
         const bitmap = await createImageBitmap(file);
-        const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
+        const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(bitmap.width * scale);
         canvas.height = Math.round(bitmap.height * scale);
@@ -78,6 +79,109 @@ function Section({ icon: Icon, title, hint, done, children }) {
     );
 }
 
+/** One side of the ID document: a photo (shrunk when large) or a PDF, with a preview. */
+function IdDocumentUpload({ id, label, file, onChange, error }) {
+    const { t } = useTranslation();
+    const input = useRef(null);
+    const [preview, setPreview] = useState(null);
+    const [localError, setLocalError] = useState('');
+
+    useEffect(() => {
+        if (!file || file.type === 'application/pdf') {
+            setPreview(null);
+            return undefined;
+        }
+        const url = URL.createObjectURL(file);
+        setPreview(url);
+
+        return () => URL.revokeObjectURL(url);
+    }, [file]);
+
+    const choose = async (picked) => {
+        if (!picked) return;
+        const isPdf = picked.type === 'application/pdf' || /\.pdf$/i.test(picked.name);
+        const isImage = picked.type ? picked.type.startsWith('image/') : /\.(jpe?g|png|webp)$/i.test(picked.name);
+        if (!isPdf && !isImage) {
+            setLocalError(t('Please choose a photo (JPG, PNG or WEBP) or a PDF.'));
+            return;
+        }
+        // Keep ID photos sharp enough to read: shrink only large ones, to at most 2000 px.
+        const ready = isImage && picked.size > MAX_ID_BYTES ? await shrinkPhoto(picked, 2000) : picked;
+        if (ready.size > MAX_ID_BYTES) {
+            setLocalError(t('This file is :size MB. The maximum is 5 MB.', { size: (ready.size / 1048576).toFixed(1) }));
+            return;
+        }
+        setLocalError('');
+        onChange(ready);
+    };
+
+    const remove = () => {
+        onChange(null);
+        if (input.current) input.current.value = '';
+    };
+
+    const message = localError || (error ? t(error) : '');
+
+    return (
+        <div>
+            <p id={`${id}-label`} className="mb-1.5 text-[13px] font-medium text-gray-700">{label}</p>
+            <div
+                className={`flex items-center gap-3 rounded-xl border-2 border-dashed p-3 ${
+                    message ? 'border-red-300' : file ? 'border-emerald-300 bg-emerald-50/40' : 'border-gray-200'
+                }`}
+            >
+                <span className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 ring-1 ring-gray-100">
+                    {preview ? (
+                        <img src={preview} alt={t(':label preview', { label })} className="h-full w-full object-cover" />
+                    ) : file ? (
+                        <FileText size={22} className="text-[#0E3B2E]" aria-hidden="true" />
+                    ) : (
+                        <IdCard size={22} className="text-gray-400" aria-hidden="true" />
+                    )}
+                </span>
+                <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs text-gray-500">{file ? file.name : t('JPG, PNG, WEBP or PDF, up to 5 MB')}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => input.current?.click()}
+                            aria-describedby={`${id}-label${message ? ` ${id}-error` : ''}`}
+                            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#0E3B2E] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#124B3A] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/25"
+                        >
+                            <UploadCloud size={14} aria-hidden="true" />
+                            {file ? t('Change file') : t('Upload')}
+                        </button>
+                        {file && (
+                            <button
+                                type="button"
+                                onClick={remove}
+                                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/15"
+                            >
+                                <Trash2 size={14} aria-hidden="true" />
+                                {t('Remove')}
+                            </button>
+                        )}
+                    </div>
+                </div>
+                <input
+                    ref={input}
+                    id={id}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={(e) => choose(e.target.files?.[0])}
+                    className="hidden"
+                    aria-labelledby={`${id}-label`}
+                />
+            </div>
+            {message && (
+                <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-medium text-red-600">
+                    {message}
+                </p>
+            )}
+        </div>
+    );
+}
+
 export default function Complete({ registrationDetails, locations }) {
     const { t } = useTranslation();
     const { auth } = usePage().props;
@@ -90,6 +194,8 @@ export default function Complete({ registrationDetails, locations }) {
         national_id: '',
         identity_document_type: 'nida',
         profile_photo: null,
+        identity_document_front: null,
+        identity_document_back: null,
         sector_id: '',
     });
 
@@ -114,9 +220,11 @@ export default function Complete({ registrationDetails, locations }) {
 
     const isPassport = data.identity_document_type === 'passport';
     const idValid = isPassport ? /^[A-Z0-9]{6,20}$/.test(data.national_id) : /^\d{16}$/.test(data.national_id);
+    const documentsDone = Boolean(data.identity_document_front) && (isPassport || Boolean(data.identity_document_back));
+    const idDone = idValid && documentsDone;
     const photoDone = Boolean(data.profile_photo);
     const locationDone = Boolean(data.sector_id);
-    const doneCount = [photoDone, idValid, locationDone].filter(Boolean).length;
+    const doneCount = [photoDone, idDone, locationDone].filter(Boolean).length;
     const isFormValid = doneCount === 3;
 
     const initials = `${registration.first_name?.[0] ?? ''}${registration.last_name?.[0] ?? ''}`.toUpperCase();
@@ -151,8 +259,9 @@ export default function Complete({ registrationDetails, locations }) {
 
     const changeIdType = (type) => {
         if (type === data.identity_document_type) return;
-        setData((current) => ({ ...current, identity_document_type: type, national_id: '' }));
-        clearErrors('national_id');
+        // The back side only exists for a NIDA card.
+        setData((current) => ({ ...current, identity_document_type: type, national_id: '', identity_document_back: null }));
+        clearErrors('national_id', 'identity_document_back');
     };
 
     const changeIdNumber = (value) => {
@@ -287,7 +396,7 @@ export default function Complete({ registrationDetails, locations }) {
                     <InputError message={errors.profile_photo} className="mt-2" />
                 </Section>
 
-                <Section icon={IdCard} title={t('Identity document')} hint={t('Our team uses this to confirm your identity.')} done={idValid}>
+                <Section icon={IdCard} title={t('Identity document')} hint={t('Our team uses this to confirm your identity.')} done={idDone}>
                     <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('Identity document')}>
                         {[
                             { value: 'nida', label: t('National ID (NIDA)'), short: 'NIDA', Icon: IdCard },
@@ -343,6 +452,32 @@ export default function Complete({ registrationDetails, locations }) {
                         {isPassport ? t('6 to 20 letters and numbers, exactly as printed.') : t('Exactly 16 digits, as printed on your ID card.')}
                     </p>
                     <InputError message={errors.national_id || errors.identity_document_type} className="mt-1" />
+
+                    <div className={`mt-4 grid gap-3 ${isPassport ? '' : 'sm:grid-cols-2'}`}>
+                        <IdDocumentUpload
+                            id="identity_document_front"
+                            label={isPassport ? t('Passport photo page') : t('Front of the ID card')}
+                            file={data.identity_document_front}
+                            onChange={(file) => {
+                                clearErrors('identity_document_front');
+                                setData('identity_document_front', file);
+                            }}
+                            error={errors.identity_document_front}
+                        />
+                        {!isPassport && (
+                            <IdDocumentUpload
+                                id="identity_document_back"
+                                label={t('Back of the ID card')}
+                                file={data.identity_document_back}
+                                onChange={(file) => {
+                                    clearErrors('identity_document_back');
+                                    setData('identity_document_back', file);
+                                }}
+                                error={errors.identity_document_back}
+                            />
+                        )}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-400">{t('Only the ITUZE team can see these files. Make sure every word and the photo are clear.')}</p>
                 </Section>
 
                 <Section icon={MapPin} title={t('Where you live')} hint={t('Choose your province, district and sector.')} done={locationDone}>

@@ -269,7 +269,10 @@ class AuthSecurityTest extends TestCase
             'national_id' => $number,
             'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
+            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->image('id-front.jpg'),
+            'identity_document_back' => \Illuminate\Http\UploadedFile::fake()->image('id-back.jpg'),
         ]);
+        \Illuminate\Support\Facades\Storage::fake('local');
 
         $submit('nida', '119908001234567')->assertSessionHasErrors(['national_id' => 'A NIDA number has exactly 16 digits.']);
         $submit('nida', '11990800123456789')->assertSessionHasErrors('national_id');
@@ -279,6 +282,57 @@ class AuthSecurityTest extends TestCase
         $submit('nida', '1 1990 8 0012345 0 12')->assertSessionHasNoErrors();
         $this->assertSame('1199080012345012', $user->fresh()->national_id);
         $this->assertTrue($user->fresh()->profile_completed);
+    }
+
+    public function test_profile_completion_requires_private_id_files_that_only_admins_can_open(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $sectorId = \Illuminate\Support\Facades\DB::table('sectors')->insertGetId(['name' => 'Kimihurura', 'district_id' => \Illuminate\Support\Facades\DB::table('districts')->insertGetId(['name' => 'Gasabo', 'province_id' => \Illuminate\Support\Facades\DB::table('provinces')->insertGetId(['name' => 'Kigali'])])]);
+        $user = $this->owner(['status' => 'pending', 'expires_at' => null, 'profile_completed' => false]);
+        $form = fn (array $extra) => [
+            'identity_document_type' => 'nida',
+            'national_id' => '1199080012345012',
+            'sector_id' => $sectorId,
+            'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
+            ...$extra,
+        ];
+
+        // A NIDA card needs both sides.
+        $this->actingAs($user)->post(route('profile.complete.store'), $form([]))
+            ->assertSessionHasErrors(['identity_document_front', 'identity_document_back']);
+        $this->actingAs($user)->post(route('profile.complete.store'), $form([
+            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->image('front.jpg'),
+        ]))->assertSessionHasErrors(['identity_document_back' => 'Please upload a photo of the back of your ID card.']);
+        $this->actingAs($user)->post(route('profile.complete.store'), $form([
+            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->create('front.exe', 10),
+            'identity_document_back' => \Illuminate\Http\UploadedFile::fake()->image('back.jpg'),
+        ]))->assertSessionHasErrors('identity_document_front');
+        $this->assertFalse($user->fresh()->profile_completed);
+
+        // A passport needs only its photo page; a PDF is fine.
+        $this->actingAs($user)->post(route('profile.complete.store'), $form([
+            'identity_document_type' => 'passport',
+            'national_id' => 'PC1234567',
+            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->create('passport.pdf', 200, 'application/pdf'),
+            'identity_document_back' => \Illuminate\Http\UploadedFile::fake()->image('ignored.jpg'),
+        ]))->assertSessionHasNoErrors();
+        $user->refresh();
+        $this->assertTrue($user->profile_completed);
+        $this->assertNull($user->identity_document_back);
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists($user->identity_document_front);
+        $this->assertStringStartsWith("identity-documents/{$user->id}/", $user->identity_document_front);
+        $this->assertArrayNotHasKey('identity_document_front', $user->toArray(), 'File paths must not be sent to pages.');
+
+        // Only admins can open the file, and the approvals page says it exists.
+        $this->actingAs($user)->get(route('admin.approvals.identity-document', [$user, 'front']))->assertForbidden();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
+        $this->actingAs($admin)->get(route('admin.approvals.identity-document', [$user, 'front']))->assertOk();
+        $this->actingAs($admin)->get(route('admin.approvals.identity-document', [$user, 'back']))->assertNotFound();
+        $this->actingAs($admin)->get(route('admin.approvals'))
+            ->assertInertia(fn ($page) => $page
+                ->where('pendingUsers.0.id', $user->id)
+                ->where('pendingUsers.0.identity_documents', ['front' => true, 'back' => false]));
     }
 
     public function test_admin_can_approve_an_owner_from_the_mobile_api(): void

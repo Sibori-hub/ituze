@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApprovalController extends Controller
 {
@@ -25,11 +27,30 @@ class ApprovalController extends Controller
             ->whereNotNull('email_verified_at')
             ->with('sector.district.province')
             ->latest()
-            ->get();
+            ->get()
+            ->each(fn (User $user) => $user->setAttribute('identity_documents', [
+                'front' => (bool) $user->identity_document_front,
+                'back' => (bool) $user->identity_document_back,
+            ]));
 
         return Inertia::render('Admin/Approvals', [
             'pendingUsers' => $pending,
         ]);
+    }
+
+    /**
+     * Stream one side of an applicant's ID document (private file, admins only).
+     */
+    public function identityDocument(User $user, string $side): StreamedResponse
+    {
+        $path = match ($side) {
+            'front' => $user->identity_document_front,
+            'back' => $user->identity_document_back,
+            default => null,
+        };
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, "id-{$side}-{$user->id}.".pathinfo($path, PATHINFO_EXTENSION));
     }
 
     public function approve(Request $request, User $user): RedirectResponse
