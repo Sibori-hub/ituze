@@ -28,10 +28,7 @@ class ApprovalController extends Controller
             ->with('sector.district.province')
             ->latest()
             ->get()
-            ->each(fn (User $user) => $user->setAttribute('identity_documents', [
-                'front' => (bool) $user->identity_document_front,
-                'back' => (bool) $user->identity_document_back,
-            ]));
+            ->each(fn (User $user) => $user->setAttribute('has_identity_document', (bool) $user->identity_document));
 
         return Inertia::render('Admin/Approvals', [
             'pendingUsers' => $pending,
@@ -39,18 +36,14 @@ class ApprovalController extends Controller
     }
 
     /**
-     * Stream one side of an applicant's ID document (private file, admins only).
+     * Stream an applicant's ID document (private file, admins only).
      */
-    public function identityDocument(User $user, string $side): StreamedResponse
+    public function identityDocument(User $user): StreamedResponse
     {
-        $path = match ($side) {
-            'front' => $user->identity_document_front,
-            'back' => $user->identity_document_back,
-            default => null,
-        };
+        $path = $user->identity_document;
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return Storage::disk('local')->response($path, "id-{$side}-{$user->id}.".pathinfo($path, PATHINFO_EXTENSION));
+        return Storage::disk('local')->response($path, "id-{$user->id}.".pathinfo($path, PATHINFO_EXTENSION));
     }
 
     public function approve(Request $request, User $user): RedirectResponse

@@ -29,9 +29,8 @@ class ProfileCompletionController extends Controller
                     'national_id'   => IdentityNumber::rules($request->input('identity_document_type')),
                     'identity_document_type' => 'required|in:nida,passport',
                     'profile_photo' => 'required|image|max:2048',
-                    // A NIDA card has two sides; a passport only its photo page.
-                    'identity_document_front' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
-                    'identity_document_back' => 'exclude_unless:identity_document_type,nida|required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+                    // One photo or PDF of the whole ID card, or of the passport photo page.
+                    'identity_document' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
                     'sector_id'     => 'required|exists:sectors,id',
                 ],
                 // Custom user-friendly error messages instead of Laravel defaults:
@@ -42,12 +41,9 @@ class ProfileCompletionController extends Controller
                     'profile_photo.image'    => '📸 The file you uploaded is not a valid image. Only JPG, PNG, GIF, and WEBP are allowed.',
                     'profile_photo.max'      => '📸 Your photo is too large. Maximum size allowed is 2 MB (2048 KB). Please resize or compress your image and try again.',
 
-                    'identity_document_front.required' => 'Please upload a photo of your ID document.',
-                    'identity_document_back.required'  => 'Please upload a photo of the back of your ID card.',
-                    'identity_document_front.mimes'    => 'The ID document must be a JPG, PNG, WEBP or PDF file.',
-                    'identity_document_back.mimes'     => 'The ID document must be a JPG, PNG, WEBP or PDF file.',
-                    'identity_document_front.max'      => 'The ID document is too large. The maximum is 5 MB.',
-                    'identity_document_back.max'       => 'The ID document is too large. The maximum is 5 MB.',
+                    'identity_document.required' => 'Please upload a photo of your ID document.',
+                    'identity_document.mimes'    => 'The ID document must be a JPG, PNG, WEBP or PDF file.',
+                    'identity_document.max'      => 'The ID document is too large. The maximum is 5 MB.',
 
                     'sector_id.required'     => '📍 Please select your location (Province → District → Sector).',
                     'sector_id.exists'       => '📍 The selected sector is not valid. Please select a sector from the dropdown list.',
@@ -57,15 +53,11 @@ class ProfileCompletionController extends Controller
             $path = $request->file('profile_photo')->store('profile-photos', 'public');
 
             $user = $request->user();
-            $previousDocuments = array_filter([$user->identity_document_front, $user->identity_document_back]);
-            $documentFolder = 'identity-documents/'.$user->id;
+            $previousDocument = $user->identity_document;
             $updated = $user->update([
                 'national_id'       => $validated['national_id'],
                 'identity_document_type' => $validated['identity_document_type'],
-                'identity_document_front' => $request->file('identity_document_front')->store($documentFolder, 'local'),
-                'identity_document_back' => $request->hasFile('identity_document_back') && $validated['identity_document_type'] === 'nida'
-                    ? $request->file('identity_document_back')->store($documentFolder, 'local')
-                    : null,
+                'identity_document' => $request->file('identity_document')->store('identity-documents/'.$user->id, 'local'),
                 'profile_photo'     => $path,
                 'sector_id'         => $validated['sector_id'],
                 'profile_completed' => true,
@@ -82,8 +74,10 @@ class ProfileCompletionController extends Controller
                 return back()->with('warning', 'Profile was not saved. Please try again or contact support.')->withInput();
             }
 
-            // A resubmission replaces the earlier ID files.
-            Storage::disk('local')->delete(array_diff($previousDocuments, [$user->identity_document_front, $user->identity_document_back]));
+            // A resubmission replaces the earlier ID file.
+            if ($previousDocument && $previousDocument !== $user->identity_document) {
+                Storage::disk('local')->delete($previousDocument);
+            }
 
             Log::info('Profile completed successfully for user ID: ' . $request->user()->id);
 

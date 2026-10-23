@@ -30,8 +30,7 @@ class MobileAuthenticationTest extends TestCase
             $table->boolean('profile_completed')->default(false);
             $table->string('national_id')->nullable();
             $table->string('identity_document_type')->nullable();
-            $table->string('identity_document_front')->nullable();
-            $table->string('identity_document_back')->nullable();
+            $table->string('identity_document')->nullable();
             $table->string('address')->nullable();
             $table->string('profile_photo')->nullable();
             $table->unsignedBigInteger('sector_id')->nullable();
@@ -285,8 +284,7 @@ class MobileAuthenticationTest extends TestCase
                 'profile.png',
                 base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/mH8AAAAASUVORK5CYII=')
             ),
-            'identity_document_front' => UploadedFile::fake()->image('id-front.jpg'),
-            'identity_document_back' => UploadedFile::fake()->image('id-back.jpg'),
+            'identity_document' => UploadedFile::fake()->image('id.jpg'),
         ])->assertOk()
             ->assertJsonPath('user.profile_completed', true)
             ->assertJsonPath('user.status', 'pending')

@@ -10,11 +10,11 @@ function DocumentThumb({ url }) {
     const [failed, setFailed] = useState(false);
 
     return failed ? (
-        <span className="flex h-32 items-center justify-center bg-gray-50 text-gray-400" aria-hidden="true">
+        <span className="flex h-48 items-center justify-center bg-gray-50 text-gray-400" aria-hidden="true">
             <FileText size={26} />
         </span>
     ) : (
-        <img src={url} alt="" onError={() => setFailed(true)} className="block h-32 w-full bg-gray-50 object-cover" />
+        <img src={url} alt="" onError={() => setFailed(true)} className="block h-48 w-full bg-gray-50 object-contain" />
     );
 }
 
@@ -54,11 +54,8 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
         ],
     ].filter(([, value]) => Boolean(value));
 
-    const isPassport = user.identity_document_type === 'passport';
-    const sides = [
-        user.identity_documents?.front && { side: 'front', label: t(isPassport ? 'Passport photo page' : 'Front of the ID card') },
-        user.identity_documents?.back && { side: 'back', label: t('Back of the ID card') },
-    ].filter(Boolean);
+    const documentLabel = t(user.identity_document_type === 'passport' ? 'Passport photo page' : 'Photo or scan of your ID card');
+    const documentUrl = user.has_identity_document ? route('admin.approvals.identity-document', user.id) : null;
 
     return (
         <div
@@ -132,33 +129,25 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
                     <section className="mt-6" aria-labelledby="identity-documents-title">
                         <h3 id="identity-documents-title" className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
                             <IdCard size={15} aria-hidden="true" />
-                            {t('Identity document files')}
+                            {t('Identity document file')}
                         </h3>
-                        {sides.length === 0 ? (
-                            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                                {t('No ID files were uploaded (this account registered before ID uploads were required).')}
-                            </p>
+                        {documentUrl ? (
+                            <a
+                                href={documentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group mt-3 block overflow-hidden rounded-xl border border-gray-200 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20"
+                            >
+                                <DocumentThumb url={documentUrl} />
+                                <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700">
+                                    {documentLabel}
+                                    <span className="text-[#1F7A5A] group-hover:underline">{t('Open')}</span>
+                                </span>
+                            </a>
                         ) : (
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                {sides.map(({ side, label }) => {
-                                    const url = route('admin.approvals.identity-document', { user: user.id, side });
-                                    return (
-                                        <a
-                                            key={side}
-                                            href={url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="group block overflow-hidden rounded-xl border border-gray-200 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20"
-                                        >
-                                            <DocumentThumb url={url} />
-                                            <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700">
-                                                {label}
-                                                <span className="text-[#1F7A5A] group-hover:underline">{t('Open')}</span>
-                                            </span>
-                                        </a>
-                                    );
-                                })}
-                            </div>
+                            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                                {t('No ID file was uploaded (this account registered before ID uploads were required).')}
+                            </p>
                         )}
                     </section>
                 </div>

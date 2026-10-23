@@ -194,8 +194,7 @@ export default function Complete({ registrationDetails, locations }) {
         national_id: '',
         identity_document_type: 'nida',
         profile_photo: null,
-        identity_document_front: null,
-        identity_document_back: null,
+        identity_document: null,
         sector_id: '',
     });
 
@@ -220,8 +219,7 @@ export default function Complete({ registrationDetails, locations }) {
 
     const isPassport = data.identity_document_type === 'passport';
     const idValid = isPassport ? /^[A-Z0-9]{6,20}$/.test(data.national_id) : /^\d{16}$/.test(data.national_id);
-    const documentsDone = Boolean(data.identity_document_front) && (isPassport || Boolean(data.identity_document_back));
-    const idDone = idValid && documentsDone;
+    const idDone = idValid && Boolean(data.identity_document);
     const photoDone = Boolean(data.profile_photo);
     const locationDone = Boolean(data.sector_id);
     const doneCount = [photoDone, idDone, locationDone].filter(Boolean).length;
@@ -259,9 +257,8 @@ export default function Complete({ registrationDetails, locations }) {
 
     const changeIdType = (type) => {
         if (type === data.identity_document_type) return;
-        // The back side only exists for a NIDA card.
-        setData((current) => ({ ...current, identity_document_type: type, national_id: '', identity_document_back: null }));
-        clearErrors('national_id', 'identity_document_back');
+        setData((current) => ({ ...current, identity_document_type: type, national_id: '' }));
+        clearErrors('national_id');
     };
 
     const changeIdNumber = (value) => {
@@ -453,31 +450,19 @@ export default function Complete({ registrationDetails, locations }) {
                     </p>
                     <InputError message={errors.national_id || errors.identity_document_type} className="mt-1" />
 
-                    <div className={`mt-4 grid gap-3 ${isPassport ? '' : 'sm:grid-cols-2'}`}>
+                    <div className="mt-4">
                         <IdDocumentUpload
-                            id="identity_document_front"
-                            label={isPassport ? t('Passport photo page') : t('Front of the ID card')}
-                            file={data.identity_document_front}
+                            id="identity_document"
+                            label={isPassport ? t('Passport photo page') : t('Photo or scan of your ID card')}
+                            file={data.identity_document}
                             onChange={(file) => {
-                                clearErrors('identity_document_front');
-                                setData('identity_document_front', file);
+                                clearErrors('identity_document');
+                                setData('identity_document', file);
                             }}
-                            error={errors.identity_document_front}
+                            error={errors.identity_document}
                         />
-                        {!isPassport && (
-                            <IdDocumentUpload
-                                id="identity_document_back"
-                                label={t('Back of the ID card')}
-                                file={data.identity_document_back}
-                                onChange={(file) => {
-                                    clearErrors('identity_document_back');
-                                    setData('identity_document_back', file);
-                                }}
-                                error={errors.identity_document_back}
-                            />
-                        )}
                     </div>
-                    <p className="mt-2 text-xs text-gray-400">{t('Only the ITUZE team can see these files. Make sure every word and the photo are clear.')}</p>
+                    <p className="mt-2 text-xs text-gray-400">{t('Only the ITUZE team can see this file. Make sure every word and the photo are clear.')}</p>
                 </Section>
 
                 <Section icon={MapPin} title={t('Where you live')} hint={t('Choose your province, district and sector.')} done={locationDone}>

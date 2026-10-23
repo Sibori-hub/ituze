@@ -33,8 +33,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'expires_at',
         'national_id',
         'identity_document_type',
-        'identity_document_front',
-        'identity_document_back',
+        'identity_document',
         'sector_id',
         'profile_photo',
         'profile_completed',
@@ -60,9 +59,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_otp',
         'phone_otp',
         'login_otp',
-        // Private file paths; admins open them through admin.approvals.identity-document.
-        'identity_document_front',
-        'identity_document_back',
+        // Private file path; admins open it through admin.approvals.identity-document.
+        'identity_document',
     ];
 
     /**

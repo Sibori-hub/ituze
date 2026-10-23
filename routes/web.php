@@ -507,9 +507,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals');
     Route::post('/approvals/{user}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{user}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
-    Route::get('/approvals/{user}/identity/{side}', [ApprovalController::class, 'identityDocument'])
-        ->whereIn('side', ['front', 'back'])
-        ->name('approvals.identity-document');
+    Route::get('/approvals/{user}/identity', [ApprovalController::class, 'identityDocument'])->name('approvals.identity-document');
 
     Route::get('/users', [AdminUserController::class, 'index'])->name('users');
     Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');

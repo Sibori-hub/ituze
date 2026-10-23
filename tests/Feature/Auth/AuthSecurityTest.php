@@ -269,8 +269,7 @@ class AuthSecurityTest extends TestCase
             'national_id' => $number,
             'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
-            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->image('id-front.jpg'),
-            'identity_document_back' => \Illuminate\Http\UploadedFile::fake()->image('id-back.jpg'),
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->image('id.jpg'),
         ]);
         \Illuminate\Support\Facades\Storage::fake('local');
 
@@ -284,7 +283,7 @@ class AuthSecurityTest extends TestCase
         $this->assertTrue($user->fresh()->profile_completed);
     }
 
-    public function test_profile_completion_requires_private_id_files_that_only_admins_can_open(): void
+    public function test_profile_completion_requires_one_private_id_file_that_only_admins_can_open(): void
     {
         \Illuminate\Support\Facades\Storage::fake('public');
         \Illuminate\Support\Facades\Storage::fake('local');
@@ -298,41 +297,40 @@ class AuthSecurityTest extends TestCase
             ...$extra,
         ];
 
-        // A NIDA card needs both sides.
+        // The ID file is required and must be a photo or PDF.
         $this->actingAs($user)->post(route('profile.complete.store'), $form([]))
-            ->assertSessionHasErrors(['identity_document_front', 'identity_document_back']);
+            ->assertSessionHasErrors(['identity_document' => 'Please upload a photo of your ID document.']);
         $this->actingAs($user)->post(route('profile.complete.store'), $form([
-            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->image('front.jpg'),
-        ]))->assertSessionHasErrors(['identity_document_back' => 'Please upload a photo of the back of your ID card.']);
-        $this->actingAs($user)->post(route('profile.complete.store'), $form([
-            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->create('front.exe', 10),
-            'identity_document_back' => \Illuminate\Http\UploadedFile::fake()->image('back.jpg'),
-        ]))->assertSessionHasErrors('identity_document_front');
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->create('id.exe', 10),
+        ]))->assertSessionHasErrors('identity_document');
         $this->assertFalse($user->fresh()->profile_completed);
 
-        // A passport needs only its photo page; a PDF is fine.
+        // One file is enough for a NIDA card (both sides in one photo or PDF).
         $this->actingAs($user)->post(route('profile.complete.store'), $form([
-            'identity_document_type' => 'passport',
-            'national_id' => 'PC1234567',
-            'identity_document_front' => \Illuminate\Http\UploadedFile::fake()->create('passport.pdf', 200, 'application/pdf'),
-            'identity_document_back' => \Illuminate\Http\UploadedFile::fake()->image('ignored.jpg'),
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->create('nida.pdf', 200, 'application/pdf'),
         ]))->assertSessionHasNoErrors();
         $user->refresh();
         $this->assertTrue($user->profile_completed);
-        $this->assertNull($user->identity_document_back);
-        \Illuminate\Support\Facades\Storage::disk('local')->assertExists($user->identity_document_front);
-        $this->assertStringStartsWith("identity-documents/{$user->id}/", $user->identity_document_front);
-        $this->assertArrayNotHasKey('identity_document_front', $user->toArray(), 'File paths must not be sent to pages.');
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists($user->identity_document);
+        $this->assertStringStartsWith("identity-documents/{$user->id}/", $user->identity_document);
+        $this->assertArrayNotHasKey('identity_document', $user->toArray(), 'The file path must not be sent to pages.');
 
         // Only admins can open the file, and the approvals page says it exists.
-        $this->actingAs($user)->get(route('admin.approvals.identity-document', [$user, 'front']))->assertForbidden();
+        $this->actingAs($user)->get(route('admin.approvals.identity-document', $user))->assertForbidden();
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
-        $this->actingAs($admin)->get(route('admin.approvals.identity-document', [$user, 'front']))->assertOk();
-        $this->actingAs($admin)->get(route('admin.approvals.identity-document', [$user, 'back']))->assertNotFound();
+        $this->actingAs($admin)->get(route('admin.approvals.identity-document', $user))->assertOk();
         $this->actingAs($admin)->get(route('admin.approvals'))
             ->assertInertia(fn ($page) => $page
                 ->where('pendingUsers.0.id', $user->id)
-                ->where('pendingUsers.0.identity_documents', ['front' => true, 'back' => false]));
+                ->where('pendingUsers.0.has_identity_document', true));
+
+        // Sending the profile again replaces the old file.
+        $old = $user->identity_document;
+        $this->actingAs($user)->post(route('profile.complete.store'), $form([
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->image('new-id.jpg'),
+        ]))->assertSessionHasNoErrors();
+        \Illuminate\Support\Facades\Storage::disk('local')->assertMissing($old);
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists($user->fresh()->identity_document);
     }
 
     public function test_admin_can_approve_an_owner_from_the_mobile_api(): void

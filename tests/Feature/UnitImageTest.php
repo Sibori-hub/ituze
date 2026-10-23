@@ -39,8 +39,7 @@ class UnitImageTest extends TestCase
             $table->timestamp('expires_at')->nullable();
             $table->string('national_id')->nullable();
             $table->string('identity_document_type')->nullable();
-            $table->string('identity_document_front')->nullable();
-            $table->string('identity_document_back')->nullable();
+            $table->string('identity_document')->nullable();
             $table->string('address')->nullable();
             $table->unsignedBigInteger('sector_id')->nullable();
             $table->string('profile_photo')->nullable();
