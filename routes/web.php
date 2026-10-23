@@ -514,6 +514,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan'])->name('users.plan');
     Route::post('/users/{user}/password', [AdminUserController::class, 'setPassword'])->name('users.password');
+    Route::patch('/users/{user}/phone', [AdminUserController::class, 'updatePhone'])->name('users.phone');
     Route::patch('/users/{user}/fee', [AdminUserController::class, 'updateFee'])->name('users.fee');
     Route::post('/users/{user}/disable', [AdminUserController::class, 'disable'])->name('users.disable');
     Route::post('/users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');

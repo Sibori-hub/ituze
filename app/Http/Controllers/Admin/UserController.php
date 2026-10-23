@@ -8,14 +8,18 @@ use App\Models\District;
 use App\Models\Province;
 use App\Models\Sector;
 use App\Models\User;
+use App\Services\OtpService;
+use App\Services\SmsService;
 use App\Support\IdentityNumber;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -180,6 +184,50 @@ class UserController extends Controller
         $user->endAllSessions();
 
         return back()->with('success', 'A temporary password was set for '.$user->name.'. They must change it at their next sign-in.');
+    }
+
+    /**
+     * Only an admin changes a phone number (users cannot, so a stolen session
+     * cannot move password resets to another phone). The person confirms the
+     * new number with an SMS code at the next sign-in, and the old number is told.
+     */
+    public function updatePhone(Request $request, User $user, SmsService $sms, OtpService $otp): RedirectResponse
+    {
+        abort_if($user->isAdmin(), 404);
+
+        $request->merge(['phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone'))]);
+        $validated = $request->validate(
+            ['phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', Rule::unique(User::class)->ignore($user->id)]],
+            [
+                'phone.regex' => 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).',
+                'phone.unique' => 'This phone number is already registered.',
+            ],
+        );
+
+        $oldPhone = $user->phone;
+
+        if ($oldPhone === $validated['phone']) {
+            return back()->with('success', $user->name.' already uses this phone number.');
+        }
+
+        $user->forceFill([
+            'phone' => $validated['phone'],
+            'phone_verified_at' => null,
+        ])->save();
+        $user->endAllSessions();
+
+        // The code goes to the new number; signing in asks for it before anything else.
+        $otp->sendPhoneOtp($user);
+
+        if ($oldPhone) {
+            try {
+                $sms->send($oldPhone, 'ITUZE: the phone number on your account was changed by the ITUZE admin. If you did not ask for this, contact ITUZE now.');
+            } catch (\Throwable $e) {
+                Log::warning('Phone change alert SMS failed: '.$e->getMessage(), ['user_id' => $user->id]);
+            }
+        }
+
+        return back()->with('success', 'The phone number of '.$user->name.' is now '.$validated['phone'].'. They confirm it with an SMS code at their next sign-in.');
     }
 
     /**

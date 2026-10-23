@@ -203,36 +203,53 @@ class AuthSecurityTest extends TestCase
         $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $owner->id]);
     }
 
-    public function test_changing_the_phone_number_requires_verification_and_must_be_unique(): void
+    public function test_owners_cannot_change_their_own_phone_number(): void
     {
-        $this->owner(['phone' => '0789999999']);
         $user = $this->owner(['phone' => '0781234567']);
 
         $this->actingAs($user)->patch('/profile', [
             'first_name' => 'Test',
             'last_name' => 'Owner',
             'email' => $user->email,
-            'phone' => '0789999999',
-        ])->assertSessionHasErrors('phone');
-
-        $this->actingAs($user)->patch('/profile', [
-            'first_name' => 'Test',
-            'last_name' => 'Owner',
-            'email' => $user->email,
-            'phone' => 'not-a-phone',
-        ])->assertSessionHasErrors('phone');
-
-        $this->actingAs($user)->patch('/profile', [
-            'first_name' => 'Test',
-            'last_name' => 'Owner',
-            'email' => $user->email,
             'phone' => '0722222222',
-        ])->assertRedirect(route('phone.notice'));
+        ])->assertSessionHasNoErrors()->assertRedirect(route('profile.edit'));
+
+        $user->refresh();
+        $this->assertSame('0781234567', $user->phone, 'Only an admin changes phone numbers.');
+        $this->assertNotNull($user->phone_verified_at);
+    }
+
+    public function test_only_the_admin_changes_a_phone_and_the_new_number_must_be_confirmed(): void
+    {
+        config(['services.sms.driver' => 'pindo', 'services.sms.pindo.token' => 'test-token']);
+        \Illuminate\Support\Facades\Http::fake(['api.pindo.io/*' => \Illuminate\Support\Facades\Http::response(['ok' => true])]);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'phone' => '0783163187']);
+        $this->owner(['phone' => '0789999999']);
+        $user = $this->owner(['phone' => '0781234567']);
+
+        // Other users cannot use the admin action.
+        $this->actingAs($user)->patch(route('admin.users.phone', $user), ['phone' => '0722222222'])->assertForbidden();
+
+        // The number must be valid and free.
+        $this->actingAs($admin)->patch(route('admin.users.phone', $user), ['phone' => '0789999999'])
+            ->assertSessionHasErrors(['phone' => 'This phone number is already registered.']);
+        $this->actingAs($admin)->patch(route('admin.users.phone', $user), ['phone' => 'not-a-phone'])
+            ->assertSessionHasErrors('phone');
+        $this->actingAs($admin)->patch(route('admin.users.phone', $admin), ['phone' => '0722222222'])->assertNotFound();
+
+        $this->actingAs($admin)->patch(route('admin.users.phone', $user), ['phone' => '+250 722 222 222'])
+            ->assertSessionHasNoErrors();
 
         $user->refresh();
         $this->assertSame('0722222222', $user->phone);
         $this->assertNull($user->phone_verified_at);
         $this->assertTrue($user->awaitingPhoneVerification());
+        \Illuminate\Support\Facades\Http::assertSent(fn ($request) => $request['to'] === '+250781234567'
+            && str_contains((string) $request['text'], 'phone number on your account was changed'));
+        \Illuminate\Support\Facades\Http::assertSent(fn ($request) => $request['to'] === '+250722222222'
+            && str_contains((string) $request['text'], 'ITUZE code:'));
+
+        // At the next sign-in the new number must be confirmed first.
         $this->actingAs($user)->get('/dashboard')->assertRedirect(route('phone.notice'));
     }
 

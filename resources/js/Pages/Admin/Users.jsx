@@ -205,6 +205,8 @@ export default function Users({ users, filters, counts = {} }) {
     const [feeValue, setFeeValue] = useState('10');
     const [passwordUser, setPasswordUser] = useState(null);
     const [newPassword, setNewPassword] = useState('');
+    const [phoneUser, setPhoneUser] = useState(null);
+    const [newPhone, setNewPhone] = useState('');
     const [planDate, setPlanDate] = useState('');
     const [processing, setProcessing] = useState(false);
     const exportRef = useRef(null);
@@ -212,6 +214,7 @@ export default function Users({ users, filters, counts = {} }) {
     const planShown = useLatest(planUser);
     const feeShown = useLatest(feeUser);
     const passwordShown = useLatest(passwordUser);
+    const phoneShown = useLatest(phoneUser);
 
     // A strong temporary password the admin can read out to the account holder.
     const generatePassword = () => {
@@ -279,6 +282,17 @@ export default function Users({ users, filters, counts = {} }) {
     };
 
     const canManage = (user) => user.role !== 'admin' && user.id !== currentUserId;
+
+    // Phone numbers change only here, never by the account holder (security).
+    const savePhone = () => {
+        if (!phoneUser) return;
+        setProcessing(true);
+        router.patch(route('admin.users.phone', phoneUser.id), { phone: newPhone }, {
+            preserveScroll: true,
+            onSuccess: () => setPhoneUser(null),
+            onFinish: () => setProcessing(false),
+        });
+    };
     const roleCount = (role) => (role ? counts.roles?.[role] ?? 0 : counts.all ?? 0);
 
     const actions = (user) => (
@@ -322,6 +336,18 @@ export default function Users({ users, filters, counts = {} }) {
                     }}
                 >
                     <KeyRound size={16} />
+                </IconAction>
+            )}
+            {canManage(user) && (
+                <IconAction
+                    label={t('Change phone')}
+                    tone="brand"
+                    onClick={() => {
+                        setPhoneUser(user);
+                        setNewPhone(user.phone || '');
+                    }}
+                >
+                    <Phone size={16} />
                 </IconAction>
             )}
             {user.status === 'disabled' ? (
@@ -838,6 +864,41 @@ export default function Users({ users, filters, counts = {} }) {
                             className="min-h-11 flex-1 rounded-xl bg-[#0E3B2E] text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60"
                         >
                             {processing ? t('Please wait...') : t('Set password')}
+                        </button>
+                    </div>
+                </DialogShell>
+            )}
+            {phoneShown && (
+                <DialogShell
+                    open={!!phoneUser}
+                    onClose={() => !processing && setPhoneUser(null)}
+                    title={t('Change phone')}
+                    description={t(':name must confirm the new number with an SMS code at the next sign-in. The old number gets an SMS alert, and open sessions are signed out.', { name: phoneShown.name })}
+                >
+                    <label htmlFor="new-phone" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600">{t('New phone number')}</label>
+                    <input
+                        id="new-phone"
+                        type="tel"
+                        inputMode="tel"
+                        value={newPhone}
+                        onChange={(e) => setNewPhone(e.target.value)}
+                        placeholder="078 123 4567"
+                        autoComplete="off"
+                        aria-describedby={errors?.phone ? 'new-phone-error' : undefined}
+                        className="mt-1.5 w-full rounded-xl border-gray-300 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
+                    />
+                    {errors?.phone && <p id="new-phone-error" className="mt-1.5 text-sm font-medium text-red-700" role="alert">{t(errors.phone)}</p>}
+                    <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => !processing && setPhoneUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                            {t('Cancel')}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={processing || newPhone.replace(/\D/g, '').length < 9}
+                            onClick={savePhone}
+                            className="min-h-11 flex-1 rounded-xl bg-[#0E3B2E] text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60"
+                        >
+                            {processing ? t('Please wait...') : t('Save')}
                         </button>
                     </div>
                 </DialogShell>

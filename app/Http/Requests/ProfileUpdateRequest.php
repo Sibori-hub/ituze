@@ -55,6 +55,12 @@ class ProfileUpdateRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        // Only an admin changes phone numbers (Admin → Users), so a stolen session
+        // cannot point SMS codes and password resets at another phone.
+        if (! $this->user()?->isAdmin()) {
+            $this->replace($this->except('phone'));
+        }
+
         if ($this->has('national_id')) {
             $this->merge([
                 'national_id' => IdentityNumber::normalize($this->identityType(), $this->input('national_id')),

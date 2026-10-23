@@ -1218,6 +1218,10 @@ export default {
         'Check code': 'Vérifier le code',
         'Code confirmed. Now choose a new password.': 'Code confirmé. Choisissez maintenant un nouveau mot de passe.',
         'This step has expired. Please request a new code.': 'Cette étape a expiré. Demandez un nouveau code.',
+        'Change phone': 'Changer le téléphone',
+        ':name must confirm the new number with an SMS code at the next sign-in. The old number gets an SMS alert, and open sessions are signed out.': ':name devra confirmer le nouveau numéro avec un code SMS à la prochaine connexion. L’ancien numéro reçoit une alerte par SMS et les sessions ouvertes sont fermées.',
+        'New phone number': 'Nouveau numéro de téléphone',
+        'For your security, only ITUZE can change your phone number. Contact us if it changed.': 'Pour votre sécurité, seul ITUZE peut changer votre numéro de téléphone. Contactez-nous s’il a changé.',
     },
     rw: {
         'Log in': 'Injira',
@@ -2438,5 +2442,9 @@ export default {
         'Check code': 'Genzura kode',
         'Code confirmed. Now choose a new password.': 'Kode yemejwe. Ubu hitamo ijambo ry’ibanga rishya.',
         'This step has expired. Please request a new code.': 'Iki gice cyarangiye. Saba kode nshya.',
+        'Change phone': 'Hindura telefoni',
+        ':name must confirm the new number with an SMS code at the next sign-in. The old number gets an SMS alert, and open sessions are signed out.': ':name agomba kwemeza nomero nshya akoresheje kode ya SMS ubutaha yinjira. Nomero ya kera ihabwa ubutumwa bwa SMS, kandi aho yari yinjiye harasohorwa.',
+        'New phone number': 'Nomero nshya ya telefoni',
+        'For your security, only ITUZE can change your phone number. Contact us if it changed.': 'Ku bw’umutekano wawe, ITUZE yonyine ni yo ishobora guhindura nomero yawe ya telefoni. Twandikire niba yarahindutse.',
     },
 };

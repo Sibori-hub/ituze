@@ -80,7 +80,15 @@ export default function UpdateProfileInformation({
 
                 <div>
                     <InputLabel htmlFor="phone" value={t('Phone number')} />
-                    <TextInput id="phone" type="tel" className="mt-1 block w-full" value={data.phone} onChange={(e) => setData('phone', e.target.value)} required autoComplete="tel" />
+                    {user.role === 'admin' ? (
+                        <TextInput id="phone" type="tel" className="mt-1 block w-full" value={data.phone} onChange={(e) => setData('phone', e.target.value)} required autoComplete="tel" />
+                    ) : (
+                        <>
+                            {/* Only an admin changes phone numbers, for security. */}
+                            <TextInput id="phone" type="tel" className="mt-1 block w-full bg-gray-50 text-gray-600" value={data.phone} readOnly aria-describedby="phone-locked" />
+                            <p id="phone-locked" className="mt-1.5 text-xs text-gray-600">{t('For your security, only ITUZE can change your phone number. Contact us if it changed.')}</p>
+                        </>
+                    )}
                     <InputError className="mt-2" message={errors.phone} />
                 </div>
 
