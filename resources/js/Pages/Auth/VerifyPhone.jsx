@@ -10,8 +10,8 @@ export default function VerifyPhone({ phone, status, expiresIn, devMode, devOtp 
     return (
         <VerificationDialog
             pageTitle={t('Verify Your Phone')}
-            title={t('Check your WhatsApp')}
-            description={t("We've sent a 6-digit code on WhatsApp to")}
+            title={t('Check your SMS')}
+            description={t("We've sent a 6-digit code by SMS to")}
             destination={
                 <span className="inline-flex items-center gap-2">
                     <RwandaFlag className="h-3.5 w-5" />
@@ -22,20 +22,20 @@ export default function VerifyPhone({ phone, status, expiresIn, devMode, devOtp 
             steps={[
                 { label: t('Account'), state: 'done' },
                 { label: t('Email'), state: 'done' },
-                { label: 'WhatsApp', state: 'current' },
+                { label: t('Phone'), state: 'current' },
             ]}
             verifyRoute={route('phone.verify')}
             resendRoute={route('phone.send')}
             submitLabel={t('Verify number')}
             statusMessage={status ? t(status) : null}
             expiresIn={expiresIn}
-            tip={t('The message comes from our WhatsApp business account. Make sure WhatsApp is open on this number.')}
+            tip={t('The SMS comes from ITUZE and can take up to a minute to arrive.')}
             devPanel={
                 devMode
                     ? (verify) => (
                           <>
                               <p className="text-xs leading-5">
-                                  {t('WhatsApp is not configured locally, so the code is written to the Laravel log and shown here.')}
+                                  {t('SMS is not configured locally, so the code is written to the Laravel log and shown here.')}
                               </p>
                               <DevCodeButton code={devOtp} onUse={verify} />
                           </>

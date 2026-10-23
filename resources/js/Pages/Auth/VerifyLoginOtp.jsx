@@ -12,7 +12,7 @@ export default function VerifyLoginOtp({ destinations = [], expiresIn, status, d
         <VerificationDialog
             pageTitle={t('Confirm your sign in')}
             title={t('Confirm your sign in')}
-            description={both ? t('We sent the same 6-digit code to your email and WhatsApp. Use whichever arrives first.') : t('We sent a 6-digit code to')}
+            description={both ? t('We sent the same 6-digit code to your email and by SMS. Use whichever arrives first.') : t('We sent a 6-digit code to')}
             destination={
                 <span className="mt-2 flex flex-col items-center gap-1.5">
                     {destinations.map(({ channel, value }) => (
@@ -29,7 +29,7 @@ export default function VerifyLoginOtp({ destinations = [], expiresIn, status, d
             submitLabel={t('Confirm and sign in')}
             statusMessage={status ? t(status) : null}
             expiresIn={expiresIn}
-            tip={t("Can't find it? Check your spam folder, or open WhatsApp on your phone.")}
+            tip={t("Can't find it? Check your spam folder, or the SMS messages on your phone.")}
             headerAction={
                 <Link
                     href={route('login')}

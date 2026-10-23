@@ -25,7 +25,7 @@ export default function VerifyEmail({ status, expiresIn, devMode, devOtp }) {
             steps={[
                 { label: t('Account'), state: 'done' },
                 { label: t('Email'), state: 'current' },
-                { label: 'WhatsApp', state: 'next' },
+                { label: t('Phone'), state: 'next' },
             ]}
             verifyRoute={route('verification.otp.verify')}
             resendRoute={route('verification.send')}

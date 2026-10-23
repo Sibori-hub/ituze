@@ -112,6 +112,29 @@ class AuthSecurityTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_the_phone_code_goes_by_sms_when_pindo_is_set_up(): void
+    {
+        config(['services.sms.driver' => 'pindo', 'services.sms.pindo.token' => 'test-token']);
+        \Illuminate\Support\Facades\Http::fake(['api.pindo.io/*' => \Illuminate\Support\Facades\Http::response(['ok' => true])]);
+        $this->mock(\App\Services\WhatsAppCloudService::class, fn ($mock) => $mock->shouldNotReceive('sendOtp'));
+        $user = $this->owner();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertRedirect(route('login.otp.notice'));
+
+        $smsCode = null;
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) use (&$smsCode) {
+            preg_match('/ITUZE code: (\d{6})\./', (string) $request['text'], $match);
+            $smsCode = $match[1] ?? null;
+
+            return $request->url() === 'https://api.pindo.io/v1/sms/' && $request['to'] === '+250781234567';
+        });
+        $this->assertSame($smsCode, $this->sentLoginCode($user), 'Email and SMS must carry the same code.');
+
+        $this->post(route('login.otp.verify'), ['otp' => $smsCode])->assertRedirect(route('dashboard', absolute: false));
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_mobile_login_reports_both_code_destinations(): void
     {
         $user = $this->owner();

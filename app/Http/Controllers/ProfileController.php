@@ -74,7 +74,7 @@ class ProfileController extends Controller
             $this->otp->sendPhoneOtp($user);
 
             return Redirect::route('phone.notice')
-                ->with('status', 'We sent a verification code to your new WhatsApp number.');
+                ->with('status', 'We sent a verification code to your new phone number by SMS.');
         }
 
         return Redirect::route('profile.edit');

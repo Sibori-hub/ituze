@@ -304,7 +304,7 @@ export default function CreateUser({ locations }) {
                                     <Hint id="phone-hint" tone="error">{t('This phone number is already registered.')}</Hint>
                                 ) : (
                                     <Hint id="phone-hint" tone={phoneValid ? 'ok' : 'muted'}>
-                                        {phoneValid && network ? t(':network number detected', { network }) : t('WhatsApp number used for updates.')}
+                                        {phoneValid && network ? t(':network number detected', { network }) : t('Phone number used for SMS updates.')}
                                     </Hint>
                                 )}
                             </div>

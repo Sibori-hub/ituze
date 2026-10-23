@@ -84,7 +84,7 @@ class MobileAuthController extends Controller
                 'destination' => $user->email ?? $user->phone,
                 'expires_in_minutes' => OtpService::CODE_TTL_MINUTES,
                 'message' => count($channels) > 1
-                    ? 'We sent a code to your email and WhatsApp. Confirm it to finish signing in.'
+                    ? 'We sent a code to your email and by SMS. Confirm it to finish signing in.'
                     : 'We sent you a code. Confirm it to finish signing in.',
             ]);
         }
@@ -151,7 +151,7 @@ class MobileAuthController extends Controller
         $channels = $this->otp->sendLoginOtp($user);
 
         return response()->json([
-            'message' => 'We sent a new code to your email and WhatsApp.',
+            'message' => 'We sent a new code to your email and by SMS.',
             'channels' => $channels,
             'channel' => count($channels) > 1 ? 'both' : ($channels[0] ?? null),
         ]);

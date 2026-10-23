@@ -96,11 +96,11 @@ class PhoneVerificationController extends Controller
 
         if ($this->wantsJson($request)) {
             return response()->json([
-                'message' => 'We sent a new verification code to your WhatsApp number.',
+                'message' => 'We sent a new verification code to your phone by SMS.',
             ]);
         }
 
-        return back()->with('status', 'We sent a new verification code to your WhatsApp number.');
+        return back()->with('status', 'We sent a new verification code to your phone by SMS.');
     }
 
     protected function nextRoute($user): string

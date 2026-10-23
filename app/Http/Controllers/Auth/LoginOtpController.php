@@ -104,7 +104,7 @@ class LoginOtpController extends Controller
         $channels = $this->otp->sendLoginOtp($user);
         $request->session()->put(self::SESSION_CHANNEL, $channels);
 
-        return back()->with('status', 'We sent a new code to your email and WhatsApp.');
+        return back()->with('status', 'We sent a new code to your email and by SMS.');
     }
 
     protected function pendingUser(Request $request): ?User
@@ -148,7 +148,7 @@ class LoginOtpController extends Controller
     protected function maskPhone(?string $phone): string
     {
         if (! $phone || strlen($phone) < 6) {
-            return 'your WhatsApp number';
+            return 'your phone number';
         }
 
         return substr($phone, 0, 3).'****'.substr($phone, -2);

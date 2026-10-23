@@ -33,7 +33,7 @@ function Stepper() {
     const steps = [
         { label: t('Account'), done: true },
         { label: t('Email'), done: true },
-        { label: 'WhatsApp', done: true },
+        { label: t('Phone'), done: true },
         { label: t('Profile'), current: true },
         { label: t('Approval') },
     ];

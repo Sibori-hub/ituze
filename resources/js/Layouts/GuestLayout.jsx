@@ -10,7 +10,7 @@ import { ArrowUpRight, Building2, CircleDollarSign, UsersRound, CheckCircle2, Ma
 
 const REGISTER_STEPS = [
     { Icon: UserPlus, title: 'Create your account', body: 'Tell us who you are and how you will use the platform.' },
-    { Icon: MailCheck, title: 'Verify email and WhatsApp', body: 'We send a 6-digit code to confirm each one.' },
+    { Icon: MailCheck, title: 'Verify email and phone', body: 'We send a 6-digit code to confirm each one.' },
     { Icon: ShieldCheck, title: 'Get approved', body: 'Our team reviews your profile, then your workspace opens.' },
 ];
 

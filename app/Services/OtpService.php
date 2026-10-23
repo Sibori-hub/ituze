@@ -30,7 +30,7 @@ class OtpService
 
     public const LOCKED = 'locked';
 
-    public function __construct(protected WhatsAppCloudService $whatsapp)
+    public function __construct(protected WhatsAppCloudService $whatsapp, protected SmsService $sms)
     {
     }
 
@@ -303,8 +303,19 @@ class OtpService
             return;
         }
 
+        // SMS (Pindo) is the main phone channel; WhatsApp is used only when SMS is not set up.
+        if ($this->sms->isLive()) {
+            try {
+                $this->sms->send($user->phone, "ITUZE code: {$code}. Valid ".self::CODE_TTL_MINUTES.' min. Do not share it.');
+            } catch (\Throwable $e) {
+                Log::warning("SMS {$purpose} OTP could not be sent: ".$e->getMessage());
+            }
+
+            return;
+        }
+
         if (! $this->whatsapp->isConfigured()) {
-            // Local fallback so the whole flow stays testable without WhatsApp credentials.
+            // Local fallback so the whole flow stays testable without SMS or WhatsApp credentials.
             Log::info("[OTP] {$purpose} code for {$user->phone}: {$code}");
 
             return;

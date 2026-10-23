@@ -314,7 +314,7 @@ export default function Register({ termsVersion }) {
                             </div>
 
                             <div>
-                                <label htmlFor="phone" className={labelClass}>{t('WhatsApp number')}</label>
+                                <label htmlFor="phone" className={labelClass}>{t('Phone number (SMS)')}</label>
                                 <div
                                     className={`flex items-stretch overflow-hidden rounded-xl border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition focus-within:ring-4 ${
                                         (data.phone !== '' && !phoneValid) || phoneStatus === 'taken'
@@ -365,7 +365,7 @@ export default function Register({ termsVersion }) {
                                     ) : data.phone !== '' && !phoneValid ? (
                                         <span className="text-red-500">{t('Enter the 9 digits after +250, starting with 72, 73, 78 or 79.')}</span>
                                     ) : (
-                                        <span className="text-gray-400">{t('Your verification code arrives on WhatsApp.')}</span>
+                                        <span className="text-gray-400">{t('Your verification code arrives by SMS.')}</span>
                                     )}
                                 </p>
                                 <InputError message={errors.phone} className="mt-1" />
@@ -542,7 +542,7 @@ export default function Register({ termsVersion }) {
                             {isFormValid ? (
                                 <>
                                     <ShieldCheck size={14} className="text-emerald-500" />
-                                    {t('Next, we will send verification codes to your email and WhatsApp.')}
+                                    {t('Next, we will send verification codes to your email and by SMS.')}
                                 </>
                             ) : (
                                 t('Fill in all fields correctly to continue')
