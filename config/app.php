@@ -67,6 +67,9 @@ return [
 
     'timezone' => 'UTC',
 
+    // Scheduled tasks (routes/console.php) run at Kigali clock times.
+    'schedule_timezone' => env('SCHEDULE_TIMEZONE', 'Africa/Kigali'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
