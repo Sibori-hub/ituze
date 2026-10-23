@@ -18,7 +18,6 @@ import {
     MessageCircle,
     Phone,
     Search,
-    Store,
     Warehouse,
     X,
 } from 'lucide-react';
@@ -54,13 +53,31 @@ const ACCOUNT_TYPES = [
     { value: 'advertiser', label: 'Advertiser', description: 'Promote your brand to people browsing properties on the platform.', Icon: Megaphone },
 ];
 
-const categories = [
-    { slug: 'offices', name: 'Offices', icon: Building2, image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=700&q=82' },
-    { slug: 'apartments', name: 'Apartments', icon: Home, image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=700&q=82' },
-    { slug: 'coffee-shops', name: 'Coffee Shops', icon: Coffee, image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=700&q=82' },
-    { slug: 'commercial-buildings', name: 'Commercial Buildings', icon: Store, image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=700&q=82' },
-    { slug: 'warehouses', name: 'Warehouses', icon: Warehouse, image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=700&q=82' },
+// "Explore by cities": each card filters listings by its province, district or sector
+// (found by name). Photos: Wikimedia Commons, credited under the section.
+const cities = [
+    { name: 'Kigali', match: { province: 'kigali' }, image: '/images/cities/kigali.jpg', credit: 'Adrien K, CC BY 2.0', source: 'https://commons.wikimedia.org/wiki/File:Kigali2018Cropped.jpg' },
+    { name: 'Nyamata', match: { district: 'bugesera', sector: 'nyamata' }, image: '/images/cities/nyamata.jpg', credit: 'Mugisha Don de Dieu, CC BY 2.0', source: 'https://commons.wikimedia.org/wiki/File:Palast_Rock_Hotel_located_in_Nyamata,_Bugesera_District.jpg' },
+    { name: 'Rubavu', match: { district: 'rubavu' }, image: '/images/cities/rubavu.jpg', credit: 'Ericnkurunziza, CC BY-SA 4.0', source: 'https://commons.wikimedia.org/wiki/File:Rubavu_and_Mount_Nyiragongo_in_Rwanda.jpg' },
+    { name: 'Musanze', match: { district: 'musanze' }, image: '/images/cities/musanze.jpg', credit: 'Fikiri-jenly, CC BY 4.0', source: 'https://commons.wikimedia.org/wiki/File:Muhabura_volcano_located_at_Musanze_District.jpg' },
+    { name: 'Rusizi', match: { district: 'rusizi' }, image: '/images/cities/rusizi.jpg', credit: 'Fanny Schertzer, CC BY 3.0', source: 'https://commons.wikimedia.org/wiki/File:Lake_Kivu,_Cyangugu.jpg' },
 ];
+
+/** The search filters (province, district, sector ids) for one city card. */
+function cityFilters(city, locations) {
+    const named = (list, word) => (list || []).find((item) => item.name.toLowerCase().includes(word));
+    const district = city.match.district ? named(locations.districts, city.match.district) : null;
+    const sector = district && city.match.sector
+        ? (locations.sectors || []).find((item) => String(item.district_id) === String(district.id) && item.name.toLowerCase().includes(city.match.sector))
+        : null;
+    const province = city.match.province ? named(locations.provinces, city.match.province) : null;
+
+    return {
+        province_id: String(province?.id ?? district?.province_id ?? ''),
+        district_id: district ? String(district.id) : '',
+        sector_id: sector ? String(sector.id) : '',
+    };
+}
 
 const unitLocation = (unit) => [
     unit.property?.cell?.sector?.name,
@@ -234,7 +251,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         <nav className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 p-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 md:flex">
                             <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Home')}</a>
                             <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Properties')}</a>
-                            <a href="#categories" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Property types')}</a>
+                            <a href="#cities" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Cities')}</a>
                             <a href="#enquiry" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Enquiry')}</a>
                         </nav>
                         <div className="flex items-center gap-2">
@@ -255,7 +272,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     {menuOpen && (
                         <div className="border-t border-slate-100 bg-white px-4 py-3 text-sm md:hidden">
                             <a className="block py-2 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
-                            <a className="block py-2 font-medium text-slate-700" href="#categories">{t('Property types')}</a>
+                            <a className="block py-2 font-medium text-slate-700" href="#cities">{t('Cities')}</a>
                             <a className="block py-2 font-medium text-slate-700" href="#enquiry">{t('Enquiry')}</a>
                             {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-2 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
                             {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
@@ -368,7 +385,46 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </section>
                     )}
 
-                    <section id="categories" className="bg-white"><div className="mx-auto max-w-7xl px-6 py-12 lg:px-8"><div className="text-center"><h2 className="text-4xl font-light">{t('Explore Our Categories')}</h2><p className="mt-3 text-sm text-slate-500">{t('Choose a category to see available listings.')}</p></div><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{categories.map(({ slug, name, icon: Icon, image }) => { const categoryName = propertyCategories.find((category) => category.slug === slug)?.name || name; return <button type="button" key={slug} onClick={() => { const filters = { ...searchForm, category: slug }; setSearchForm(filters); applySearch(filters); }} className="group relative h-60 overflow-hidden bg-[#0e3b2e] text-left"><img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60 transition duration-700 group-hover:scale-110" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" /><div className="absolute inset-x-5 bottom-5 text-white"><Icon size={22} /><h3 className="mt-3 text-xl font-bold">{t(categoryName)}</h3><p className="mt-1 text-xs text-white/75">{t('Browse available spaces')}</p></div></button>; })}</div></div></section>
+                    <section id="cities" className="bg-white" aria-labelledby="cities-title">
+                        <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+                            <div className="text-center">
+                                <h2 id="cities-title" className="text-4xl font-light">{t('Explore by cities')}</h2>
+                                <p className="mt-3 text-sm text-slate-600">{t('Choose a city to see available listings.')}</p>
+                            </div>
+                            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                                {cities.map((city) => (
+                                    <button
+                                        type="button"
+                                        key={city.name}
+                                        onClick={() => {
+                                            const filters = { ...searchForm, category: '', search: '', ...cityFilters(city, locations) };
+                                            setSearchForm(filters);
+                                            applySearch(filters);
+                                        }}
+                                        className="group relative h-60 overflow-hidden bg-[#0e3b2e] text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-400"
+                                        aria-label={t('See listings in :city', { city: city.name })}
+                                    >
+                                        <img src={city.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-70 transition duration-700 group-hover:scale-110" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                                        <div className="absolute inset-x-5 bottom-5 text-white">
+                                            <MapPin size={22} aria-hidden="true" />
+                                            <h3 className="mt-3 text-xl font-bold">{city.name}</h3>
+                                            <p className="mt-1 text-xs text-white/80">{t('Browse available spaces')}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="mt-4 text-center text-[11px] text-slate-500">
+                                {t('City photos from Wikimedia Commons:')}{' '}
+                                {cities.map((city, index) => (
+                                    <span key={city.name}>
+                                        {index > 0 && ' · '}
+                                        <a href={city.source} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">{city.name}</a> ({city.credit})
+                                    </span>
+                                ))}
+                            </p>
+                        </div>
+                    </section>
 
                     <section id="enquiry" className="mx-auto max-w-7xl px-6 py-12 lg:px-8"><div className="grid overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 lg:grid-cols-[1fr_420px]"><div className="relative min-h-80 bg-[#0e3b2e] p-8 text-white sm:p-12"><div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,59,46,.72),rgba(6,75,120,.8)),url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85')] bg-cover bg-center" /><div className="relative max-w-lg"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">{t('Need help finding a space?')}</p><h2 className="mt-4 text-4xl font-light">{t('Tell us what you are looking for.')}</h2><p className="mt-5 leading-7 text-white/75">{t('Our team can help you find an office, apartment, café, commercial building, or warehouse in Kigali.')}</p><button type="button" onClick={() => setInquiryOpen(true)} className="mt-8 inline-flex items-center gap-2 rounded bg-orange-500 px-6 py-3 font-bold hover:bg-orange-600">{t('Start an enquiry')} <MessageCircle size={17} /></button></div></div><div className="flex flex-col justify-center p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[.18em] text-orange-600">{t('Talk to Ituze')}</p><h3 className="mt-3 text-2xl font-bold">{t('A smoother way to rent.')}</h3><div className="mt-6 space-y-4 text-sm text-slate-600"><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('No account required to browse')}</p><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('Direct owner enquiries')}</p><p className="flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={18} /> {t('WhatsApp-ready communication')}</p></div><div className="mt-7 flex flex-wrap gap-3 text-sm font-semibold text-[#0e3b2e]"><a href={`tel:${companyPhone}`}><Phone size={16} className="mr-1 inline" /> {t('Call us')}</a><a href="mailto:hello@ituze.rw"><Mail size={16} className="mr-1 inline" /> {t('Email us')}</a></div></div></div></section>
                     <section className="border-t border-slate-100 bg-[#f6f8fa]">
@@ -454,7 +510,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     <a href="#enquiry" aria-label={t('Send an enquiry')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><MessageCircle size={17} /></a>
                                 </div>
                             </div>
-                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#categories">{t('Property categories')}</a><a className="block transition hover:text-white" href="#enquiry">{t('Send an enquiry')}</a></div></div>
+                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#cities">{t('Explore by cities')}</a><a className="block transition hover:text-white" href="#enquiry">{t('Send an enquiry')}</a></div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:hello@ituze.rw`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> hello@ituze.rw</a></div></div>
                         </div>

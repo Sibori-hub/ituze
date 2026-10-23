@@ -187,6 +187,11 @@ export default {
         'Contact this owner': 'Contacter ce propriétaire',
         'Contact Ituze': 'Contacter Ituze',
         'Trusted property listings in Rwanda.': 'Annonces immobilières fiables au Rwanda.',
+        'Explore by cities': 'Explorer par ville',
+        'Choose a city to see available listings.': 'Choisissez une ville pour voir les annonces disponibles.',
+        'See listings in :city': 'Voir les annonces à :city',
+        'City photos from Wikimedia Commons:': 'Photos des villes : Wikimedia Commons :',
+        'Cities': 'Villes',
     },
     rw: {
         'Find your perfect space to rent | ITUZE GREEN PLATFORM': 'Shaka ahantu heza ho gukodesha | ITUZE GREEN PLATFORM',
@@ -376,5 +381,10 @@ export default {
         'Contact this owner': 'Vugana na nyir’iyi nzu',
         'Contact Ituze': 'Vugana na Ituze',
         'Trusted property listings in Rwanda.': 'Inzu zo mu Rwanda zizewe.',
+        'Explore by cities': 'Reba ukurikije imijyi',
+        'Choose a city to see available listings.': 'Hitamo umujyi urebe ibiboneka.',
+        'See listings in :city': 'Reba ibiboneka i :city',
+        'City photos from Wikimedia Commons:': 'Amafoto y’imijyi avuye kuri Wikimedia Commons:',
+        'Cities': 'Imijyi',
     },
 };
