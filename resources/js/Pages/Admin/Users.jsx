@@ -31,6 +31,8 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '@/localization';
+import RwandaPhoneInput, { isRwandaMobile } from '@/Components/RwandaPhoneInput';
+import { toLocalDigits } from '@/lib/rwanda';
 
 const ROLE_TABS = [
     { value: '', label: 'All users' },
@@ -287,7 +289,7 @@ export default function Users({ users, filters, counts = {} }) {
     const savePhone = () => {
         if (!phoneUser) return;
         setProcessing(true);
-        router.patch(route('admin.users.phone', phoneUser.id), { phone: newPhone }, {
+        router.patch(route('admin.users.phone', phoneUser.id), { phone: `0${newPhone}` }, {
             preserveScroll: true,
             onSuccess: () => setPhoneUser(null),
             onFinish: () => setProcessing(false),
@@ -344,7 +346,7 @@ export default function Users({ users, filters, counts = {} }) {
                     tone="brand"
                     onClick={() => {
                         setPhoneUser(user);
-                        setNewPhone(user.phone || '');
+                        setNewPhone(toLocalDigits(user.phone || ''));
                     }}
                 >
                     <Phone size={16} />
@@ -875,26 +877,15 @@ export default function Users({ users, filters, counts = {} }) {
                     title={t('Change phone')}
                     description={t(':name must confirm the new number with an SMS code at the next sign-in. The old number gets an SMS alert, and open sessions are signed out.', { name: phoneShown.name })}
                 >
-                    <label htmlFor="new-phone" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600">{t('New phone number')}</label>
-                    <input
-                        id="new-phone"
-                        type="tel"
-                        inputMode="tel"
-                        value={newPhone}
-                        onChange={(e) => setNewPhone(e.target.value)}
-                        placeholder="078 123 4567"
-                        autoComplete="off"
-                        aria-describedby={errors?.phone ? 'new-phone-error' : undefined}
-                        className="mt-1.5 w-full rounded-xl border-gray-300 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
-                    />
-                    {errors?.phone && <p id="new-phone-error" className="mt-1.5 text-sm font-medium text-red-700" role="alert">{t(errors.phone)}</p>}
+                    <label htmlFor="new-phone" className="mb-1.5 mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600">{t('New phone number')}</label>
+                    <RwandaPhoneInput id="new-phone" value={newPhone} onChange={setNewPhone} error={errors?.phone} autoFocus />
                     <div className="mt-5 flex gap-3">
                         <button type="button" onClick={() => !processing && setPhoneUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
                             {t('Cancel')}
                         </button>
                         <button
                             type="button"
-                            disabled={processing || newPhone.replace(/\D/g, '').length < 9}
+                            disabled={processing || !isRwandaMobile(newPhone)}
                             onClick={savePhone}
                             className="min-h-11 flex-1 rounded-xl bg-[#0E3B2E] text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60"
                         >

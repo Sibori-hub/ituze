@@ -1,6 +1,8 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import RwandaPhoneInput, { isRwandaMobile } from '@/Components/RwandaPhoneInput';
+import StrongPasswordFields, { passwordReady } from '@/Components/StrongPasswordFields';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, router, useForm } from '@inertiajs/react';
@@ -45,10 +47,12 @@ function EmailReset() {
 
 function PhoneSendCode() {
     const { t } = useTranslation();
-    const { data, setData, post, processing, errors } = useForm({ phone: '' });
+    // The 9 digits after +250, as on the sign-up page.
+    const { data, setData, post, processing, errors, transform } = useForm({ phone: '' });
 
     const submit = (e) => {
         e.preventDefault();
+        transform((form) => ({ phone: `0${form.phone}` }));
         post(route('password.phone.send'), { preserveScroll: true });
     };
 
@@ -57,24 +61,11 @@ function PhoneSendCode() {
             <p className="mb-4 text-sm text-gray-600">
                 {t('Type the phone number on your account. We will send you a 6-digit code by SMS to choose a new password.')}
             </p>
-            <InputLabel htmlFor="phone" value={t('Phone Number')} />
-            <TextInput
-                id="phone"
-                type="tel"
-                name="phone"
-                inputMode="tel"
-                value={data.phone}
-                placeholder="078 123 4567"
-                className="mt-1 block w-full"
-                autoComplete="tel"
-                isFocused={true}
-                onChange={(e) => setData('phone', e.target.value)}
-                aria-describedby={errors.phone ? 'phone-error' : undefined}
-            />
-            <InputError id="phone-error" message={errors.phone ? t(errors.phone) : null} className="mt-2" />
+            <label htmlFor="phone" className="mb-1.5 block text-[13px] font-medium text-gray-700">{t('Phone number (SMS)')}</label>
+            <RwandaPhoneInput id="phone" value={data.phone} onChange={(digits) => setData('phone', digits)} error={errors.phone} autoFocus />
 
             <div className="mt-4 flex items-center justify-end">
-                <PrimaryButton disabled={processing}>{t('Send code by SMS')}</PrimaryButton>
+                <PrimaryButton disabled={processing || !isRwandaMobile(data.phone)}>{t('Send code by SMS')}</PrimaryButton>
             </div>
         </form>
     );
@@ -150,36 +141,18 @@ function PhoneChoosePassword() {
 
     return (
         <form onSubmit={submit} noValidate>
-            <InputLabel htmlFor="password" value={t('New password')} />
-            <TextInput
-                id="password"
-                type="password"
-                name="password"
-                value={data.password}
-                className="mt-1 block w-full"
-                autoComplete="new-password"
-                isFocused={true}
-                onChange={(e) => setData('password', e.target.value)}
-                aria-describedby={errors.password ? 'password-error' : undefined}
+            <StrongPasswordFields
+                password={data.password}
+                confirmation={data.password_confirmation}
+                onPasswordChange={(value) => setData('password', value)}
+                onConfirmationChange={(value) => setData('password_confirmation', value)}
+                errors={errors}
+                autoFocus
             />
-            <InputError id="password-error" message={errors.password ? t(errors.password) : null} className="mt-2" />
-
-            <div className="mt-4">
-                <InputLabel htmlFor="password_confirmation" value={t('Confirm Password')} />
-                <TextInput
-                    id="password_confirmation"
-                    type="password"
-                    name="password_confirmation"
-                    value={data.password_confirmation}
-                    className="mt-1 block w-full"
-                    autoComplete="new-password"
-                    onChange={(e) => setData('password_confirmation', e.target.value)}
-                />
-            </div>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                 <StartAgainButton />
-                <PrimaryButton disabled={processing}>{t('Save new password')}</PrimaryButton>
+                <PrimaryButton disabled={processing || !passwordReady(data.password, data.password_confirmation)}>{t('Save new password')}</PrimaryButton>
             </div>
         </form>
     );

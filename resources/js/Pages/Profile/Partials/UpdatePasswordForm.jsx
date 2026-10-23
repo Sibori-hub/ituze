@@ -1,6 +1,7 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import StrongPasswordFields, { passwordReady } from '@/Components/StrongPasswordFields';
 import TextInput from '@/Components/TextInput';
 import { Transition } from '@headlessui/react';
 import { useForm } from '@inertiajs/react';
@@ -9,7 +10,6 @@ import { useTranslation } from '@/localization';
 
 export default function UpdatePasswordForm({ className = '' }) {
     const { t } = useTranslation();
-    const passwordInput = useRef();
     const currentPasswordInput = useRef();
 
     const {
@@ -35,7 +35,7 @@ export default function UpdatePasswordForm({ className = '' }) {
             onError: (errors) => {
                 if (errors.password) {
                     reset('password', 'password_confirmation');
-                    passwordInput.current.focus();
+                    document.getElementById('password')?.focus();
                 }
 
                 if (errors.current_password) {
@@ -83,47 +83,17 @@ export default function UpdatePasswordForm({ className = '' }) {
                     />
                 </div>
 
-                <div>
-                    <InputLabel htmlFor="password" value={t('New Password')} />
-
-                    <TextInput
-                        id="password"
-                        ref={passwordInput}
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div>
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value={t('Confirm Password')}
-                    />
-
-                    <TextInput
-                        id="password_confirmation"
-                        value={data.password_confirmation}
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        type="password"
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                    />
-
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
+                <StrongPasswordFields
+                    password={data.password}
+                    confirmation={data.password_confirmation}
+                    onPasswordChange={(value) => setData('password', value)}
+                    onConfirmationChange={(value) => setData('password_confirmation', value)}
+                    errors={errors}
+                    columns
+                />
 
                 <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>{t('Save')}</PrimaryButton>
+                    <PrimaryButton disabled={processing || data.current_password === '' || !passwordReady(data.password, data.password_confirmation)}>{t('Save')}</PrimaryButton>
 
                     <Transition
                         show={recentlySuccessful}
