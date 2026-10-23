@@ -59,6 +59,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_otp',
         'phone_otp',
         'login_otp',
+        'password_otp',
         // Private file path; admins open it through admin.approvals.identity-document.
         'identity_document',
     ];
@@ -76,6 +77,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_otp_expires_at' => 'datetime',
             'phone_otp_expires_at' => 'datetime',
             'login_otp_expires_at' => 'datetime',
+            'password_otp_expires_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'disabled_at' => 'datetime',
             'expires_at' => 'datetime',

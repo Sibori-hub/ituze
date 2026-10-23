@@ -112,6 +112,25 @@ class OtpService
     }
 
     /* ---------------------------------------------------------------------
+     | Forgot password by SMS
+     * ------------------------------------------------------------------- */
+
+    public function sendPasswordResetOtp(User $user): void
+    {
+        $code = $this->issue($user, 'password_otp');
+
+        $this->deliverToPhone($user, $code, 'password reset');
+    }
+
+    /**
+     * A correct code is consumed, so it cannot reset the password twice.
+     */
+    public function verifyPasswordResetOtp(User $user, ?string $code): string
+    {
+        return $this->check($user, 'password_otp', $code);
+    }
+
+    /* ---------------------------------------------------------------------
      | Login second factor
      * ------------------------------------------------------------------- */
 

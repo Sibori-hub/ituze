@@ -1,55 +1,206 @@
 import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { Mail, Smartphone } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from '@/localization';
 
-export default function ForgotPassword({ status }) {
+function EmailReset() {
     const { t } = useTranslation();
-    const { data, setData, post, processing, errors } = useForm({
-        email: '',
+    const { data, setData, post, processing, errors } = useForm({ email: '' });
+
+    const submit = (e) => {
+        e.preventDefault();
+        post(route('password.email'));
+    };
+
+    return (
+        <form onSubmit={submit} noValidate>
+            <p className="mb-4 text-sm text-gray-600">
+                {t('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.')}
+            </p>
+            <InputLabel htmlFor="email" value={t('Email')} />
+            <TextInput
+                id="email"
+                type="email"
+                name="email"
+                value={data.email}
+                className="mt-1 block w-full"
+                autoComplete="email"
+                isFocused={true}
+                onChange={(e) => setData('email', e.target.value)}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+            />
+            <InputError id="email-error" message={errors.email ? t(errors.email) : null} className="mt-2" />
+
+            <div className="mt-4 flex items-center justify-end">
+                <PrimaryButton disabled={processing}>{t('Email Password Reset Link')}</PrimaryButton>
+            </div>
+        </form>
+    );
+}
+
+function PhoneSendCode() {
+    const { t } = useTranslation();
+    const { data, setData, post, processing, errors } = useForm({ phone: '' });
+
+    const submit = (e) => {
+        e.preventDefault();
+        post(route('password.phone.send'), { preserveScroll: true });
+    };
+
+    return (
+        <form onSubmit={submit} noValidate>
+            <p className="mb-4 text-sm text-gray-600">
+                {t('Type the phone number on your account. We will send you a 6-digit code by SMS to choose a new password.')}
+            </p>
+            <InputLabel htmlFor="phone" value={t('Phone Number')} />
+            <TextInput
+                id="phone"
+                type="tel"
+                name="phone"
+                inputMode="tel"
+                value={data.phone}
+                placeholder="078 123 4567"
+                className="mt-1 block w-full"
+                autoComplete="tel"
+                isFocused={true}
+                onChange={(e) => setData('phone', e.target.value)}
+                aria-describedby={errors.phone ? 'phone-error' : undefined}
+            />
+            <InputError id="phone-error" message={errors.phone ? t(errors.phone) : null} className="mt-2" />
+
+            <div className="mt-4 flex items-center justify-end">
+                <PrimaryButton disabled={processing}>{t('Send code by SMS')}</PrimaryButton>
+            </div>
+        </form>
+    );
+}
+
+function PhoneNewPassword({ phoneReset }) {
+    const { t } = useTranslation();
+    const { data, setData, post, processing, errors, reset } = useForm({
+        otp: '',
+        password: '',
+        password_confirmation: '',
     });
 
     const submit = (e) => {
         e.preventDefault();
-
-        post(route('password.email'));
+        post(route('password.phone.reset'), {
+            onFinish: () => reset('password', 'password_confirmation'),
+        });
     };
+
+    return (
+        <form onSubmit={submit} noValidate>
+            <p className="mb-4 text-sm text-gray-600">
+                {t('Enter the 6-digit code we sent by SMS to :phone, then choose a new password.', { phone: phoneReset.phone })}
+            </p>
+
+            <InputLabel htmlFor="otp" value={t('Code from the SMS')} />
+            <TextInput
+                id="otp"
+                name="otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={data.otp}
+                className="mt-1 block w-full tracking-[0.4em]"
+                isFocused={true}
+                onChange={(e) => setData('otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                aria-describedby={errors.otp ? 'otp-error' : undefined}
+            />
+            <InputError id="otp-error" message={errors.otp ? t(errors.otp) : null} className="mt-2" />
+
+            <div className="mt-4">
+                <InputLabel htmlFor="password" value={t('New password')} />
+                <TextInput
+                    id="password"
+                    type="password"
+                    name="password"
+                    value={data.password}
+                    className="mt-1 block w-full"
+                    autoComplete="new-password"
+                    onChange={(e) => setData('password', e.target.value)}
+                    aria-describedby={errors.password ? 'password-error' : undefined}
+                />
+                <InputError id="password-error" message={errors.password ? t(errors.password) : null} className="mt-2" />
+            </div>
+
+            <div className="mt-4">
+                <InputLabel htmlFor="password_confirmation" value={t('Confirm Password')} />
+                <TextInput
+                    id="password_confirmation"
+                    type="password"
+                    name="password_confirmation"
+                    value={data.password_confirmation}
+                    className="mt-1 block w-full"
+                    autoComplete="new-password"
+                    onChange={(e) => setData('password_confirmation', e.target.value)}
+                />
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <button
+                    type="button"
+                    onClick={() => router.delete(route('password.phone.cancel'), { preserveScroll: true })}
+                    className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E] focus-visible:ring-offset-2"
+                >
+                    {t('Use another number or send a new code')}
+                </button>
+                <PrimaryButton disabled={processing || data.otp.length !== 6}>{t('Save new password')}</PrimaryButton>
+            </div>
+        </form>
+    );
+}
+
+export default function ForgotPassword({ status, phoneReset }) {
+    const { t } = useTranslation();
+    const [method, setMethod] = useState(phoneReset ? 'phone' : 'email');
+
+    const methods = [
+        { value: 'email', label: t('By email'), Icon: Mail },
+        { value: 'phone', label: t('By SMS'), Icon: Smartphone },
+    ];
 
     return (
         <GuestLayout>
             <Head title={t('Forgot Password')} />
 
-            <div className="mb-4 text-sm text-gray-600">
-                {t('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.')}
+            <h1 className="mb-4 font-[Sora] text-xl font-bold text-gray-900">{t('Forgot Password')}</h1>
+
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('How do you want to reset your password?')}>
+                {methods.map(({ value, label, Icon }) => {
+                    const selected = method === value;
+                    return (
+                        <button
+                            key={value}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => setMethod(value)}
+                            className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E] ${
+                                selected ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                        >
+                            <Icon size={16} aria-hidden="true" />
+                            {label}
+                        </button>
+                    );
+                })}
             </div>
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    {status}
+                <div role="status" className="mb-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
+                    {t(status)}
                 </div>
             )}
 
-            <form onSubmit={submit}>
-                <TextInput
-                    id="email"
-                    type="email"
-                    name="email"
-                    value={data.email}
-                    className="mt-1 block w-full"
-                    isFocused={true}
-                    onChange={(e) => setData('email', e.target.value)}
-                />
-
-                <InputError message={errors.email} className="mt-2" />
-
-                <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        {t('Email Password Reset Link')}
-                    </PrimaryButton>
-                </div>
-            </form>
+            {method === 'email' ? <EmailReset /> : phoneReset ? <PhoneNewPassword phoneReset={phoneReset} /> : <PhoneSendCode />}
         </GuestLayout>
     );
 }

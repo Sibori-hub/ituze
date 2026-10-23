@@ -15,10 +15,12 @@ class PasswordResetLinkController extends Controller
     /**
      * Display the password reset link request view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
+            // Set once a code was requested by phone: the page then asks for the code.
+            'phoneReset' => PhonePasswordResetController::pendingReset($request),
         ]);
     }
 

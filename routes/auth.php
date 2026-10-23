@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\LoginOtpController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\PhonePasswordResetController;
 use App\Http\Controllers\Auth\PhoneVerificationController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -44,6 +45,18 @@ Route::middleware('guest')->group(function () {
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
         ->name('password.email');
+
+    // Forgot password by phone: SMS code, then code + new password.
+    Route::post('forgot-password/phone', [PhonePasswordResetController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('password.phone.send');
+
+    Route::post('reset-password/phone', [PhonePasswordResetController::class, 'update'])
+        ->middleware('throttle:6,1')
+        ->name('password.phone.reset');
+
+    Route::delete('forgot-password/phone', [PhonePasswordResetController::class, 'destroy'])
+        ->name('password.phone.cancel');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
