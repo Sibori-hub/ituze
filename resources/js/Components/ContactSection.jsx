@@ -69,10 +69,10 @@ export default function ContactSection({ phone, phoneDisplay, email, address, ma
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" aria-hidden="true" />
             <div className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-emerald-200/40 blur-3xl" aria-hidden="true" />
 
-            <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
                 <div className="mx-auto max-w-2xl text-center">
                     <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600">{t('Contact us')}</p>
-                    <h2 id="contact-title" className="mt-3 text-4xl font-light text-slate-900">{t('We are here to help')}</h2>
+                    <h2 id="contact-title" className="mt-3 text-3xl font-light text-slate-900 sm:text-4xl">{t('We are here to help')}</h2>
                     <p className="mt-4 text-sm leading-6 text-slate-600">
                         {t('Questions about renting, listing your property or working with us? Reach us any way you like.')}
                     </p>

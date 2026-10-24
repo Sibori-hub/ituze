@@ -230,12 +230,12 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
             <div className="min-h-screen bg-[#f6f8fa] text-slate-900">
                 <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.45)] backdrop-blur-md">
                     <div className="bg-[#063f67] text-white">
-                        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 text-[11px] font-medium sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-xs lg:px-8">
-                            <a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-white/85 transition hover:text-white">
+                        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 text-[11px] font-medium sm:px-6 sm:text-xs lg:px-8">
+                            <a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-white/85 transition hover:text-white">
                                 <MapPin size={15} className="shrink-0 text-[#f0a052]" />
-                                <span className="truncate sm:truncate-none">{companyAddress}</span>
+                                <span className="truncate">{companyAddress}</span>
                             </a>
-                            <div className="flex items-center gap-3">
+                            <div className="flex shrink-0 items-center gap-3">
                                 <a href={`tel:${companyPhone}`} className="flex items-center gap-1.5 text-white/90 transition hover:text-white">
                                     <Phone size={15} className="text-[#f0a052]" />
                                     <span>{companyPhoneDisplay}</span>
@@ -243,10 +243,10 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             </div>
                         </div>
                     </div>
-                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+                    <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
                         <Link href="/" className="rounded-xl text-[#064b78]">
                             <BrandLockup
-                                logoClassName="h-14 w-14 sm:h-16 sm:w-16"
+                                logoClassName="h-12 w-12 sm:h-16 sm:w-16"
                                 nameClassName="text-xs font-black sm:text-sm"
                                 subtitleClassName="text-[8px] font-semibold sm:text-[9px]"
                             />
@@ -273,61 +273,61 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </div>
                     </div>
                     {menuOpen && (
-                        <div className="border-t border-slate-100 bg-white px-4 py-3 text-sm md:hidden">
-                            <a className="block py-2 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
-                            <a className="block py-2 font-medium text-slate-700" href="#cities">{t('Cities')}</a>
-                            <a className="block py-2 font-medium text-slate-700" href="#contact">{t('Contact us')}</a>
-                            {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-2 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
-                            {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
+                        <div className="divide-y divide-slate-100 border-t border-slate-100 bg-white px-4 py-1 text-sm md:hidden">
+                            <a className="block py-3 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
+                            <a className="block py-3 font-medium text-slate-700" href="#cities">{t('Cities')}</a>
+                            <a className="block py-3 font-medium text-slate-700" href="#contact">{t('Contact us')}</a>
+                            {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-3 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
+                            {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-3 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
                         </div>
                     )}
                 </header>
 
                 <main>
                     <div className="px-4 pt-3 sm:hidden"><InstallAppBanner className="!mb-3" /></div>
-                    <section className="relative h-[31rem] overflow-hidden bg-[#0e3b2e]">
+                    <section className="relative h-[26rem] overflow-hidden bg-[#0e3b2e] sm:h-[31rem]">
                         {heroSlides.map((item, index) => <img key={item.image} src={item.image} alt="" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === slide ? 'opacity-60' : 'opacity-0'}`} />)}
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent" />
-                        <div className="relative mx-auto flex h-full max-w-7xl items-center px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-5 text-5xl font-light leading-tight sm:text-7xl">{t(current.title)}</h1><p className="mt-4 text-lg font-medium text-white/85">{t(current.subtitle)}</p><p className="mt-6 text-2xl font-bold">{t(current.price)}</p><button type="button" onClick={() => setInquiryOpen(true)} className="mt-8 inline-flex items-center gap-2 bg-orange-500 px-7 py-3.5 text-sm font-bold text-white hover:bg-orange-600">{t('Make an enquiry')} <ArrowRight size={16} /></button></div></div>
+                        <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 pb-6 sm:px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-4 text-4xl font-light leading-tight sm:mt-5 sm:text-6xl lg:text-7xl">{t(current.title)}</h1><p className="mt-3 text-base font-medium text-white/85 sm:mt-4 sm:text-lg">{t(current.subtitle)}</p><p className="mt-4 text-xl font-bold sm:mt-6 sm:text-2xl">{t(current.price)}</p><button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-orange-600 sm:mt-8 sm:px-7 sm:py-3.5">{t('Make an enquiry')} <ArrowRight size={16} /></button></div></div>
                     </section>
 
-                    <section className="relative z-10 mx-auto -mt-7 max-w-7xl px-6 lg:px-8">
-                        <form onSubmit={submitSearch} className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(140px,.8fr))_auto]">
-                            <label className="flex min-h-12 items-center gap-3 rounded-lg border border-slate-200 px-4 text-sm text-slate-500">
+                    <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+                        <form onSubmit={submitSearch} className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(140px,.8fr))_auto]">
+                            <label className="flex min-h-12 items-center gap-3 rounded-lg border border-slate-200 px-4 text-sm text-slate-500 focus-within:border-[#078dcc] focus-within:ring-2 focus-within:ring-[#078dcc]/20 sm:col-span-2 xl:col-span-1">
                                 <Search size={18} className="shrink-0" />
                                 <input value={searchForm.search} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, search: event.target.value }))} placeholder={t('Location or property name')} aria-label={t('Search by location or property name')} className="w-full border-0 p-0 outline-none ring-0 focus:ring-0" />
                             </label>
-                            <select value={searchForm.category} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, category: event.target.value }))} aria-label="Property category" className="min-h-12 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700">
+                            <select value={searchForm.category} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, category: event.target.value }))} aria-label="Property category" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All categories')}</option>
                                 {propertyCategories.map((category) => <option key={category.slug} value={category.slug}>{t(category.name)}</option>)}
                             </select>
-                            <select value={searchForm.province_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, province_id: event.target.value, district_id: '', sector_id: '' }))} aria-label="Province" className="min-h-12 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700">
+                            <select value={searchForm.province_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, province_id: event.target.value, district_id: '', sector_id: '' }))} aria-label="Province" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All provinces')}</option>
                                 {(locations.provinces || []).map((province) => <option key={province.id} value={province.id}>{province.name}</option>)}
                             </select>
-                            <select value={searchForm.district_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, district_id: event.target.value, sector_id: '' }))} aria-label="District" className="min-h-12 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700">
+                            <select value={searchForm.district_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, district_id: event.target.value, sector_id: '' }))} aria-label="District" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All districts')}</option>
                                 {availableDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}
                             </select>
-                            <select value={searchForm.sector_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, sector_id: event.target.value }))} aria-label="Sector" className="min-h-12 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700">
+                            <select value={searchForm.sector_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, sector_id: event.target.value }))} aria-label="Sector" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All sectors')}</option>
                                 {availableSectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.name}</option>)}
                             </select>
-                            <select value={searchForm.price_range} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, price_range: event.target.value }))} aria-label="Rent range" className="min-h-12 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700">
+                            <select value={searchForm.price_range} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, price_range: event.target.value }))} aria-label="Rent range" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="any">{t('Any price')}</option>
                                 <option value="under-500000">{t('Under 500,000 RWF')}</option>
                                 <option value="500000-1500000">500,000 - 1,500,000 RWF</option>
                                 <option value="1500000-5000000">1,500,000 - 5,000,000 RWF</option>
                                 <option value="5000000-plus">Over 5,000,000 RWF</option>
                             </select>
-                            <button type="submit" className="min-h-12 bg-orange-500 px-8 text-sm font-bold text-white transition hover:bg-orange-600">
+                            <button type="submit" className="min-h-12 rounded-lg bg-orange-500 px-8 text-sm font-bold text-white transition hover:bg-orange-600 sm:col-span-2 xl:col-span-1">
                                 <Search size={16} className="mr-2 inline" /> {t('Search')}
                             </button>
                         </form>
                     </section>
 
                     {searchFilters.active && (
-                        <section id="search-results" className="mx-auto max-w-7xl scroll-mt-32 px-6 pt-10 lg:px-8">
+                        <section id="search-results" className="mx-auto max-w-7xl scroll-mt-32 px-4 pt-10 sm:px-6 lg:px-8">
                             <div className="flex flex-wrap items-end justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600">{t('Search results')}</p>
@@ -361,10 +361,10 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     )}
 
                     {!searchFilters.active && (
-                        <section id="featured" className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+                        <section id="featured" className="mx-auto max-w-7xl scroll-mt-28 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
                             <div className="text-center">
                                 <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600">{t('Available now')}</p>
-                                <h2 className="mt-3 text-4xl font-light">{t('Discover Available Rental Units')}</h2>
+                                <h2 className="mt-3 text-3xl font-light sm:text-4xl">{t('Discover Available Rental Units')}</h2>
                                 <p className="mt-3 text-sm text-slate-500">{t('Browse individual spaces, see their details, and contact the property owner.')}</p>
                             </div>
                             {units.data.length ? (
@@ -388,14 +388,14 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </section>
                     )}
 
-                    <section id="cities" className="bg-white" aria-labelledby="cities-title">
-                        <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+                    <section id="cities" className="scroll-mt-28 bg-white" aria-labelledby="cities-title">
+                        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
                             <div className="text-center">
-                                <h2 id="cities-title" className="text-4xl font-light">{t('Explore by cities')}</h2>
+                                <h2 id="cities-title" className="text-3xl font-light sm:text-4xl">{t('Explore by cities')}</h2>
                                 <p className="mt-3 text-sm text-slate-600">{t('Choose a city to see available listings.')}</p>
                             </div>
-                            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                                {cities.map((city) => (
+                            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+                                {cities.map((city, index) => (
                                     <button
                                         type="button"
                                         key={city.name}
@@ -404,14 +404,14 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                             setSearchForm(filters);
                                             applySearch(filters);
                                         }}
-                                        className="group relative h-60 overflow-hidden bg-[#0e3b2e] text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-400"
+                                        className={`group relative h-40 overflow-hidden rounded-2xl bg-[#0e3b2e] text-left shadow-sm transition hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-400 sm:h-56 lg:h-64 ${index === 0 ? 'col-span-2 lg:col-span-1' : ''}`}
                                         aria-label={t('See listings in :city', { city: city.name })}
                                     >
                                         <img src={city.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-70 transition duration-700 group-hover:scale-110" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                                        <div className="absolute inset-x-5 bottom-5 text-white">
-                                            <MapPin size={22} aria-hidden="true" />
-                                            <h3 className="mt-3 text-xl font-bold">{city.name}</h3>
+                                        <div className="absolute inset-x-4 bottom-4 text-white sm:inset-x-5 sm:bottom-5">
+                                            <MapPin size={20} className="text-orange-300" aria-hidden="true" />
+                                            <h3 className="mt-2 text-lg font-bold sm:text-xl">{city.name}</h3>
                                             <p className="mt-1 text-xs text-white/80">{t('Browse available spaces')}</p>
                                         </div>
                                     </button>
@@ -421,13 +421,13 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     </section>
 
                     <section className="border-t border-slate-100 bg-[#f6f8fa]">
-                        <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+                        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
                             <div className="text-center">
                                 <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600">{t('Built together')}</p>
-                                <h2 className="mt-3 text-4xl font-light text-slate-900">{t('Our Partners')}</h2>
+                                <h2 className="mt-3 text-3xl font-light text-slate-900 sm:text-4xl">{t('Our Partners')}</h2>
                                 <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-500">{t('We work with trusted property owners, business communities, relocation teams, and local enterprises to make finding the right space easier.')}</p>
                             </div>
-                            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-4">
                                 {[
                                     ['Property owners', 'Quality spaces from people who know their properties best.'],
                                     ['Business communities', 'Connections that help teams find the right Kigali address.'],
@@ -441,8 +441,8 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     </div>
                                 ))}
                             </div>
-                            <div className="mt-10 text-center">
-                                <Link href={route('register')} className="inline-flex items-center gap-2 rounded bg-[#064b78] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#053653]">{t('Become a partner')} <ArrowRight size={16} /></Link>
+                            <div className="mt-8 text-center sm:mt-10">
+                                <Link href={route('register')} className="inline-flex items-center gap-2 rounded-lg bg-[#064b78] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#053653]">{t('Become a partner')} <ArrowRight size={16} /></Link>
                             </div>
                         </div>
                     </section>
@@ -450,8 +450,8 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                 </main>
 
                 <footer className="relative bg-[#063f67] text-white">
-                    <div className="mx-auto max-w-7xl px-6 py-14 lg:px-8">
-                        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+                    <div className="mx-auto max-w-7xl px-4 pb-24 pt-12 sm:px-6 sm:pb-12 sm:pt-14 lg:px-8">
+                        <div className="grid gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
                             <div>
                                 <BrandLockup
                                     logoClassName="h-16 w-16"
@@ -469,9 +469,9 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:info@qraltd.com`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> {companyEmail}</a></div></div>
                         </div>
-                        <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><button type="button" onClick={() => setCreditsOpen(true)} className="transition hover:text-white">{t('Photo credits')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
+                        <div className="mt-10 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/60 lg:flex-row lg:items-center"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><button type="button" onClick={() => setCreditsOpen(true)} className="transition hover:text-white">{t('Photo credits')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
                     </div>
-                    <a href={whatsappUrl} target="_blank" rel="noreferrer" aria-label={t('Chat with Ituze on WhatsApp')} className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-xl shadow-black/20 transition hover:scale-105 hover:bg-[#1fba59] sm:bottom-8 sm:right-10">
+                    <a href={whatsappUrl} target="_blank" rel="noreferrer" aria-label={t('Chat with Ituze on WhatsApp')} className="fixed bottom-4 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-[#25d366] text-white shadow-xl shadow-black/20 transition hover:scale-105 hover:bg-[#1fba59] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#25d366]/40 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14">
                         <MessageCircle size={27} />
                     </a>
                 </footer>
