@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\AccountApproved;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -60,6 +61,7 @@ class ApprovalController extends Controller
         abort_unless($user->hasVerifiedEmail() && $user->profile_completed, 422, 'The account must verify their email and complete their profile before approval.');
 
         $user->approveAccount();
+        $user->notify(new AccountApproved());
 
         return back()->with('status', $user->roleLabel().' account approved.');
     }

@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\AccountApproved;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class OwnerApprovalTest extends TestCase
@@ -40,7 +43,9 @@ class OwnerApprovalTest extends TestCase
             'status' => 'pending',
             'profile_completed' => true,
             'expires_at' => null,
+            'phone' => '0788123456',
         ]);
+        Notification::fake();
 
         $this->actingAs($admin)
             ->post(route('admin.approvals.approve', $owner), ['payment_verified' => true])
@@ -48,6 +53,16 @@ class OwnerApprovalTest extends TestCase
 
         $owner->refresh();
         $this->assertSame('approved', $owner->status);
+        // The owner hears it by email and SMS, with the next step.
+        Notification::assertSentTo($owner, AccountApproved::class, function ($notification, $channels) use ($owner) {
+            $sms = $notification->toSms($owner);
+
+            return $channels === ['mail', SmsChannel::class]
+                && str_contains($sms, 'your account is approved')
+                && str_contains($sms, 'pay your first month')
+                && mb_strlen($sms) <= 160
+                && $notification->toMail($owner)->subject === 'Your ITUZE account is approved';
+        });
         // No free time: the owner pays the first month before using the system.
         $this->assertNull($owner->expires_at);
         $this->assertTrue($owner->isExpired());
