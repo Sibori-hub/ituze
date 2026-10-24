@@ -1,7 +1,7 @@
 import RwandaPhoneInput, { isRwandaMobile } from '@/Components/RwandaPhoneInput';
 import { useForm } from '@inertiajs/react';
 import { ArrowRight, CheckCircle2, Loader2, Mail, MapPin, MessageCircle, Phone, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from '@/localization';
 
 const TOPICS = [
@@ -10,6 +10,13 @@ const TOPICS = [
     { value: 'partnership', label: 'Partnership' },
     { value: 'other', label: 'Other' },
 ];
+
+const OPEN_EVENT = 'ituze:contact';
+
+/** Scrolls to the contact form and gets it ready; used by every Inquiry button. */
+export function openContactForm(topic = 'rent') {
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { topic } }));
+}
 
 const fieldClass =
     'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition placeholder:text-gray-400 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10';
@@ -49,6 +56,19 @@ export default function ContactSection({ phone, phoneDisplay, email, address, ma
         message: '',
         website: '',
     });
+
+    useEffect(() => {
+        const open = (event) => {
+            setSent(false);
+            const topic = event.detail?.topic;
+            if (TOPICS.some((item) => item.value === topic)) setData('topic', topic);
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            document.getElementById('contact-form')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+            setTimeout(() => document.getElementById('contact-name')?.focus({ preventScroll: true }), reduceMotion ? 0 : 500);
+        };
+        window.addEventListener(OPEN_EVENT, open);
+        return () => window.removeEventListener(OPEN_EVENT, open);
+    }, []);
 
     const ready = data.name.trim() !== '' && isRwandaMobile(data.phone) && data.message.trim().length >= 5;
 
@@ -93,7 +113,7 @@ export default function ContactSection({ phone, phoneDisplay, email, address, ma
                 </div>
 
                 <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-                    <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200 sm:p-8">
+                    <div id="contact-form" className="scroll-mt-28 rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200 sm:p-8">
                         {sent ? (
                             <div className="flex h-full flex-col items-center justify-center py-10 text-center" role="status">
                                 <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">

@@ -1,6 +1,6 @@
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/react';
 import BrandLockup from '@/Components/BrandLockup';
-import ContactSection from '@/Components/ContactSection';
+import ContactSection, { openContactForm } from '@/Components/ContactSection';
 import InstallAppBanner from '@/Components/InstallAppBanner';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import LegalModal from '@/Components/LegalModal';
@@ -135,32 +135,10 @@ function UnitCard({ unit }) {
     );
 }
 
-function InquiryPanel({ onClose }) {
-    const { t } = useTranslation();
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
-                <div className="flex items-start justify-between">
-                    <div><p className="text-xs font-bold uppercase tracking-[.18em] text-orange-600">{t('Free enquiry')}</p><h2 className="mt-2 text-2xl font-bold text-slate-900">{t('Find your next space')}</h2><p className="mt-2 text-sm leading-6 text-slate-500">{t('Tell us what you are looking for and our property team will contact you.')}</p></div>
-                    <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100"><X size={19} /></button>
-                </div>
-                <form className="mt-6 space-y-4" onSubmit={(event) => { event.preventDefault(); onClose(); }}>
-                    <div className="grid gap-4 sm:grid-cols-2"><input required placeholder={t('Your name')} className="rounded-xl border-slate-200" /><input required placeholder={t('Phone / WhatsApp')} className="rounded-xl border-slate-200" /></div>
-                    <input type="email" placeholder={t('Email (optional)')} className="w-full rounded-xl border-slate-200" />
-                    <select className="w-full rounded-xl border-slate-200"><option>{t('What type of space?')}</option><option>{t('Office')}</option><option>{t('Apartment')}</option><option>{t('Coffee shop')}</option><option>{t('Commercial building')}</option><option>{t('Warehouse')}</option></select>
-                    <textarea required rows="4" placeholder={t('Describe the space you need...')} className="w-full rounded-xl border-slate-200" />
-                    <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0e3b2e] px-5 py-3 font-bold text-white hover:bg-[#175640]">{t('Send enquiry')} <MessageCircle size={16} /></button>
-                </form>
-            </div>
-        </div>
-    );
-}
-
 export default function Welcome({ auth, canLogin, canRegister, units, propertyCategories = [], locations = {}, searchFilters = {} }) {
     const { t } = useTranslation();
     const [slide, setSlide] = useState(0);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [inquiryOpen, setInquiryOpen] = useState(false);
     const [legalDoc, setLegalDoc] = useState(null);
     const [creditsOpen, setCreditsOpen] = useState(false);
     const [searchForm, setSearchForm] = useState({
@@ -264,7 +242,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             ) : (
                                 <>
                                     {canLogin && <Link href={route('login')} className="hidden px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 transition hover:text-[#078dcc] sm:block">{t('Log in')}</Link>}
-                                    <button type="button" onClick={() => setInquiryOpen(true)} className="rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#0a9ee1] sm:text-xs">{t('Inquiry')}</button>
+                                    <button type="button" onClick={() => openContactForm('rent')} className="rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#0a9ee1] sm:text-xs">{t('Inquiry')}</button>
                                 </>
                             )}
                             <button type="button" className="rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-100 md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation menu">
@@ -278,7 +256,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <a className="block py-3 font-medium text-slate-700" href="#cities">{t('Cities')}</a>
                             <a className="block py-3 font-medium text-slate-700" href="#contact">{t('Contact us')}</a>
                             {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-3 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
-                            {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-3 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
+                            {!auth?.user && <button type="button" onClick={() => { setMenuOpen(false); openContactForm('rent'); }} className="block w-full py-3 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
                         </div>
                     )}
                 </header>
@@ -288,7 +266,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     <section className="relative h-[26rem] overflow-hidden bg-[#0e3b2e] sm:h-[31rem]">
                         {heroSlides.map((item, index) => <img key={item.image} src={item.image} alt="" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === slide ? 'opacity-60' : 'opacity-0'}`} />)}
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent" />
-                        <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 pb-6 sm:px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-4 text-4xl font-light leading-tight sm:mt-5 sm:text-6xl lg:text-7xl">{t(current.title)}</h1><p className="mt-3 text-base font-medium text-white/85 sm:mt-4 sm:text-lg">{t(current.subtitle)}</p><p className="mt-4 text-xl font-bold sm:mt-6 sm:text-2xl">{t(current.price)}</p><button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-orange-600 sm:mt-8 sm:px-7 sm:py-3.5">{t('Make an enquiry')} <ArrowRight size={16} /></button></div></div>
+                        <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 pb-6 sm:px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-4 text-4xl font-light leading-tight sm:mt-5 sm:text-6xl lg:text-7xl">{t(current.title)}</h1><p className="mt-3 text-base font-medium text-white/85 sm:mt-4 sm:text-lg">{t(current.subtitle)}</p><p className="mt-4 text-xl font-bold sm:mt-6 sm:text-2xl">{t(current.price)}</p><button type="button" onClick={() => openContactForm('rent')} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-orange-600 sm:mt-8 sm:px-7 sm:py-3.5">{t('Make an enquiry')} <ArrowRight size={16} /></button></div></div>
                     </section>
 
                     <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -466,7 +444,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                 </div>
                             </div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#cities">{t('Explore by cities')}</a><a className="block transition hover:text-white" href="#contact">{t('Contact us')}</a></div></div>
-                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
+                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => openContactForm('list')}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:info@qraltd.com`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> {companyEmail}</a></div></div>
                         </div>
                         <div className="mt-10 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/60 lg:flex-row lg:items-center"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><button type="button" onClick={() => setCreditsOpen(true)} className="transition hover:text-white">{t('Photo credits')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
@@ -476,7 +454,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     </a>
                 </footer>
             </div>
-            {inquiryOpen && <InquiryPanel onClose={() => setInquiryOpen(false)} />}
             {legalDoc && <LegalModal document={legalDoc} onClose={() => setLegalDoc(null)} />}
             {creditsOpen && (
                 <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="credits-title" onClick={() => setCreditsOpen(false)} onKeyDown={(e) => e.key === 'Escape' && setCreditsOpen(false)}>
