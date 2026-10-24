@@ -37,7 +37,7 @@ const heroSlides = [
         credit: 'Emmanuel Kwizera, CC BY-SA 4.0',
         source: 'https://commons.wikimedia.org/wiki/File:An_aerial_of_Kigali_Convention_Center_on_June_19,_2019._Photo_by_Emmanuel_Kwizera.jpg',
         category: 'offices',
-        cta: 'See offices',
+        cta: 'See available spaces',
     },
     {
         title: 'Live and work near BK Arena',
@@ -59,7 +59,7 @@ const heroSlides = [
         credit: 'UWIMPUHWE Va, CC0',
         source: 'https://commons.wikimedia.org/wiki/File:Five_to_Five_hotel_building.jpg',
         category: 'apartments',
-        cta: 'See apartments',
+        cta: 'See available spaces',
     },
     {
         title: 'Spaces for coffee shops',
@@ -71,7 +71,7 @@ const heroSlides = [
         credit: 'Gisa Kevin (VAWMC), CC BY-SA 4.0',
         source: 'https://commons.wikimedia.org/wiki/File:Nature_is_beauty_but_when_it_comes_to_Rwanda.jpg',
         category: 'coffee-shops',
-        cta: 'See coffee shops',
+        cta: 'See available spaces',
     },
     {
         title: 'Warehouses and storage',
@@ -83,7 +83,7 @@ const heroSlides = [
         credit: 'Mrbobax, CC BY-SA 4.0',
         source: 'https://commons.wikimedia.org/wiki/File:Warehouse_Trucks_parking.jpg',
         category: 'warehouses',
-        cta: 'See warehouses',
+        cta: 'See available spaces',
     },
     {
         title: 'Spaces made for business',
@@ -167,7 +167,8 @@ function UnitCard({ unit }) {
     const { t } = useTranslation();
     const property = unit.property;
     const image = unitImage(unit);
-    const typeLabel = unit.unit_type?.name || 'Rental space';
+    // A plain unit has no category: its use depends on the client.
+    const typeLabel = !unit.unit_type?.name || unit.unit_type.name === 'Space' ? t('Space to rent') : unit.unit_type.name;
     const location = unitLocation(unit);
 
     return (
@@ -334,10 +335,8 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         {heroSlides.map((item, index) => <img key={item.image} src={item.image} alt="" fetchpriority={index === 0 ? 'high' : 'low'} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === slide ? 'opacity-60' : 'opacity-0'}`} />)}
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent" />
                         <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 pb-6 sm:px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-4 text-4xl font-light leading-tight sm:mt-5 sm:text-6xl lg:text-7xl">{t(current.title)}</h1><p className="mt-3 text-base font-medium text-white/85 sm:mt-4 sm:text-lg">{t(current.subtitle)}</p><p className="mt-4 text-xl font-bold sm:mt-6 sm:text-2xl">{t(current.price)}</p><button type="button" onClick={() => {
-                            if (!current.category) return openContactForm('rent');
-                            const filters = { search: '', category: current.category, province_id: '', district_id: '', sector_id: '', price_range: 'any' };
-                            setSearchForm(filters);
-                            applySearch(filters);
+                            if (!current.cta) return openContactForm('rent');
+                            document.getElementById('featured')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-orange-600 sm:mt-8 sm:px-7 sm:py-3.5">{t(current.cta || 'Make an enquiry')} <ArrowRight size={16} /></button></div></div>
                         <div className="absolute inset-x-0 bottom-12 flex justify-center gap-2 sm:bottom-14" role="group" aria-label={t('Choose a slide')}>
                             {heroSlides.map((item, index) => (
@@ -356,7 +355,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     </section>
 
                     <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <form onSubmit={submitSearch} role="search" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.6fr)_repeat(5,minmax(140px,1fr))]">
+                        <form onSubmit={submitSearch} role="search" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.6fr)_repeat(4,minmax(140px,1fr))]">
                             <SearchSuggestBox
                                 value={searchForm.search}
                                 onChange={(text) => updateSearch({ search: text }, true)}
@@ -367,10 +366,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     applySearch(filters);
                                 }}
                             />
-                            <select value={searchForm.category} onChange={(event) => updateSearch({ category: event.target.value })} aria-label="Property category" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
-                                <option value="">{t('All categories')}</option>
-                                {propertyCategories.map((category) => <option key={category.slug} value={category.slug}>{t(category.name)}</option>)}
-                            </select>
                             <select value={searchForm.province_id} onChange={(event) => updateSearch({ province_id: event.target.value, district_id: '', sector_id: '' })} aria-label="Province" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All provinces')}</option>
                                 {(locations.provinces || []).map((province) => <option key={province.id} value={province.id}>{province.name}</option>)}

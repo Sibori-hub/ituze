@@ -13,6 +13,7 @@ class PropertyInquiry extends Model
         'visitor_name',
         'visitor_email',
         'visitor_phone',
+        'business_use',
         'message',
         'response_message',
         'status',

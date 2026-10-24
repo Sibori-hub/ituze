@@ -255,6 +255,7 @@ function TenancyManager({ tenancy, property, unit }) {
                         <div>
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{t('Tenancy & lease')}</h3>
                             <p className="mt-1 text-lg font-semibold text-gray-900">{tenancy.tenant?.name}</p>
+                            {tenancy.business_use && <p className="mt-0.5 inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">{t('Used as :use', { use: tenancy.business_use })}</p>}
                             <p className="mt-1 text-sm text-gray-600">{formatDate(tenancy.start_date, locale)} {t('to')} {tenancy.end_date ? formatDate(tenancy.end_date, locale) : t('Ongoing')} · {t(tenancy.rent_frequency)} {t('rent')}</p>
                             {tenancy.rent_frequency === 'daily' && <p className="mt-1 text-xs text-gray-500">{t('Check-in')}: {tenancy.check_in_time?.slice(0, 5) || '14:00'} · {t('Check-out')}: {tenancy.check_out_time?.slice(0, 5) || '11:00'}</p>}
                         </div>
@@ -586,7 +587,7 @@ export default function UnitShow({ property, unit }) {
                                 {unit.tenancies.filter(record => record.status === 'ended' || record.status === 'cancelled').map(record => (
                                     <div key={record.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900">{record.tenant?.name}</p>
+                                            <p className="text-sm font-medium text-gray-900">{record.tenant?.name}{record.business_use ? ` · ${record.business_use}` : ''}</p>
                                             <p className="text-xs text-gray-500">{formatDate(record.start_date, locale)} – {formatDate(record.actual_end_date || record.end_date, locale)}</p>
                                             {record.move_out_inspection && <p className="mt-1 text-xs text-gray-500">{t('Deposit')}: {Number(record.move_out_inspection.deposit_received).toLocaleString()} {t('received')} · {Number(record.move_out_inspection.deposit_refunded).toLocaleString()} {t('refunded')} · {Number(record.move_out_inspection.deposit_deducted).toLocaleString()} {t('deducted')}</p>}
                                             {record.rent_charges?.length > 0 && <p className="mt-1 text-xs text-gray-500">{t('Rent/deposit payments recorded')}: {record.rent_charges.reduce((total, charge) => total + (charge.payments || []).reduce((paid, payment) => paid + Number(payment.amount), 0), 0).toLocaleString()} RWF</p>}

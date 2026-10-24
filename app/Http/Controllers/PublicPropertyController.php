@@ -61,6 +61,8 @@ class PublicPropertyController extends Controller
             'visitor_email' => ['required', 'email', 'max:255'],
             'visitor_phone' => ['required', 'string', 'regex:/^\+?[0-9\s().-]{7,40}$/'],
             'message' => ['required', 'string', 'max:2000'],
+            // The business the visitor will run there (office, salon, shop...).
+            'business_use' => ['nullable', 'string', 'max:120'],
         ]);
         $validated['visitor_email'] = strtolower(trim($validated['visitor_email']));
         $phoneDigits = preg_replace('/\D+/', '', $validated['visitor_phone']) ?? '';

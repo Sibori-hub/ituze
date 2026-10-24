@@ -110,6 +110,7 @@ class MobilePropertyBrowseTest extends TestCase
         // Only what the public listing checks: a room's current or upcoming tenancy.
         Schema::create('tenancies', function (Blueprint $table) {
             $table->id();
+            $table->string('business_use', 120)->nullable();
             $table->unsignedBigInteger('unit_id');
             $table->string('status');
             $table->unsignedBigInteger('renewed_from_id')->nullable();

@@ -63,6 +63,7 @@ function InquiryModal({ property, unit, onClose, onSubmitted }) {
         visitor_name: '',
         visitor_email: '',
         visitor_phone: '',
+        business_use: '',
         message: '',
     });
 
@@ -109,6 +110,11 @@ function InquiryModal({ property, unit, onClose, onSubmitted }) {
                         <input required type="email" value={form.data.visitor_email} onChange={(event) => form.setData('visitor_email', event.target.value)} placeholder="you@example.com" className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
                     </label>
                     {form.errors.visitor_email && <p className="-mt-2 text-xs font-medium text-red-600">{form.errors.visitor_email}</p>}
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">{t('What business will you run here?')}
+                        <input value={form.data.business_use} onChange={(event) => form.setData('business_use', event.target.value)} maxLength={120} list="visitor-business-uses" placeholder={t('e.g. Office, Salon, Shop, Warehouse')} className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
+                        <datalist id="visitor-business-uses">{['Office', 'Shop', 'Salon', 'Restaurant', 'Coffee shop', 'Warehouse', 'Clinic', 'Apartment'].map((use) => <option key={use} value={t(use)} />)}</datalist>
+                    </label>
+                    {form.errors.business_use && <p className="-mt-2 text-xs font-medium text-red-600">{form.errors.business_use}</p>}
                     <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">{t('Your message')}
                         <textarea required rows="4" value={form.data.message} onChange={(event) => form.setData('message', event.target.value)} placeholder={`Hello, I am interested in ${unit?.unit_type?.name?.toLowerCase() || 'this space'}. Is it available for viewing?`} className="mt-2 w-full resize-y rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
                     </label>

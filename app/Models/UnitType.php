@@ -26,6 +26,14 @@ class UnitType extends Model
 
     protected $fillable = ['name'];
 
+    /** The neutral type of a unit: a space whose use depends on the client renting it. */
+    public const SPACE = 'Space';
+
+    public static function space(): self
+    {
+        return self::query()->firstOrCreate(['name' => self::SPACE]);
+    }
+
     public function units()
     {
         return $this->hasMany(Unit::class);

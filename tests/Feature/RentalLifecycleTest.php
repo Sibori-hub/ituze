@@ -185,6 +185,7 @@ class RentalLifecycleTest extends TestCase
         });
         Schema::create('tenancies', function (Blueprint $table) {
             $table->id();
+            $table->string('business_use', 120)->nullable();
             $table->foreignId('unit_id')->constrained();
             $table->foreignId('renewed_from_id')->nullable()->constrained('tenancies');
             $table->foreignId('tenant_id')->constrained();
@@ -1755,12 +1756,15 @@ class RentalLifecycleTest extends TestCase
         $this->post(route('properties.property-units.store', $property), ['unit_type_id' => $officeType->id, 'floor_number' => 2])
             ->assertSessionHasErrors('floor_number');
 
+        // Every unit needs a photo.
+        \Illuminate\Support\Facades\Storage::fake('public');
         $this->post(route('properties.units.store', $property), [
             'property_unit_id' => $officeUnit->id,
             'unit_number' => 'OF-101',
             'rent_amount' => 300000,
             'rent_frequency' => 'monthly',
             'status' => 'available',
+            'images' => [\Illuminate\Http\UploadedFile::fake()->createWithContent('unit.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGn0AAAAASUVORK5CYII='))],
         ])->assertSessionHasNoErrors();
         $unit = Unit::query()->where('unit_number', 'OF-101')->firstOrFail();
         $this->assertSame($officeUnit->id, $unit->property_unit_id);
@@ -1793,6 +1797,7 @@ class RentalLifecycleTest extends TestCase
             'rent_amount' => 200000,
             'rent_frequency' => 'monthly',
             'status' => 'occupied',
+            'images' => [UploadedFile::fake()->createWithContent('w01.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGn0AAAAASUVORK5CYII='))],
         ])->assertSessionHasNoErrors();
         $this->assertSame('available', Unit::query()->where('unit_number', 'W-01')->value('status'));
 

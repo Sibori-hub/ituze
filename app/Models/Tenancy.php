@@ -13,6 +13,7 @@ class Tenancy extends Model
         'unit_id',
         'renewed_from_id',
         'tenant_id',
+        'business_use',
         'assigned_by',
         'start_date',
         'end_date',

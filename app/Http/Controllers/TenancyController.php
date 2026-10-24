@@ -101,6 +101,8 @@ class TenancyController extends Controller
         $requiredForNewTenant = fn (string $type) => $hasExistingTenant ? 'nullable' : "required_if:tenant_type,{$type}";
         $data = $request->validate([
             'tenant_id' => ['nullable', 'exists:tenants,id'],
+            // What the client will use the unit for (office, salon, warehouse...): it can change with every client.
+            'business_use' => ['nullable', 'string', 'max:120'],
             'tenant_type' => ['required_without:tenant_id', 'nullable', 'in:individual,company'],
             'first_name' => [$requiredForNewTenant('individual'), 'nullable', 'string', 'max:255'],
             'last_name' => [$requiredForNewTenant('individual'), 'nullable', 'string', 'max:255'],
@@ -245,6 +247,7 @@ class TenancyController extends Controller
             $tenancy = Tenancy::create([
                 'unit_id' => $lockedUnit->id,
                 'tenant_id' => $tenant->id,
+                'business_use' => filled($data['business_use'] ?? null) ? trim($data['business_use']) : null,
                 'assigned_by' => $request->user()->id,
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
@@ -620,6 +623,7 @@ class TenancyController extends Controller
                 'unit_id' => $lockedUnit->id,
                 'renewed_from_id' => $lockedTenancy->id,
                 'tenant_id' => $lockedTenancy->tenant_id,
+                'business_use' => $lockedTenancy->business_use,
                 'assigned_by' => $request->user()->id,
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],

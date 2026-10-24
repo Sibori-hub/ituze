@@ -39,8 +39,13 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
     const [showEmpty, setShowEmpty] = useState(floorNumbers.length <= EMPTY_FLOORS_SHOWN_UP_TO);
 
     const units = property.property_units || [];
-    const looseRooms = (property.units || []).filter(room => !room.property_unit_id);
-    const roomCount = units.reduce((sum, unit) => sum + (unit.rooms?.length || 0), 0) + looseRooms.length;
+    // A unit is a space on a floor (number, size, rent, photos). Older rooms
+    // filed under a category are shown on their floor the same way.
+    const allRooms = [
+        ...units.flatMap(unit => (unit.rooms || []).map(room => ({ ...room, floor_number: room.floor_number ?? unit.floor_number }))),
+        ...(property.units || []).filter(room => !room.property_unit_id),
+    ];
+    const roomCount = allRooms.length;
 
     // Which floors are open, remembered per property in this browser.
     const storageKey = `ituze.property.${property.id}.open-floors`;
@@ -49,7 +54,7 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
             const saved = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
             if (Array.isArray(saved)) return new Set(saved);
         } catch { /* storage unavailable */ }
-        const used = [...new Set(units.map(unit => Number(unit.floor_number)))];
+        const used = [...new Set(allRooms.map(room => Number(room.floor_number)))];
         // A few floors in use: open them; a tall building starts folded.
         return new Set(used.length <= 3 ? used : []);
     });
@@ -62,38 +67,34 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
         return next;
     });
 
-    // After a unit or room is saved, open the floor it is on.
-    const floorSignature = (list) => Object.fromEntries([...new Set(list.map(u => Number(u.floor_number)))].map(floor => [
+    // After a unit is saved, open the floor it is on.
+    const floorSignature = (list) => Object.fromEntries([...new Set(list.map(room => Number(room.floor_number)))].map(floor => [
         floor,
-        list.filter(u => Number(u.floor_number) === floor).map(u => `${u.id}:${u.rooms?.length || 0}:${u.unit_type?.name}`).join('|'),
+        list.filter(room => Number(room.floor_number) === floor).map(room => `${room.id}:${room.unit_number}`).join('|'),
     ]));
     const previousSignature = useRef(null);
     useEffect(() => {
-        const current = floorSignature(units);
+        const current = floorSignature(allRooms);
         const previous = previousSignature.current;
         previousSignature.current = current;
         if (!previous) return;
         const changed = Object.keys(current).filter(floor => current[floor] !== previous[floor]).map(Number);
         if (changed.length) setOpenFloors(open => new Set([...open, ...changed]));
-    }, [units]);
+    }, [property]);
 
-    // Search by room number, category or floor name.
+    // Search by unit number, client, use or floor name.
     const q = query.trim().toLowerCase();
     const floors = useMemo(() => [...floorNumbers].sort((a, b) => b - a).map(floor => {
-        const onFloor = units.filter(unit => Number(unit.floor_number) === floor);
-        if (!q || floorLabel(floor).toLowerCase().includes(q)) {
-            return { floor, units: onFloor.map(unit => ({ unit, rooms: unit.rooms || [] })), total: onFloor.length };
-        }
-        const matches = onFloor.map(unit => {
-            const categoryMatch = (unit.unit_type?.name || '').toLowerCase().includes(q);
-            const rooms = (unit.rooms || []).filter(room => categoryMatch || String(room.unit_number).toLowerCase().includes(q));
-            return (categoryMatch || rooms.length) ? { unit, rooms } : null;
-        }).filter(Boolean);
-        return { floor, units: matches, total: onFloor.length };
-    }), [floorNumbers, units, q]);
+        const onFloor = allRooms.filter(room => Number(room.floor_number) === floor)
+            .sort((a, b) => String(a.unit_number).localeCompare(String(b.unit_number), undefined, { numeric: true }));
+        if (!q || floorLabel(floor).toLowerCase().includes(q)) return { floor, rooms: onFloor, total: onFloor.length };
+        const matches = onFloor.filter(room => [room.unit_number, room.active_tenancy?.tenant?.name, room.active_tenancy?.business_use]
+            .some(value => String(value || '').toLowerCase().includes(q)));
+        return { floor, rooms: matches, total: onFloor.length };
+    }), [floorNumbers, property, q]);
 
     const emptyFloorCount = floors.filter(f => f.total === 0).length;
-    const visibleFloors = floors.filter(f => (q ? f.units.length > 0 : (f.total > 0 || showEmpty)));
+    const visibleFloors = floors.filter(f => (q ? f.rooms.length > 0 : (f.total > 0 || showEmpty)));
     const floorsWithUnits = floors.filter(f => f.total > 0).map(f => f.floor);
 
     const confirmDelete = () => {
@@ -111,7 +112,7 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
     const addUnitButton = (floor) => canEditProperty && (
         <button
             type="button"
-            onClick={() => setDialog({ floor })}
+            onClick={() => setRoomDialog({ floor })}
             className="inline-flex flex-none items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#0E3B2E] transition-colors hover:bg-[#0E3B2E]/10"
             aria-label={t('Add a unit on :floor', { floor: floorLabel(floor) })}
         >
@@ -124,15 +125,16 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
         <section aria-labelledby="units-heading" className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-6">
                 <div>
-                    <h2 id="units-heading" className="text-lg font-semibold text-gray-900">{t('Units and rooms')}</h2>
+                    <h2 id="units-heading" className="text-lg font-semibold text-gray-900">{t('Units')}</h2>
                     <p className="mt-0.5 text-sm text-gray-600">
-                        {t(':units units · :rooms rooms', { units: units.length, rooms: roomCount })}
+                        {roomCount === 1 ? t('1 unit') : t(':count units', { count: roomCount })}
+                        {' · '}{t(':count available', { count: allRooms.filter(room => room.status === 'available').length })}
                     </p>
                 </div>
                 {canEditProperty && (
                     <button
                         type="button"
-                        onClick={() => setDialog({})}
+                        onClick={() => setRoomDialog({ floor: null })}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#124B3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E3B2E]"
                     >
                         <Plus size={16} aria-hidden="true" />
@@ -141,17 +143,17 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                 )}
             </div>
 
-            {units.length > 0 && (
+            {roomCount > 0 && (
                 <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-gray-50/60 px-4 py-3 sm:px-6">
                     <div className="relative min-w-[200px] flex-1">
                         <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-                        <label htmlFor="units-search" className="sr-only">{t('Find a room, unit or floor')}</label>
+                        <label htmlFor="units-search" className="sr-only">{t('Find a unit, client or floor')}</label>
                         <input
                             id="units-search"
                             type="search"
                             value={query}
                             onChange={e => setQuery(e.target.value)}
-                            placeholder={t('Find a room, unit or floor')}
+                            placeholder={t('Find a unit, client or floor')}
                             className="w-full rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-[#0E3B2E] focus:outline-none focus:ring-2 focus:ring-[#0E3B2E]/15"
                         />
                     </div>
@@ -172,12 +174,12 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                 </div>
             )}
 
-            {units.length === 0 && looseRooms.length === 0 && (
+            {roomCount === 0 && (
                 <div className="px-6 pb-2 pt-8 text-center">
                     <Building2 size={44} className="mx-auto mb-3 text-gray-300" aria-hidden="true" />
                     <h3 className="text-base font-semibold text-gray-900">{t('No units yet')}</h3>
                     <p className="mx-auto mt-1 max-w-md text-sm text-gray-600">
-                        {t('First add a unit: choose the floor and a category such as Office or Commercial space. Then add its rooms.')}
+                        {t('Add the units of each floor: number (e.g. 001), size in m², monthly rent and photos. What a unit is used for is chosen with each client who rents it.')}
                     </p>
                 </div>
             )}
@@ -187,7 +189,7 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
             )}
 
             <ol className="divide-y divide-gray-100">
-                {visibleFloors.map(({ floor, units: floorUnits, total }) => {
+                {visibleFloors.map(({ floor, rooms, total }) => {
                     if (total === 0) {
                         return (
                             <li key={floor} className="flex items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
@@ -203,7 +205,6 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                     }
 
                     const open = Boolean(q) || openFloors.has(floor);
-                    const rooms = floorUnits.flatMap(entry => entry.rooms);
                     const available = rooms.filter(room => room.status === 'available').length;
                     const panelId = `floor-${floor}-panel`;
 
@@ -224,7 +225,6 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                                         <span className="flex-none text-sm font-semibold uppercase tracking-wide text-gray-800">{floorLabel(floor)}</span>
                                         <span className="truncate text-xs text-gray-600">
                                             · {total === 1 ? t('1 unit') : t(':count units', { count: total })}
-                                            {' · '}{rooms.length === 1 ? t('1 room') : t(':count rooms', { count: rooms.length })}
                                             {rooms.length > 0 && <> · <span className="font-medium text-green-800">{t(':count available', { count: available })}</span></>}
                                         </span>
                                     </button>
@@ -233,21 +233,8 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                             </div>
 
                             {open && (
-                                <div id={panelId} className="animate-fade-in space-y-3 px-4 pb-4 pt-1 sm:px-6">
-                                    {floorUnits.map(({ unit, rooms: shownRooms }) => (
-                                        <UnitCard
-                                            key={unit.id}
-                                            property={property}
-                                            unit={unit}
-                                            rooms={shownRooms}
-                                            forceOpen={Boolean(q)}
-                                            canEdit={canEdit}
-                                            onEdit={() => setDialog({ unit })}
-                                            onDelete={canEditProperty ? () => setDeleting(unit) : null}
-                                            onAddRoom={() => setRoomDialog({ unitId: unit.id })}
-                                            onEditRoom={(room) => setRoomDialog({ room })}
-                                        />
-                                    ))}
+                                <div id={panelId} className="animate-fade-in px-4 pb-4 pt-1 sm:px-6">
+                                    <RoomList property={property} rooms={rooms} canEdit={canEdit} onEditRoom={(room) => setRoomDialog({ room })} />
                                 </div>
                             )}
                         </li>
@@ -263,13 +250,6 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                     </li>
                 )}
 
-                {looseRooms.length > 0 && !q && (
-                    <li className="p-4 sm:p-6">
-                        <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-700">{t('Rooms without a unit')}</h3>
-                        <p className="mb-3 text-sm text-gray-600">{t('Edit these rooms to place them in a unit.')}</p>
-                        <RoomList property={property} rooms={looseRooms} canEdit={canEdit} onEditRoom={(room) => setRoomDialog({ room })} />
-                    </li>
-                )}
             </ol>
 
             <UnitDialog
@@ -286,6 +266,8 @@ export default function PropertyUnitsSection({ property, floorNumbers = [], canE
                 property={property}
                 room={roomDialog?.room}
                 unitId={roomDialog?.unitId}
+                floors={floorNumbers}
+                floor={roomDialog?.floor ?? null}
                 onClose={() => setRoomDialog(null)}
             />
 
@@ -378,16 +360,21 @@ function RoomList({ property, rooms, canEdit, onEditRoom }) {
         <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {rooms.map(room => {
                 const tenant = room.active_tenancy?.tenant?.name;
+                const use = room.active_tenancy?.business_use;
+                const photo = room.images?.[0]?.image_path;
                 const size = room.size_sqm !== null && room.size_sqm !== undefined && room.size_sqm !== '' ? Number(room.size_sqm) : null;
 
                 return (
-                    <li key={room.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-shadow hover:shadow-sm">
+                    <li key={room.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-2.5 transition-shadow hover:shadow-sm">
+                        <span className="h-14 w-16 flex-none overflow-hidden rounded-lg bg-gray-100" aria-hidden="true">
+                            {photo ? <img src={/^https?:\/\//.test(photo) ? photo : `/storage/${photo}`} alt="" loading="lazy" className="h-full w-full object-cover" /> : <Building2 size={20} className="m-auto mt-4 text-gray-300" />}
+                        </span>
                         <Link
                             href={route('properties.units.show', [property.id, room.id])}
                             className="min-w-0 flex-1 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E3B2E]"
                         >
                             <div className="flex items-center gap-2">
-                                <span className="font-semibold text-gray-900">{t('Room :number', { number: room.unit_number })}</span>
+                                <span className="font-semibold text-gray-900">{t('Unit :number', { number: room.unit_number })}</span>
                                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ring-1 ${statusStyles[room.status] || 'bg-gray-100 text-gray-700 ring-gray-500/20'}`}>
                                     {t(room.status ? room.status.charAt(0).toUpperCase() + room.status.slice(1) : '')}
                                 </span>
@@ -398,7 +385,7 @@ function RoomList({ property, rooms, canEdit, onEditRoom }) {
                             </p>
                             {tenant && (
                                 <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-gray-600">
-                                    <User size={12} aria-hidden="true" /> {tenant}
+                                    <User size={12} aria-hidden="true" /> {tenant}{use ? ` · ${use}` : ''}
                                 </p>
                             )}
                         </Link>
@@ -407,7 +394,7 @@ function RoomList({ property, rooms, canEdit, onEditRoom }) {
                                 type="button"
                                 onClick={() => onEditRoom?.(room)}
                                 className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
-                                aria-label={t('Edit room :number', { number: room.unit_number })}
+                                aria-label={t('Edit unit :number', { number: room.unit_number })}
                             >
                                 <Edit size={15} aria-hidden="true" />
                             </button>
@@ -589,12 +576,13 @@ function UnitDialog({ open, property, floorNumbers, unit, initialFloor, onClose 
 /**
  * Add or edit a room without leaving the property page.
  */
-function RoomDialog({ open, property, room, unitId, onClose }) {
+function RoomDialog({ open, property, room, unitId, floors = [], floor = null, onClose }) {
     const { t } = useTranslation();
     const { mounted, closing } = usePresence(open);
     const id = useId();
     // Keep showing the room while the dialog animates out.
-    const shown = useMemo(() => ({ room, unitId }), [open]);
+    const shown = useMemo(() => ({ room, unitId, floor }), [open]);
+    const floorLabel = useFloorLabel();
 
     useEffect(() => {
         if (!open) return undefined;
@@ -625,21 +613,23 @@ function RoomDialog({ open, property, room, unitId, onClose }) {
                 <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
                     <div>
                         <h2 id={`${id}-title`} className="font-[Sora] text-lg font-bold text-gray-900">
-                            {shown.room ? t('Edit room :number', { number: shown.room.unit_number }) : t('Add room')}
+                            {shown.room ? t('Edit unit :number', { number: shown.room.unit_number }) : t('Add unit')}
                         </h2>
-                        <p className="mt-0.5 text-sm text-gray-600">{property.name}</p>
+                        <p className="mt-0.5 text-sm text-gray-600">{property.name}{shown.floor !== null && shown.floor !== undefined ? ` · ${floorLabel(shown.floor)}` : ''}</p>
                     </div>
                     <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100" aria-label={t('Close')}>
                         <X size={18} aria-hidden="true" />
                     </button>
                 </div>
                 <RoomForm
-                    key={shown.room?.id ?? `new-${shown.unitId}`}
+                    key={shown.room?.id ?? `new-${shown.unitId}-${shown.floor}`}
                     compact
                     property={property}
                     propertyUnits={propertyUnits}
                     room={shown.room}
                     initialUnitId={shown.unitId}
+                    floors={shown.unitId ? null : floors}
+                    floorNumber={shown.floor}
                     lockUnit
                     onSaved={onClose}
                     onCancel={onClose}

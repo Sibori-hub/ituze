@@ -20,11 +20,17 @@ const isNumber = (value) => String(value).trim() !== '' && !Number.isNaN(Number(
  * happens in the background and keeps the page where it is.
  *
  * `propertyUnits` are the property's units: { id, unit_type_id, category, floor_number }.
+ *
+ * Floor mode (`floors` given): a unit is a plain space on a floor (number,
+ * size, monthly rent, photos) with no category; what it is used for is typed
+ * when it is rented. `floorNumber` fixes the floor.
  */
-export default function RoomForm({ property, propertyUnits = [], room = null, initialUnitId = null, lockUnit = false, onSaved, onCancel, compact = false }) {
+export default function RoomForm({ property, propertyUnits = [], room = null, initialUnitId = null, lockUnit = false, onSaved, onCancel, compact = false, floors = null, floorNumber = null }) {
     const { t } = useTranslation();
     const floorLabel = useFloorLabel();
     const isEdit = Boolean(room);
+    const floorMode = Array.isArray(floors);
+    const floorLocked = floorMode && (isEdit || (floorNumber !== null && floorNumber !== undefined));
     // Added from a unit's own "Add room": the room stays in that unit.
     const unitLocked = lockUnit && !isEdit && Boolean(initialUnitId);
 
@@ -33,6 +39,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
 
     const [data, setFormData] = useState(() => ({
         property_unit_id: startUnit ? String(startUnit.id) : '',
+        floor_number: String(room?.floor_number ?? floorNumber ?? (floors?.includes(0) ? 0 : floors?.[0] ?? 0)),
         unit_number: room?.unit_number || '',
         rent_amount: room?.rent_amount ? String(Number(room.rent_amount)) : '',
         rent_frequency: room?.rent_frequency || 'monthly',
@@ -60,7 +67,9 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
     const touch = (field) => setTouched(current => ({ ...current, [field]: true }));
 
     const parent = propertyUnits.find(u => String(u.id) === String(data.property_unit_id));
-    const isApartment = isApartmentUnitType({ name: parent?.category });
+    // Monthly rent only for plain units; old apartment rooms keep their extra fields.
+    const isApartment = !floorMode && isApartmentUnitType({ name: parent?.category });
+    const word = floorMode ? 'Unit' : 'Room';
     const unitLabel = (u) => `${u.category} · ${floorLabel(u.floor_number)}`;
 
     // Photos.
@@ -94,22 +103,25 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
     // Validation, mirroring the server rules.
     const clientErrors = useMemo(() => {
         const errors = {};
-        if (!data.property_unit_id) errors.property_unit_id = t('Choose the unit this room belongs to.');
-        if (!data.unit_number.trim()) errors.unit_number = t('Enter the room number.');
+        if (!floorMode && !data.property_unit_id) errors.property_unit_id = t('Choose the unit this room belongs to.');
+        if (!data.unit_number.trim()) errors.unit_number = floorMode ? t('Enter the unit number, for example 001.') : t('Enter the room number.');
         else if (data.unit_number.length > 50) errors.unit_number = t('Use at most 50 characters.');
         if (!isNumber(data.rent_amount) || Number(data.rent_amount) < 0) errors.rent_amount = t('Enter the rent in RWF.');
         if (data.size_sqm !== '' && (!isNumber(data.size_sqm) || Number(data.size_sqm) < 0)) errors.size_sqm = t('Enter the size in m², or leave it empty.');
+        // Every unit is shown with at least one photo.
+        const photosLeft = savedImages.filter(image => !removedImageIds.includes(image.id)).length + newImages.length;
+        if (photosLeft === 0) errors.images = t('Add at least one photo of the unit.');
         if (isApartment) {
             if (!/^\d+$/.test(String(data.bedrooms)) || Number(data.bedrooms) > 50) errors.bedrooms = t('Enter the number of bedrooms (0 to 50).');
             if (!isNumber(data.bathrooms) || Number(data.bathrooms) < 0 || Number(data.bathrooms) > 30) errors.bathrooms = t('Enter the number of bathrooms (0 to 30).');
         }
         return errors;
-    }, [data, isApartment, t]);
+    }, [data, isApartment, t, newImages, removedImageIds]);
 
     const errorFor = (field) => serverErrors[field] || ((touched[field] || submitted) ? clientErrors[field] : undefined);
-    const fieldOrder = ['property_unit_id', 'unit_number', 'rent_amount', 'size_sqm', 'bedrooms', 'bathrooms', 'status', 'description'];
+    const fieldOrder = ['property_unit_id', 'unit_number', 'rent_amount', 'size_sqm', 'bedrooms', 'bathrooms', 'status', 'images', 'description'];
     const labels = {
-        property_unit_id: t('Unit'), unit_number: t('Room number'), rent_amount: t('Rent'), size_sqm: t('Room size (m²)'),
+        property_unit_id: t('Unit'), unit_number: t(`${word} number`), rent_amount: t('Rent'), size_sqm: t('Size (m²)'), images: t('Photos'),
         bedrooms: t('Bedrooms'), bathrooms: t('Bathrooms'), status: t('Status'), description: t('Description'),
     };
     const shown = fieldOrder.map(field => [field, errorFor(field)]).filter(([, message]) => message);
@@ -117,7 +129,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
     const otherServerError = serverErrors.unit_type_id || serverErrors.floor_number || serverErrors.rent_frequency;
 
     const focusField = (field) => {
-        const el = document.getElementById(`room-${field}`);
+        const el = document.getElementById(field === 'images' ? 'room-photos' : `room-${field}`);
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el?.focus({ preventScroll: true });
     };
@@ -132,7 +144,8 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
 
         const form = new FormData();
         if (isEdit) form.append('_method', 'put');
-        form.append('property_unit_id', data.property_unit_id);
+        if (floorMode && !room?.property_unit_id) form.append('floor_number', data.floor_number);
+        else form.append('property_unit_id', data.property_unit_id || room?.property_unit_id || '');
         form.append('unit_number', data.unit_number.trim());
         form.append('rent_amount', data.rent_amount);
         form.append('rent_frequency', isApartment ? data.rent_frequency : 'monthly');
@@ -194,6 +207,15 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                     </div>
                 )}
 
+                {floorMode ? (
+                <div>
+                    <label htmlFor="room-floor_number" className="block text-sm font-medium text-gray-800">{t('Floor')} <span className="text-red-600" aria-hidden="true">*</span></label>
+                    <select id="room-floor_number" value={data.floor_number} onChange={e => setData('floor_number', e.target.value)} disabled={floorLocked}
+                        className={`${inputClass(false)} disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-700`}>
+                        {[...floors].sort((a, b) => a - b).map(floor => <option key={floor} value={floor}>{floorLabel(floor)}</option>)}
+                    </select>
+                </div>
+                ) : (
                 <div>
                     <label htmlFor="room-property_unit_id" className="block text-sm font-medium text-gray-800">{t('Unit')} <span className="text-red-600" aria-hidden="true">*</span></label>
                     <select {...aria('property_unit_id')} value={data.property_unit_id} onChange={e => { setData('property_unit_id', e.target.value); touch('property_unit_id'); }} disabled={unitLocked}
@@ -204,16 +226,17 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                     {unitLocked && <p className="mt-1 text-xs text-gray-500">{t('This room is added to the unit you chose.')}</p>}
                     <FieldError field="property_unit_id" />
                 </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label htmlFor="room-unit_number" className="block text-sm font-medium text-gray-800">{t('Room number')} <span className="text-red-600" aria-hidden="true">*</span></label>
-                        <input {...aria('unit_number')} type="text" value={data.unit_number} maxLength={50} placeholder={t('e.g. 005')} autoComplete="off"
+                        <label htmlFor="room-unit_number" className="block text-sm font-medium text-gray-800">{t(`${word} number`)} <span className="text-red-600" aria-hidden="true">*</span></label>
+                        <input {...aria('unit_number')} type="text" value={data.unit_number} maxLength={50} placeholder={floorMode ? t('e.g. 001') : t('e.g. 005')} autoComplete="off"
                             onChange={e => setData('unit_number', e.target.value)} onBlur={() => touch('unit_number')} className={inputClass(errorFor('unit_number'))} />
                         <FieldError field="unit_number" />
                     </div>
                     <div>
-                        <label htmlFor="room-size_sqm" className="block text-sm font-medium text-gray-800">{t('Room size (m²)')}</label>
+                        <label htmlFor="room-size_sqm" className="block text-sm font-medium text-gray-800">{t(floorMode ? 'Size (m²)' : 'Room size (m²)')}</label>
                         <input {...aria('size_sqm')} type="number" inputMode="decimal" min="0" step="0.01" value={data.size_sqm} placeholder={t('e.g., 60')}
                             onChange={e => setData('size_sqm', e.target.value)} onBlur={() => touch('size_sqm')} className={inputClass(errorFor('size_sqm'))} />
                         <FieldError field="size_sqm" />
@@ -269,11 +292,11 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                         <FieldError field="status" />
                     </div>
                 ) : (
-                    <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-900">{t('New rooms start as Available. You can change the status later by editing the room.')}</p>
+                    <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-900">{floorMode ? t('New units start as Available. What it is used for (office, salon, warehouse…) is chosen with each client who rents it.') : t('New rooms start as Available. You can change the status later by editing the room.')}</p>
                 )}
 
                 <div>
-                    <p className="text-sm font-medium text-gray-800">{t('Room photos')}</p>
+                    <p id="room-photos" tabIndex={-1} className="text-sm font-medium text-gray-800">{t(`${word} photos`)} <span className="text-red-600" aria-hidden="true">*</span></p>
                     <input ref={photoInput} type="file" multiple accept="image/*" className="hidden" tabIndex={-1} aria-hidden="true"
                         onChange={e => { addImages(e.target.files); e.target.value = ''; }} />
                     <ul className="mt-2 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
@@ -308,7 +331,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                         </li>
                     </ul>
                     <p className="mt-1.5 text-xs text-gray-500">{t('JPG, PNG, GIF or WebP · up to 2 MB each')}</p>
-                    {(imageNotice || imageServerError) && <p className="mt-1 text-sm text-red-600" role="alert">{imageNotice || imageServerError}</p>}
+                    {(imageNotice || imageServerError || errorFor('images')) && <p className="mt-1 text-sm text-red-600" role="alert">{imageNotice || imageServerError || errorFor('images')}</p>}
                 </div>
 
                 <RoomDescriptionField property={property} data={{ ...data, bedrooms: isApartment ? data.bedrooms : '', bathrooms: isApartment ? data.bathrooms : '' }} setData={setData} error={errorFor('description')} />
@@ -324,7 +347,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                     {processing && <Loader2 size={15} className="animate-spin" aria-hidden="true" />}
                     {processing
                         ? (progress !== null && progress < 100 ? t('Uploading photos :percent%', { percent: progress }) : t('Saving...'))
-                        : (isEdit ? t('Save room') : t('Add room'))}
+                        : (isEdit ? t(`Save ${word.toLowerCase()}`) : t(`Add ${word.toLowerCase()}`))}
                 </button>
             </div>
         </form>

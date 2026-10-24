@@ -49,6 +49,7 @@ class NewPropertyInquiry extends Notification implements ShouldQueue
             ->line('Name: '.$inquiry->visitor_name)
             ->line('Phone: '.$inquiry->visitor_phone)
             ->line('Email: '.$inquiry->visitor_email)
+            ->lineIf(filled($inquiry->business_use), 'Business: '.$inquiry->business_use)
             ->line('Message: “'.str($inquiry->message)->limit(600).'”')
             ->action('Open visitor inquiries', url('/dashboard#visitor-inquiries'))
             ->line('Please contact the visitor soon, then mark the inquiry as read.')

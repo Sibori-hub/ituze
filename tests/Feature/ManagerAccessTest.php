@@ -135,7 +135,9 @@ class ManagerAccessTest extends TestCase
         $this->delete(route('properties.destroy', $this->whole))->assertForbidden();
 
         // Rooms: allowed in the assigned unit, refused in another unit.
-        $room = ['unit_number' => '102', 'rent_amount' => 250000, 'rent_frequency' => 'monthly'];
+        // Every unit needs a photo.
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $room = ['unit_number' => '102', 'rent_amount' => 250000, 'rent_frequency' => 'monthly', 'images' => [\Illuminate\Http\UploadedFile::fake()->createWithContent('unit.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGn0AAAAASUVORK5CYII='))]];
         $this->post(route('properties.units.store', $this->partial), [...$room, 'property_unit_id' => $this->offices->id])->assertSessionHasNoErrors();
         $this->post(route('properties.units.store', $this->partial), [...$room, 'unit_number' => 'S2', 'property_unit_id' => $this->shops->id])->assertSessionHasErrors('property_unit_id');
         $this->assertDatabaseHas('units', ['property_id' => $this->partial->id, 'unit_number' => '102']);

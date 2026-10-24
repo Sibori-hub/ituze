@@ -109,8 +109,12 @@ class UnitController extends Controller
                 'description' => 'nullable|string',
                 'floor_number' => 'nullable|integer|min:-10|max:200',
                 'rent_frequency' => ['required', Rule::in($isApartment ? ['monthly', 'daily'] : ['monthly'])],
-                'images' => 'nullable|array|max:10',
+                // Every unit is shown with photos (the mobile app adds them in a second step).
+                'images' => $request->expectsJson() ? 'nullable|array|max:10' : 'required|array|min:1|max:10',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            ], [
+                'images.required' => 'Add at least one photo of the unit.',
+                'images.min' => 'Add at least one photo of the unit.',
             ]);
 
             $unit = Unit::create([
@@ -412,6 +416,12 @@ class UnitController extends Controller
                 throw ValidationException::withMessages([
                     'property_unit_id' => 'Choose one of the units assigned to you.',
                 ]);
+            }
+
+            // A unit added straight onto a floor is a plain space: its use is
+            // chosen with each client who rents it.
+            if (! $request->filled('unit_type_id') && $request->filled('floor_number')) {
+                $request->merge(['unit_type_id' => UnitType::space()->id]);
             }
 
             return;

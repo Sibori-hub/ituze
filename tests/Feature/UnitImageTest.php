@@ -151,6 +151,7 @@ class UnitImageTest extends TestCase
 
         Schema::create('tenancies', function (Blueprint $table) {
             $table->id();
+            $table->string('business_use', 120)->nullable();
             $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
             $table->string('status')->default('active');
             $table->timestamps();

@@ -9,6 +9,7 @@ import LeaseNoteField from '@/Components/LeaseNoteField';
 import LeaseRecordFields from '@/Components/LeaseRecordFields';
 import { countRentPeriods } from '@/utils/rentPeriodCalculator';
 import { isApartmentUnit } from '@/utils/unitType';
+import { BUSINESS_USES } from '@/Components/AssignUnitForm';
 
 const statusStyles = {
     available: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
@@ -26,7 +27,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
     const [unitToDelete, setUnitToDelete] = useState(null);
     const [unitToAssign, setUnitToAssign] = useState(null);
     const [showTenantForm, setShowTenantForm] = useState(false);
-    const assignmentForm = useForm({ tenant_type: 'individual', first_name: '', last_name: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', check_in_time: '14:00', check_out_time: '11:00', monthly_rent: '', rent_frequency: 'monthly', deposit_amount: '', lease: null, lease_notes: '', payment_method: '', payment_reference: '' });
+    const assignmentForm = useForm({ business_use: '', tenant_type: 'individual', first_name: '', last_name: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '', identity_type: 'national_id', identity_number: '', start_date: '', end_date: '', check_in_time: '14:00', check_out_time: '11:00', monthly_rent: '', rent_frequency: 'monthly', deposit_amount: '', lease: null, lease_notes: '', payment_method: '', payment_reference: '' });
     const tenantForm = useForm({ type: 'individual', first_name: '', last_name: '', identity_type: 'national_id', identity_number: '', company_name: '', tax_identification_number: '', contact_person: '', email: '', phone: '', province_id: '', district_id: '', sector_id: '' });
     const isFirstRender = useRef(true);
     const rentPeriods = countRentPeriods(assignmentForm.data.start_date, assignmentForm.data.end_date, assignmentForm.data.rent_frequency);
@@ -276,6 +277,11 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                             <h3 className="text-lg font-semibold text-gray-900">{t('Create tenancy for :unit', { unit: unitToAssign.unit_number })}</h3>
                                                             <p className="mt-1 text-sm text-gray-500">{t('Tenant identity, contact information, signed lease, and rent terms are required.')}</p>
                                                             <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                                                                <label className="text-sm font-medium text-gray-700 sm:col-span-2">{t('What will the client use it for?')} *
+                                                                    <input required value={assignmentForm.data.business_use} onChange={e => assignmentForm.setData('business_use', e.target.value)} list="business-uses-index" maxLength={120} placeholder={t('e.g. Office, Salon, Warehouse')} className="mt-1 w-full rounded-xl border-gray-200" />
+                                                                    <datalist id="business-uses-index">{BUSINESS_USES.map(use => <option key={use} value={t(use)} />)}</datalist>
+                                                                    {assignmentForm.errors.business_use && <span className="mt-1 block text-xs text-red-600">{assignmentForm.errors.business_use}</span>}
+                                                                </label>
                                                                 <label className="text-sm font-medium text-gray-700">{t('Tenant type')}<select value={assignmentForm.data.tenant_type} onChange={e => assignmentForm.setData('tenant_type', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200"><option value="individual">{t('Individual')}</option><option value="company">{t('Company')}</option></select></label>
                                                                 {assignmentForm.data.tenant_type === 'individual' ? <>
                                                                     <label className="text-sm font-medium text-gray-700">{t('First name')}<input required value={assignmentForm.data.first_name} onChange={e => assignmentForm.setData('first_name', e.target.value)} className="mt-1 w-full rounded-xl border-gray-200" /></label>

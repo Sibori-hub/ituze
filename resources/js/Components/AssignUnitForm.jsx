@@ -32,6 +32,9 @@ const leaseEnd = (start, months) => {
     return end.toISOString().slice(0, 10);
 };
 
+// Ideas for what a client uses a unit for; anything else can be typed.
+export const BUSINESS_USES = ['Office', 'Shop', 'Salon', 'Restaurant', 'Coffee shop', 'Warehouse', 'Storage', 'Clinic', 'Pharmacy', 'Supermarket', 'Bank', 'School', 'Workshop', 'Showroom', 'Apartment', 'Gym'];
+
 const fieldClass = (invalid) => `mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-gray-900 shadow-sm transition-all focus:outline-none focus:ring-2 ${invalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
 
 // Every method needs its proof: the bank slip reference, the MoMo transaction ID or the cheque number.
@@ -55,6 +58,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
     const form = useForm({
         tenant_id: tenant.id,
         unit_id: '',
+        business_use: '',
         start_date: today(),
         end_date: '',
         monthly_rent: '',
@@ -71,6 +75,8 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
     const { data, setData, errors, processing } = form;
     const [submitted, setSubmitted] = useState(false);
     const [unitSearch, setUnitSearch] = useState('');
+    // Choose the floor first (building and floor), then the unit on it.
+    const [floorKey, setFloorKey] = useState('');
     const [leaseNotice, setLeaseNotice] = useState('');
     // Mobile money: send a request to the tenant's phone, or type the ID of a payment already made.
     const [momoMode, setMomoMode] = useState('request');
@@ -120,6 +126,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
     // Checks in the browser, mirroring the server.
     const clientErrors = {};
     if (!selectedUnit) clientErrors.unit_id = t('Choose the unit to assign.');
+    if (!data.business_use.trim()) clientErrors.business_use = t('Type what the client will use the unit for, for example Office or Salon.');
     if (!data.start_date) clientErrors.start_date = t('Choose the start date.');
     if (!data.end_date) clientErrors.end_date = t('Choose the end date.');
     else if (data.end_date <= data.start_date) clientErrors.end_date = t('The end date must be after the start date.');
@@ -133,7 +140,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
 
     const shownError = (field) => errors[field] || (submitted ? clientErrors[field] : undefined);
     const sections = [
-        { id: 'unit', title: t('Unit'), fields: ['unit_id'] },
+        { id: 'unit', title: t('Unit'), fields: ['unit_id', 'business_use'] },
         { id: 'dates', title: t('Lease dates'), fields: ['start_date', 'end_date', 'check_in_time', 'check_out_time'] },
         { id: 'rent', title: t('Rent'), fields: ['monthly_rent', 'rent_frequency'] },
         { id: 'payment', title: t('Payment at assignment'), fields: ['payment_method', 'payment_reference', 'mobile_money_request_id', 'deposit_amount'] },
@@ -167,6 +174,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
                 setSubmitted(false);
                 setMomoMode('request');
                 setUnitSearch('');
+                setFloorKey('');
             },
         });
     };
@@ -186,9 +194,22 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
         setData('lease', file);
     };
 
+    const keyOf = (unit) => `${unit.property_id}:${unit.floor_number ?? 0}`;
+    const floorOptions = useMemo(() => {
+        const seen = new Map();
+        availableUnits.forEach(unit => {
+            const key = keyOf(unit);
+            if (!seen.has(key)) seen.set(key, { key, property: unit.property?.name, floor: unit.floor_number ?? 0, count: 0 });
+            seen.get(key).count += 1;
+        });
+        return [...seen.values()].sort((a, b) => String(a.property).localeCompare(String(b.property)) || a.floor - b.floor);
+    }, [availableUnits]);
     const q = unitSearch.trim().toLowerCase();
-    const units = useMemo(() => availableUnits.filter(unit => !q || [unit.property?.name, unit.unit_number, unit.unit_type?.name]
-        .some(value => String(value || '').toLowerCase().includes(q))), [availableUnits, q]);
+    const units = useMemo(() => availableUnits
+        .filter(unit => !floorKey || keyOf(unit) === floorKey)
+        .filter(unit => !q || [unit.property?.name, unit.unit_number]
+            .some(value => String(value || '').toLowerCase().includes(q)))
+        .sort((a, b) => String(a.unit_number).localeCompare(String(b.unit_number), undefined, { numeric: true })), [availableUnits, q, floorKey]);
 
     const errorLine = (field) => shownError(field) && (
         <p className="mt-1 flex items-center gap-1 text-xs text-red-600"><AlertCircle size={12} aria-hidden="true" />{shownError(field)}</p>
@@ -218,12 +239,23 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
             </div>
 
             {/* 1. Unit */}
-            <Step id="unit" number={1} title={t('Choose the unit')} done={done.unit} icon={Building2}>
+            <Step id="unit" number={1} title={t('Choose the floor and the unit')} done={done.unit} icon={Building2}>
+                <label className="mb-3 block text-sm font-medium text-gray-800">
+                    {t('Floor')}
+                    <select value={floorKey} onChange={e => setFloorKey(e.target.value)} className={fieldClass(false)}>
+                        <option value="">{t('All floors')}</option>
+                        {floorOptions.map(option => (
+                            <option key={option.key} value={option.key}>
+                                {option.property} · {floorLabel(option.floor)} ({option.count === 1 ? t('1 unit') : t(':count units', { count: option.count })})
+                            </option>
+                        ))}
+                    </select>
+                </label>
                 {availableUnits.length > 6 && (
                     <div className="relative mb-3">
                         <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                         <label htmlFor="assign-unit-search" className="sr-only">{t('Search units')}</label>
-                        <input id="assign-unit-search" type="search" value={unitSearch} onChange={e => setUnitSearch(e.target.value)} placeholder={t('Search by building, room or category')}
+                        <input id="assign-unit-search" type="search" value={unitSearch} onChange={e => setUnitSearch(e.target.value)} placeholder={t('Search by building or unit number')}
                             className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-[#0E3B2E] focus:outline-none focus:ring-2 focus:ring-[#0E3B2E]/15" />
                     </div>
                 )}
@@ -243,9 +275,9 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
                                     <span className="min-w-0 flex-1">
                                         <span className="block truncate text-sm font-semibold text-gray-900">{unit.property?.name}</span>
                                         <span className="block truncate text-xs text-gray-600">
-                                            {t('Room :number', { number: unit.unit_number })}
-                                            {unit.unit_type?.name && ` · ${unit.unit_type.name}`}
+                                            {t('Unit :number', { number: unit.unit_number })}
                                             {unit.floor_number !== null && unit.floor_number !== undefined && ` · ${floorLabel(unit.floor_number)}`}
+                                            {unit.size_sqm ? ` · ${Number(unit.size_sqm).toLocaleString()} m²` : ''}
                                         </span>
                                         <span className="mt-1 block text-sm font-semibold text-[#0E3B2E]">
                                             {money(unit.rent_amount)} <span className="text-xs font-normal text-gray-500">/ {t(daily ? 'night' : 'month')}</span>
@@ -259,6 +291,16 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
                     </div>
                 </fieldset>
                 {errorLine('unit_id')}
+
+                <label className="mt-4 block text-sm font-medium text-gray-800">
+                    {t('What will the client use it for?')} <span className="text-red-600" aria-hidden="true">*</span>
+                    <input value={data.business_use} onChange={e => setData('business_use', e.target.value)} list="business-uses" maxLength={120}
+                        placeholder={t('e.g. Office, Salon, Warehouse')} className={fieldClass(shownError('business_use'))}
+                        aria-invalid={shownError('business_use') ? 'true' : undefined} />
+                    <datalist id="business-uses">{BUSINESS_USES.map(use => <option key={use} value={t(use)} />)}</datalist>
+                    <span className="mt-1 block text-xs font-normal text-gray-500">{t('The same unit can be an office for one client and a salon for the next.')}</span>
+                    {errorLine('business_use')}
+                </label>
             </Step>
 
             {/* 2. Dates */}
