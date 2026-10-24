@@ -50,6 +50,13 @@ return [
      * put the primary key in MTN_MOMO_SUBSCRIPTION_KEY, then run
      * `php artisan momo:sandbox-user` to create the API user and key.
      */
+    // MoMo Pay without the API: owners pay this merchant code and send the
+    // details from their MoMo SMS for the admin to check.
+    'momo_pay' => [
+        'code' => env('MOMO_PAY_CODE'),
+        'name' => env('MOMO_PAY_NAME', 'Q.R.A GROUP LTD'),
+    ],
+
     'mobile_money' => [
         'driver' => env('MOBILE_MONEY_DRIVER', 'fake'),
         // How long the tenant has to approve before the request is treated as expired.

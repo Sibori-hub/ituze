@@ -40,6 +40,8 @@ class SubscriptionPaymentController extends Controller
             ->when($search !== '', fn ($query) => $query->where(fn ($inner) => $inner
                 ->where('reference', 'like', "%{$search}%")
                 ->orWhere('receipt_number', 'like', "%{$search}%")
+                ->orWhere('sender_name', 'like', "%{$search}%")
+                ->orWhere('sender_phone', 'like', "%{$search}%")
                 ->orWhereHas('owner', fn ($owner) => $owner->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))))
             ->latest('id')
             ->paginate(20)
@@ -52,6 +54,9 @@ class SubscriptionPaymentController extends Controller
                 'amount' => (float) $payment->amount,
                 'method' => $payment->method,
                 'reference' => $payment->reference,
+                'sender_name' => $payment->sender_name,
+                'sender_phone' => $payment->sender_phone,
+                'paid_at' => $payment->paid_at?->toIso8601String(),
                 'status' => $payment->status,
                 'has_proof' => (bool) $payment->proof_path,
                 'proof_name' => $payment->proof_name,

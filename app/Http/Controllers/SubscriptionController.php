@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Notifications\SubscriptionPaymentSubmitted;
@@ -11,6 +12,7 @@ use App\Services\SubscriptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -55,7 +57,13 @@ class SubscriptionController extends Controller
                 ->get()
                 ->map(fn (SubscriptionPayment $payment) => $this->paymentRow($payment)),
             'phone' => $owner->phone,
-            'bank' => filled(config('legal.qra_bank.bank')) ? config('legal.qra_bank') : null,
+            // Bank transfer is offered only once the account number is set.
+            'bank' => filled(config('legal.qra_bank.account_number')) ? config('legal.qra_bank') : null,
+            'momoPay' => [
+                'code' => config('services.momo_pay.code'),
+                'name' => config('services.momo_pay.name'),
+            ],
+            'momoApi' => self::mobileMoneyApiAvailable(),
         ]);
     }
 
@@ -92,10 +100,79 @@ class SubscriptionController extends Controller
         return back()->with('success', 'Thank you. Your payment was sent for checking; your subscription is extended as soon as it is approved.');
     }
 
+    /**
+     * MoMo Pay without the API: the owner paid our MoMo Pay code and sends the
+     * details from the MoMo SMS. The admin compares them with the MoMo
+     * statement and approves or rejects.
+     */
+    public function storeMomoPay(Request $request): RedirectResponse
+    {
+        $owner = $this->owner($request);
+        $request->merge([
+            'sender_phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('sender_phone')),
+            'transaction_id' => preg_replace('/\s+/', '', (string) $request->input('transaction_id')),
+        ]);
+        $price = SubscriptionService::priceFor(max(1, (int) $request->input('months')));
+        $data = $request->validate([
+            'months' => ['required', 'integer', Rule::in(SubscriptionService::monthOptions())],
+            'sender_name' => ['required', 'string', 'max:120'],
+            'sender_phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/'],
+            'amount' => ['required', 'numeric', Rule::in([$price])],
+            'paid_at' => ['required', 'date', 'before_or_equal:now', 'after:'.now()->subDays(30)->toDateTimeString()],
+            'transaction_id' => [
+                'required', 'regex:/^[0-9]{6,20}$/',
+                // One MoMo payment pays one subscription: a used transaction ID is refused.
+                Rule::unique('subscription_payments', 'reference')->where(fn ($query) => $query
+                    ->where('method', 'momo_pay')
+                    ->whereIn('status', [SubscriptionPayment::PENDING, SubscriptionPayment::APPROVED])),
+            ],
+            'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ], [
+            'sender_phone.regex' => 'Enter the 10-digit MTN or Airtel number that paid (078, 079, 072 or 073).',
+            'amount.in' => 'For the months you chose the amount is '.number_format($price).' RWF. Pay exactly this amount.',
+            'paid_at.before_or_equal' => 'The payment date and time cannot be in the future.',
+            'paid_at.after' => 'This payment is more than 30 days old. Please contact ITUZE.',
+            'transaction_id.regex' => 'Enter the transaction ID from the MoMo SMS: numbers only.',
+            'transaction_id.unique' => 'This transaction ID was already used for a payment.',
+        ]);
+        $this->ensureNothingWaiting($owner);
+
+        $file = $request->file('proof');
+        $payment = SubscriptionPayment::create([
+            'owner_id' => $owner->id,
+            'months' => $data['months'],
+            'amount' => $price,
+            'method' => 'momo_pay',
+            'reference' => $data['transaction_id'],
+            'sender_name' => trim($data['sender_name']),
+            'sender_phone' => $data['sender_phone'],
+            'paid_at' => Carbon::parse($data['paid_at']),
+            'proof_path' => $file?->store('subscription-proofs', 'local'),
+            'proof_name' => $file ? mb_substr($file->getClientOriginalName(), 0, 200) : null,
+            'status' => SubscriptionPayment::PENDING,
+            'submitted_by' => $owner->id,
+        ]);
+
+        Notification::send(User::query()->where('role', 'admin')->get(), new SubscriptionPaymentSubmitted($payment));
+
+        return back()->with('success', 'Thank you. We are checking your MoMo payment; your subscription starts as soon as it is approved. You will get an SMS and email.');
+    }
+
+    /**
+     * Payment requests straight to the owner's phone need the MoMo API. Until
+     * it is connected, the test driver must never run on the live site: it
+     * would mark payments as paid without any money.
+     */
+    public static function mobileMoneyApiAvailable(): bool
+    {
+        return config('services.mobile_money.driver') !== 'fake' || app()->environment(['local', 'testing']);
+    }
+
     /** Sends the request to the owner's phone; they approve it with their PIN. */
     public function startMobileMoney(Request $request): JsonResponse
     {
         $owner = $this->owner($request);
+        abort_unless(self::mobileMoneyApiAvailable(), 404);
         $data = $request->validate([
             'months' => ['required', 'integer', Rule::in(SubscriptionService::monthOptions())],
             'phone' => ['required', 'string', 'max:20'],

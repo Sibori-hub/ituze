@@ -510,6 +510,7 @@ Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete', 'ow
 Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete'])->group(function () {
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'show'])->name('subscription.show');
     Route::post('/subscription/transfer', [\App\Http\Controllers\SubscriptionController::class, 'storeTransfer'])->middleware('throttle:10,1')->name('subscription.transfer');
+    Route::post('/subscription/momo-pay', [\App\Http\Controllers\SubscriptionController::class, 'storeMomoPay'])->middleware('throttle:10,1,momo-pay')->name('subscription.momopay');
     Route::post('/subscription/mobile-money', [\App\Http\Controllers\SubscriptionController::class, 'startMobileMoney'])->middleware('throttle:6,1')->name('subscription.momo.start');
     Route::get('/subscription/mobile-money/{payment}', [\App\Http\Controllers\SubscriptionController::class, 'mobileMoneyStatus'])->middleware('throttle:60,1')->name('subscription.momo.status');
     Route::get('/subscription/payments/{payment}/proof', [\App\Http\Controllers\SubscriptionController::class, 'proof'])->name('subscription.proof');

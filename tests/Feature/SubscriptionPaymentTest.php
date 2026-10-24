@@ -98,6 +98,58 @@ class SubscriptionPaymentTest extends TestCase
         Notification::assertSentTo($this->owner, SubscriptionPaymentDecided::class, fn ($notification) => $notification->payment->status === 'rejected');
     }
 
+    public function test_momo_pay_details_are_checked_by_the_admin_and_a_transaction_id_is_used_once(): void
+    {
+        config(['services.momo_pay.code' => '123456']);
+        $form = fn (array $overrides = []) => [
+            'months' => 1, 'amount' => 100000, 'sender_name' => 'Jean Bosco', 'sender_phone' => '+250 788 123 456',
+            'paid_at' => '2026-10-19 09:30', 'transaction_id' => '12345 67890', ...$overrides,
+        ];
+
+        $this->actingAs($this->owner)->get(route('subscription.show'))
+            ->assertInertia(fn (Assert $page) => $page->where('momoPay.code', '123456')->where('momoApi', true));
+
+        // Wrong amount, future time, letters in the ID: refused.
+        $this->post(route('subscription.momopay'), $form(['amount' => 50000, 'paid_at' => '2026-10-20 09:00', 'transaction_id' => 'ABC']))
+            ->assertSessionHasErrors(['amount', 'paid_at', 'transaction_id']);
+
+        $this->post(route('subscription.momopay'), $form())->assertSessionHasNoErrors()->assertSessionHas('success');
+        $payment = SubscriptionPayment::query()->firstOrFail();
+        $this->assertSame(['momo_pay', 'pending', '1234567890', '0788123456', 'Jean Bosco'], [$payment->method, $payment->status, $payment->reference, $payment->sender_phone, $payment->sender_name]);
+        $this->assertSame('2026-10-19 09:30', $payment->paid_at->format('Y-m-d H:i'));
+        // The admins are told at once by email and SMS, with the MoMo details.
+        Notification::assertSentTo($this->admin, SubscriptionPaymentSubmitted::class, function ($notification, array $channels) {
+            $mail = implode(' ', $notification->toMail($this->admin)->introLines);
+
+            return in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true)
+                && str_contains($notification->toSms($this->admin), 'MoMo Pay')
+                && str_contains($mail, 'MoMo transaction ID: 1234567890')
+                && str_contains($mail, 'Jean Bosco · 0788123456');
+        });
+
+        // The admin sees the sender details, then approves.
+        $this->actingAs($this->admin)->get(route('admin.subscriptions', ['search' => '0788123456']))
+            ->assertInertia(fn (Assert $page) => $page->where('payments.data.0.sender_name', 'Jean Bosco')->where('payments.data.0.reference', '1234567890'));
+        $this->post(route('admin.subscriptions.approve', $payment))->assertSessionHasNoErrors();
+        $this->assertSame('2026-11-25', $this->owner->fresh()->expires_at->toDateString());
+        Notification::assertSentTo($this->owner, SubscriptionPaymentDecided::class, fn ($notification) => $notification->payment->status === 'approved');
+
+        // The same transaction ID cannot pay a second time, even for another owner.
+        $other = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'profile_completed' => true, 'phone' => '0788000003']);
+        $other->forceFill(['email_verified_at' => now(), 'phone_verified_at' => now()])->save();
+        $this->actingAs($other)->post(route('subscription.momopay'), $form())->assertSessionHasErrors('transaction_id');
+    }
+
+    public function test_the_test_mobile_money_driver_never_runs_on_the_live_site(): void
+    {
+        $this->app['env'] = 'production';
+
+        $this->actingAs($this->owner)->get(route('subscription.show'))->assertInertia(fn (Assert $page) => $page->where('momoApi', false));
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class)
+            ->postJson(route('subscription.momo.start'), ['months' => 1, 'phone' => '0788123456'])->assertNotFound();
+        $this->assertSame(0, SubscriptionPayment::count());
+    }
+
     public function test_seven_day_grace_then_pause_but_paying_is_always_possible(): void
     {
         // Ended 3 days ago: still working, with a warning.

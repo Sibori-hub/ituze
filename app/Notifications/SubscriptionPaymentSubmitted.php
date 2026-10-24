@@ -28,7 +28,11 @@ class SubscriptionPaymentSubmitted extends Notification implements ShouldQueue
 
     private function method(): string
     {
-        return $this->payment->method === 'cheque' ? 'cheque' : 'bank transfer';
+        return match ($this->payment->method) {
+            'cheque' => 'cheque',
+            'momo_pay' => 'MoMo Pay',
+            default => 'bank transfer',
+        };
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -39,8 +43,11 @@ class SubscriptionPaymentSubmitted extends Notification implements ShouldQueue
             ->subject('Subscription payment to check: '.$payment->owner?->name)
             ->greeting('Hello,')
             ->line($payment->owner?->name.' paid '.number_format((float) $payment->amount, 0).' RWF by '.$this->method().' for '.$payment->months.' month'.($payment->months > 1 ? 's' : '').'.')
-            ->line('Reference: '.$payment->reference)
-            ->line('Please check the attached proof and approve or reject it.')
+            ->line(($payment->method === 'momo_pay' ? 'MoMo transaction ID: ' : 'Reference: ').$payment->reference)
+            ->lineIf($payment->method === 'momo_pay', 'Sender: '.$payment->sender_name.' · '.$payment->sender_phone.' · paid '.$payment->paid_at?->format('j M Y, H:i'))
+            ->line($payment->method === 'momo_pay'
+                ? 'Please compare it with the MoMo Pay statement, then approve or reject it.'
+                : 'Please check the attached proof and approve or reject it.')
             ->action('Review subscription payments', url('/admin/subscriptions'))
             ->salutation('ITUZE GREEN PLATFORM');
     }

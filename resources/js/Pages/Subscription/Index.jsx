@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import RwandaFlag from '@/Components/RwandaFlag';
+import RwandaPhoneInput from '@/Components/RwandaPhoneInput';
 import { formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/lib/rwanda';
 import { useTranslation } from '@/localization';
 import { Head, router, useForm } from '@inertiajs/react';
@@ -31,9 +32,9 @@ const STATUS_STYLE = {
     rejected: ['bg-red-50 text-red-800 ring-red-200', 'Not accepted'],
     failed: ['bg-gray-100 text-gray-700 ring-gray-200', 'Not completed'],
 };
-const METHOD_LABEL = { mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
+const METHOD_LABEL = { momo_pay: 'MoMo Pay', mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
 
-export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null }) {
+export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null, momoPay = {}, momoApi = false }) {
     const { t, language } = useTranslation();
     const locale = localeFor(language);
     const money = (value) => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
@@ -43,7 +44,15 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
     useEffect(() => setSubscription(initial), [initial]);
 
     const [months, setMonths] = useState(1);
-    const [method, setMethod] = useState('mobile_money');
+    // MoMo Pay first; bank transfer once the account number is set; the phone
+    // request only where the MoMo API is connected.
+    const methods = [
+        ['momo_pay', 'MoMo Pay', Smartphone],
+        momoApi && ['mobile_money', 'Mobile money', Smartphone],
+        bank && ['bank_transfer', 'Bank transfer', Landmark],
+        ['cheque', 'Cheque', Banknote],
+    ].filter(Boolean);
+    const [method, setMethod] = useState('momo_pay');
     const total = months * monthlyPrice;
     const paidUntil = subscription.paid_until ? new Date(subscription.paid_until) : null;
     const startFrom = paidUntil && paidUntil > new Date() ? paidUntil : new Date();
@@ -121,12 +130,8 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
 
                         <fieldset className="mt-6">
                             <legend className="text-sm font-semibold text-gray-900">{t('2. How do you pay?')}</legend>
-                            <div className="mt-2 grid grid-cols-3 gap-2">
-                                {[
-                                    ['mobile_money', 'Mobile money', Smartphone],
-                                    ['bank_transfer', 'Bank transfer', Landmark],
-                                    ['cheque', 'Cheque', Banknote],
-                                ].map(([value, label, Icon]) => (
+                            <div className={`mt-2 grid gap-2 ${methods.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                {methods.map(([value, label, Icon]) => (
                                     <label key={value} className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center text-xs font-semibold transition sm:text-sm ${method === value ? 'border-[#0E3B2E] bg-emerald-50/60 text-[#0E3B2E]' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
                                         <input type="radio" name="method" value={value} checked={method === value} onChange={() => setMethod(value)} className="sr-only" />
                                         <Icon size={20} aria-hidden="true" />
@@ -137,7 +142,8 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                         </fieldset>
 
                         <div className="mt-5">
-                            {method === 'mobile_money'
+                            {method === 'momo_pay' ? <MomoPayForm months={months} total={total} money={money} momoPay={momoPay} defaultPhone={ownerPhone} />
+                            : method === 'mobile_money'
                                 ? <MobileMoneyPay months={months} total={total} defaultPhone={ownerPhone} money={money} onPaid={(status) => { setSubscription(status); router.reload({ only: ['payments', 'subscription'] }); }} />
                                 : <TransferPay key={method} months={months} method={method} total={total} money={money} bank={bank} />}
                         </div>
@@ -147,8 +153,10 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                     <aside className="space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-2">
                         <h2 className="font-[Sora] font-semibold text-gray-900">{t('Good to know')}</h2>
                         {[
-                            [Smartphone, t('Mobile money is applied at once, as soon as you approve with your PIN.')],
-                            [FileCheck2, t('A bank slip or cheque is checked by ITUZE, usually the same day. You get an email and SMS.')],
+                            momoApi
+                                ? [Smartphone, t('Mobile money is applied at once, as soon as you approve with your PIN.')]
+                                : [Smartphone, t('Keep the MoMo SMS: its transaction ID proves your payment.')],
+                            [FileCheck2, t('Every payment is checked by ITUZE, usually the same day. You get an email and SMS.')],
                             [CalendarCheck2, t('Paying early adds the months after your current end date: you never lose days.')],
                             [Clock3, t('Reminders come 7 and 3 days before the end. After the end you have :days days before a pause.', { days: 7 })],
                             [ShieldCheck, t('A pause never deletes anything. Pay and everything is back immediately.')],
@@ -299,6 +307,116 @@ function MobileMoneyPay({ months, total, defaultPhone, money, onPaid }) {
                 </div>
             )}
         </div>
+    );
+}
+
+// "2026-10-24T14:05" for a datetime-local box, in the visitor's own time.
+const localDateTime = (date) => {
+    const pad = (value) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+/**
+ * MoMo Pay without the API: pay our merchant code, then type what the MoMo
+ * SMS says. ITUZE checks it against the MoMo statement and approves.
+ */
+function MomoPayForm({ months, total, money, momoPay, defaultPhone }) {
+    const { t } = useTranslation();
+    const form = useForm({ months, amount: total, sender_name: '', sender_phone: toLocalDigits(defaultPhone || ''), paid_at: localDateTime(new Date()), transaction_id: '', proof: null });
+    const [submitted, setSubmitted] = useState(false);
+    useEffect(() => { form.setData((current) => ({ ...current, months, amount: total })); }, [months, total]);
+
+    const dial = momoPay.code ? `*182*8*1*${momoPay.code}#` : null;
+    const clientErrors = {};
+    if (!form.data.sender_name.trim()) clientErrors.sender_name = t('Enter the name of the person who paid.');
+    if (!RWANDA_MOBILE_REGEX.test(form.data.sender_phone)) clientErrors.sender_phone = t('Enter the 9 digits after +250, starting with 72, 73, 78 or 79.');
+    if (!form.data.paid_at) clientErrors.paid_at = t('Enter the date and time of the payment.');
+    if (!/^[0-9]{6,20}$/.test(form.data.transaction_id.replace(/\s+/g, ''))) clientErrors.transaction_id = t('Enter the transaction ID from the MoMo SMS: numbers only.');
+    const errorFor = (field) => form.errors[field] || (submitted ? clientErrors[field] : null);
+    const fieldClass = (field) => `mt-1.5 w-full rounded-xl border px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${errorFor(field) ? 'border-red-400 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
+
+    const submit = (event) => {
+        event.preventDefault();
+        setSubmitted(true);
+        if (Object.keys(clientErrors).length) return;
+        form.transform((data) => ({ ...data, sender_phone: `0${data.sender_phone}` }));
+        form.post(route('subscription.momopay'), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => { form.reset('transaction_id', 'proof', 'sender_name'); setSubmitted(false); },
+        });
+    };
+
+    return (
+        <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl border border-gray-200 p-4">
+            <div className="rounded-xl bg-[#FFCC00]/15 p-4 ring-1 ring-[#FFCC00]/50">
+                <p className="text-sm font-bold text-gray-900">{t('Pay with MoMo Pay')}</p>
+                {dial ? (
+                    <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-gray-800">
+                        <li>
+                            {t('Dial')}{' '}
+                            <a href={`tel:${encodeURIComponent(dial)}`} className="rounded bg-white px-1.5 py-0.5 font-mono font-bold text-gray-900 ring-1 ring-gray-200">{dial}</a>
+                            {' '}{t('or choose MoMo Pay in the MoMo app and enter the code')}{' '}
+                            <span className="font-mono font-bold">{momoPay.code}</span>
+                            <button type="button" onClick={() => navigator.clipboard?.writeText(momoPay.code)} className="ml-1.5 rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold text-[#0E3B2E] ring-1 ring-gray-200 hover:bg-gray-50">{t('Copy')}</button>
+                        </li>
+                        <li>{t('Pay exactly :amount to :name.', { amount: money(total), name: momoPay.name })}</li>
+                        <li>{t('Fill in the form below with the details from your MoMo SMS.')}</li>
+                    </ol>
+                ) : (
+                    <p className="mt-1 text-sm text-gray-800">{t('The MoMo Pay code will be shown here soon. Until then, call ITUZE on 0793 905 166 to get it.')}</p>
+                )}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-gray-800">
+                    {t('Name of the person who paid')}
+                    <input value={form.data.sender_name} onChange={(event) => form.setData('sender_name', event.target.value)} autoComplete="name" className={fieldClass('sender_name')} aria-invalid={errorFor('sender_name') ? 'true' : undefined} />
+                    {errorFor('sender_name') && <span className="mt-1 block text-xs text-red-600">{t(errorFor('sender_name'))}</span>}
+                </label>
+                <div>
+                    <label htmlFor="momo-sender-phone" className="block text-sm font-medium text-gray-800">{t('Phone number that paid')}</label>
+                    <RwandaPhoneInput id="momo-sender-phone" value={form.data.sender_phone} onChange={(digits) => form.setData('sender_phone', digits)} error={errorFor('sender_phone')} className="mt-1.5" />
+                </div>
+                <label className="block text-sm font-medium text-gray-800">
+                    {t('Amount paid')}
+                    <input value={money(total)} readOnly className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900" aria-describedby="momo-amount-help" />
+                    <span id="momo-amount-help" className="mt-1 block text-xs text-gray-600">{t('For :months month(s). Change the months above if you paid for more.', { months })}</span>
+                    {form.errors.amount && <span className="mt-1 block text-xs text-red-600">{t(form.errors.amount)}</span>}
+                </label>
+                <label className="block text-sm font-medium text-gray-800">
+                    {t('Date and time of the payment')}
+                    <input type="datetime-local" value={form.data.paid_at} max={localDateTime(new Date())} onChange={(event) => form.setData('paid_at', event.target.value)} className={fieldClass('paid_at')} aria-invalid={errorFor('paid_at') ? 'true' : undefined} />
+                    {errorFor('paid_at') && <span className="mt-1 block text-xs text-red-600">{t(errorFor('paid_at'))}</span>}
+                </label>
+                <label className="block text-sm font-medium text-gray-800 sm:col-span-2">
+                    {t('MoMo transaction ID')}
+                    <input value={form.data.transaction_id} onChange={(event) => form.setData('transaction_id', event.target.value.replace(/[^\d\s]/g, ''))} inputMode="numeric" placeholder="1234567890" className={`${fieldClass('transaction_id')} font-mono tracking-wide`} aria-invalid={errorFor('transaction_id') ? 'true' : undefined} aria-describedby="momo-txn-help" />
+                    <span id="momo-txn-help" className="mt-1 block text-xs text-gray-600">{t('In the MoMo SMS, after "Financial Transaction Id" or "TxId".')}</span>
+                    {errorFor('transaction_id') && <span className="mt-1 block text-xs text-red-600">{t(errorFor('transaction_id'))}</span>}
+                </label>
+            </div>
+
+            <div>
+                <p className="text-sm font-medium text-gray-800">{t('Screenshot of the MoMo SMS')} <span className="font-normal text-gray-500">({t('optional')})</span></p>
+                <label className={`mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 text-sm transition ${form.data.proof ? 'border-emerald-300 bg-emerald-50/50' : 'border-gray-300 hover:border-[#0E3B2E]/40 hover:bg-gray-50'}`}>
+                    <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(event) => form.setData('proof', event.target.files?.[0] || null)} />
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-white text-[#0E3B2E] ring-1 ring-gray-200" aria-hidden="true">{form.data.proof ? <FileCheck2 size={17} /> : <Upload size={17} />}</span>
+                    <span className="min-w-0">
+                        <span className="block truncate font-semibold text-gray-900">{form.data.proof ? form.data.proof.name : t('Choose a file')}</span>
+                        <span className="block text-xs text-gray-600">{t('JPG, PNG or PDF, up to 5 MB')}</span>
+                    </span>
+                </label>
+                {form.errors.proof && <span className="mt-1 block text-xs text-red-600">{t(form.errors.proof)}</span>}
+            </div>
+
+            {form.errors.reference && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.reference)}</p>}
+
+            <button disabled={form.processing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60">
+                {form.processing ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+                {form.processing ? t('Sending…') : t('Send for checking · :amount', { amount: money(total) })}
+            </button>
+        </form>
     );
 }
 

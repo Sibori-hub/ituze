@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom';
 
 const localeFor = (language) => ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
 const TABS = [['pending', 'To check'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['failed', 'Not completed'], ['all', 'All']];
-const METHOD_LABEL = { mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
+const METHOD_LABEL = { momo_pay: 'MoMo Pay', mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
 const STATUS_STYLE = {
     approved: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
     pending: 'bg-amber-50 text-amber-900 ring-amber-200',
@@ -107,7 +107,13 @@ export default function AdminSubscriptions({ payments, filters = {}, counts = {}
                                     </div>
                                     <div className="min-w-[180px]">
                                         <p className="text-sm text-gray-800">{t(METHOD_LABEL[payment.method] || payment.method)}</p>
-                                        {payment.reference && <p className="break-all font-mono text-xs text-gray-600">{payment.reference}</p>}
+                                        {payment.method === 'momo_pay' ? (
+                                            <dl className="mt-1 space-y-0.5 text-xs text-gray-700">
+                                                <div><dt className="inline font-semibold">{t('Transaction ID')}: </dt><dd className="inline break-all font-mono">{payment.reference}</dd></div>
+                                                <div><dt className="inline font-semibold">{t('Sender')}: </dt><dd className="inline">{payment.sender_name} · {payment.sender_phone}</dd></div>
+                                                <div><dt className="inline font-semibold">{t('Paid on')}: </dt><dd className="inline">{payment.paid_at ? new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(payment.paid_at)) : '—'}</dd></div>
+                                            </dl>
+                                        ) : payment.reference && <p className="break-all font-mono text-xs text-gray-600">{payment.reference}</p>}
                                         {payment.has_proof && (
                                             <a href={route('subscription.proof', payment.id)} target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-[#0E3B2E] hover:underline">
                                                 <FileText size={12} aria-hidden="true" />{t('Open proof')}

@@ -15,7 +15,7 @@ class SubscriptionPayment extends Model
     public const FAILED = 'failed';
 
     protected $fillable = [
-        'owner_id', 'months', 'amount', 'method', 'reference', 'proof_path', 'proof_name', 'status',
+        'owner_id', 'months', 'amount', 'method', 'reference', 'sender_name', 'sender_phone', 'paid_at', 'proof_path', 'proof_name', 'status',
         'mobile_money_request_id', 'period_start', 'period_end', 'receipt_number', 'submitted_by',
         'reviewed_by', 'reviewed_at', 'rejection_reason',
     ];
@@ -26,6 +26,7 @@ class SubscriptionPayment extends Model
         'period_start' => 'date',
         'period_end' => 'date',
         'reviewed_at' => 'datetime',
+        'paid_at' => 'datetime',
     ];
 
     public function owner()
