@@ -126,6 +126,9 @@ Route::get('/spaces/{property}/units/{unit}', [PublicPropertyController::class, 
 Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'inquire'])
     ->middleware('throttle:5,1')
     ->name('public.properties.inquiries.store');
+Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionController::class)
+    ->middleware('throttle:90,1,search-suggestions')
+    ->name('search.suggestions');
 Route::post('/contact', [\App\Http\Controllers\ContactMessageController::class, 'store'])
     ->middleware('throttle:10,10,contact-form')
     ->name('contact.store');

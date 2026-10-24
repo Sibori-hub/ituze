@@ -19,6 +19,17 @@ window.addEventListener('appinstalled', () => {
     window.ituzeInstallPrompt = null;
 });
 
+// Refreshing a home page search starts over on the plain home page.
+// A shared search link still opens its results.
+try {
+    const navigation = performance.getEntriesByType('navigation')[0];
+    if (navigation?.type === 'reload' && window.location.pathname === '/' && window.location.search) {
+        window.location.replace('/');
+    }
+} catch {
+    // Older browsers: keep the page as it is.
+}
+
 const appName = import.meta.env.VITE_APP_NAME || 'ITUZE GREEN PLATFORM';
 
 /**

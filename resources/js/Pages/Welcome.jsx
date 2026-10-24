@@ -1,6 +1,7 @@
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/react';
 import BrandLockup from '@/Components/BrandLockup';
 import ContactSection, { openContactForm } from '@/Components/ContactSection';
+import SearchSuggestBox from '@/Components/SearchSuggestBox';
 import InstallAppBanner from '@/Components/InstallAppBanner';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import LegalModal from '@/Components/LegalModal';
@@ -30,22 +31,31 @@ const heroSlides = [
         title: 'Premium offices in Kigali',
         subtitle: 'A better address for ambitious teams',
         price: 'From 21,750 RWF / m²',
-        location: 'Kacyiru, Kigali',
-        image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1800&q=88',
+        location: 'Kimihurura, Kigali',
+        image: '/images/hero/kigali-convention-centre.jpg',
+        name: 'Kigali Convention Centre',
+        credit: 'Emmanuel Kwizera, CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:An_aerial_of_Kigali_Convention_Center_on_June_19,_2019._Photo_by_Emmanuel_Kwizera.jpg',
     },
     {
         title: 'Spaces made for business',
         subtitle: 'Move into a workspace that works for you',
         price: 'Flexible commercial spaces',
-        location: 'Nyarutarama, Kigali',
-        image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1800&q=88',
+        location: 'Nyarugenge, Kigali',
+        image: '/images/hero/kigali-offices-night.jpg',
+        name: 'Offices in Nyarugenge at night',
+        credit: 'IsimbiP, CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Kigali_long_exposure_shot.jpg',
     },
     {
         title: 'Beautiful places to grow',
         subtitle: 'Discover offices, shops, cafés and more',
         price: 'Ready-to-rent properties',
         location: 'Kigali, Rwanda',
-        image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1800&q=88',
+        image: '/images/hero/kigali-city-road.jpg',
+        name: 'A Kigali city road',
+        credit: 'Emmanuel Kwizera, CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:High_Angle_View_Of_Kigali_City_Street_on_November_29,_2018._Emmanuel_Kwizera.jpg',
     },
 ];
 
@@ -180,7 +190,9 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
 
     const applySearch = (filters, scrollToResults = true) => {
         lastSearch.current = searchKey(filters);
-        router.get('/', filters, {
+        // Only the filters in use go in the address: /?search=Kigali, not a row of empty ones.
+        const used = Object.fromEntries(Object.entries(filters).filter(([key, value]) => String(value ?? '').trim() !== '' && !(key === 'price_range' && value === 'any')));
+        router.get('/', used, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -271,17 +283,23 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                 <main>
                     <div className="px-4 pt-3 sm:hidden"><InstallAppBanner className="!mb-3" /></div>
                     <section className="relative h-[26rem] overflow-hidden bg-[#0e3b2e] sm:h-[31rem]">
-                        {heroSlides.map((item, index) => <img key={item.image} src={item.image} alt="" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === slide ? 'opacity-60' : 'opacity-0'}`} />)}
+                        {heroSlides.map((item, index) => <img key={item.image} src={item.image} alt="" fetchpriority={index === 0 ? 'high' : 'low'} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === slide ? 'opacity-60' : 'opacity-0'}`} />)}
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent" />
                         <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 pb-6 sm:px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-4 text-4xl font-light leading-tight sm:mt-5 sm:text-6xl lg:text-7xl">{t(current.title)}</h1><p className="mt-3 text-base font-medium text-white/85 sm:mt-4 sm:text-lg">{t(current.subtitle)}</p><p className="mt-4 text-xl font-bold sm:mt-6 sm:text-2xl">{t(current.price)}</p><button type="button" onClick={() => openContactForm('rent')} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-orange-600 sm:mt-8 sm:px-7 sm:py-3.5">{t('Make an enquiry')} <ArrowRight size={16} /></button></div></div>
                     </section>
 
                     <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
                         <form onSubmit={submitSearch} role="search" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.6fr)_repeat(5,minmax(140px,1fr))]">
-                            <label className="flex min-h-12 items-center gap-3 rounded-lg border border-slate-200 px-4 text-sm text-slate-500 focus-within:border-[#078dcc] focus-within:ring-2 focus-within:ring-[#078dcc]/20 sm:col-span-2 xl:col-span-1">
-                                <Search size={18} className="shrink-0" />
-                                <input value={searchForm.search} onChange={(event) => updateSearch({ search: event.target.value }, true)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); applySearch(searchForm); } }} placeholder={t('Location or property name')} aria-label={t('Search by location or property name')} className="w-full border-0 p-0 outline-none ring-0 focus:ring-0" />
-                            </label>
+                            <SearchSuggestBox
+                                value={searchForm.search}
+                                onChange={(text) => updateSearch({ search: text }, true)}
+                                onSearchNow={() => applySearch(searchForm)}
+                                onPickPlace={(place) => {
+                                    const filters = { ...searchForm, search: '', province_id: '', district_id: '', sector_id: '', ...place.filters };
+                                    setSearchForm(filters);
+                                    applySearch(filters);
+                                }}
+                            />
                             <select value={searchForm.category} onChange={(event) => updateSearch({ category: event.target.value })} aria-label="Property category" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All categories')}</option>
                                 {propertyCategories.map((category) => <option key={category.slug} value={category.slug}>{t(category.name)}</option>)}
@@ -463,11 +481,11 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                 <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="credits-title" onClick={() => setCreditsOpen(false)} onKeyDown={(e) => e.key === 'Escape' && setCreditsOpen(false)}>
                     <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <h2 id="credits-title" className="text-lg font-bold text-slate-900">{t('Photo credits')}</h2>
-                        <p className="mt-1 text-sm text-slate-600">{t('City photos from Wikimedia Commons:')}</p>
+                        <p className="mt-1 text-sm text-slate-600">{t('Photos of Rwanda from Wikimedia Commons:')}</p>
                         <ul className="mt-4 space-y-2 text-sm text-slate-700">
-                            {cities.map((city) => (
-                                <li key={city.name}>
-                                    <a href={city.source} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0E3B2E] underline underline-offset-2">{city.name}</a> — {city.credit}
+                            {[...heroSlides.map((slideItem) => ({ ...slideItem, name: t(slideItem.name) })), ...cities].map((photo) => (
+                                <li key={photo.source}>
+                                    <a href={photo.source} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0E3B2E] underline underline-offset-2">{photo.name}</a> — {photo.credit}
                                 </li>
                             ))}
                         </ul>
