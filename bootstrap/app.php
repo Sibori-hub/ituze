@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'owner.approved' => \App\Http\Middleware\EnsureOwnerIsApproved::class,
             'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
             'advertiser.paid' => \App\Http\Middleware\EnsureAdvertiserHasPaid::class,
+            'property.paid' => \App\Http\Middleware\EnsurePropertyIsPaid::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

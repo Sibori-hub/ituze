@@ -197,6 +197,40 @@ class SubscriptionPaymentTest extends TestCase
         Notification::assertSentTo($this->owner, SubscriptionPaymentDecided::class, fn ($notification) => str_contains(implode(' ', $notification->toMail($this->owner)->introLines), 'Rubavu Lodge for 3 months'));
     }
 
+    public function test_creating_a_property_goes_to_payment_and_units_wait_for_the_approved_payment(): void
+    {
+        $province = \App\Models\Province::create(['name' => 'Kigali City']);
+        $district = \App\Models\District::create(['name' => 'Gasabo', 'province_id' => $province->id]);
+        $sector = \App\Models\Sector::create(['name' => 'Remera', 'district_id' => $district->id]);
+        $cell = \App\Models\Cell::create(['name' => 'Rukiri', 'sector_id' => $sector->id]);
+
+        // Step 1: details. Saving goes straight to step 2, the payment.
+        $this->actingAs($this->owner)->post(route('properties.store'), ['name' => 'Remera Plaza', 'cell_id' => $cell->id, 'total_floors' => 2, 'basement_floors' => 0])
+            ->assertRedirect(route('properties.pay', Property::query()->where('name', 'Remera Plaza')->value('id')));
+        $plaza = Property::query()->where('name', 'Remera Plaza')->firstOrFail();
+        $this->get(route('properties.pay', $plaza))->assertInertia(fn (Assert $page) => $page
+            ->component('Properties/Pay')->where('subscription.state', 'unpaid')->where('subscription.pending', null));
+
+        // Before paying: no units, rooms or tenants; the property page shows the lock.
+        $this->post(route('properties.property-units.store', $plaza), [])->assertRedirect(route('properties.pay', $plaza));
+        $this->get(route('properties.units.create', $plaza))->assertRedirect(route('properties.pay', $plaza));
+        $this->get(route('properties.show', $plaza))->assertInertia(fn (Assert $page) => $page->where('subscription.active', false));
+
+        // Step 2: pay. Still locked while ITUZE checks it.
+        $this->post(route('subscription.transfer'), ['property_id' => $plaza->id, 'months' => 1, 'method' => 'bank_transfer', 'reference' => 'BK-77', 'proof' => $this->slip()])
+            ->assertSessionHasNoErrors();
+        $this->get(route('properties.pay', $plaza))->assertInertia(fn (Assert $page) => $page->where('subscription.pending.amount', 100000));
+        $this->get(route('properties.units.create', $plaza))->assertRedirect(route('properties.pay', $plaza))
+            ->assertSessionHas('error', fn ($message) => str_contains($message, 'being checked'));
+
+        // Approved: step 3 unlocks.
+        $this->actingAs($this->admin)->post(route('admin.subscriptions.approve', SubscriptionPayment::query()->latest('id')->first()))->assertSessionHasNoErrors();
+        $this->actingAs($this->owner)->get(route('properties.units.create', $plaza))->assertOk();
+        $this->get(route('properties.show', $plaza))->assertInertia(fn (Assert $page) => $page->where('subscription.active', true));
+        Notification::assertSentTo($this->owner, SubscriptionPaymentDecided::class, fn ($notification) => str_contains($notification->toSms($this->owner), 'Remera Plaza is paid until')
+            && str_contains($notification->toSms($this->owner), route('properties.show', $plaza)));
+    }
+
     public function test_the_test_mobile_money_driver_never_runs_on_the_live_site(): void
     {
         $this->app['env'] = 'production';

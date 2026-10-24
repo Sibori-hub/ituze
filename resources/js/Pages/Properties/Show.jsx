@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PropertySteps from '@/Components/PropertySteps';
 import { Head, Link, router } from '@inertiajs/react';
 import PropertyUnitsSection, { useFloorLabel } from '@/Components/PropertyUnitsSection';
 import { useTranslation } from '@/localization';
@@ -14,8 +15,10 @@ const imageSource = (path) => {
     return /^https?:\/\//i.test(path) ? path : `/storage/${path}`;
 };
 
-export default function PropertyShow({ property, isAdmin, canEdit, canEditProperty = canEdit, canDeleteProperty = canEdit, floorNumbers = [] }) {
+export default function PropertyShow({ property, isAdmin, canEdit, canEditProperty = canEdit, canDeleteProperty = canEdit, floorNumbers = [], subscription = null }) {
     const { t } = useTranslation();
+    // Self-registered owners: units, rooms and tenants wait for an approved payment.
+    const locked = Boolean(subscription?.needed && !subscription?.active);
     const floorLabel = useFloorLabel();
     const upperFloors = Number(property.total_floors) || 0;
     const basements = Number(property.basement_floors) || 0;
@@ -258,7 +261,28 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                     </div>
                 )}
 
-                <PropertyUnitsSection property={property} floorNumbers={floorNumbers} canEdit={canEdit} canEditProperty={canEditProperty} />
+                {locked ? (
+                    <section className="mt-6 rounded-3xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-6 text-center" aria-labelledby="locked-title">
+                        <div className="mx-auto max-w-md">
+                            <PropertySteps current={2} waitingApproval={Boolean(subscription.pending)} />
+                        </div>
+                        <h2 id="locked-title" className="mt-4 font-[Sora] text-lg font-bold text-gray-900">
+                            {subscription.pending
+                                ? t('Payment sent: ITUZE is checking it.')
+                                : subscription.state === 'paused' ? t('This property is paused') : t('Pay for this property to add units and rooms')}
+                        </h2>
+                        <p className="mx-auto mt-1 max-w-lg text-sm text-gray-700">
+                            {subscription.pending
+                                ? t('You will get an SMS and email as soon as it is approved; then you can add units, rooms and tenants.')
+                                : t('Each property costs :price per month. Units, rooms and tenants unlock as soon as ITUZE approves your payment.', { price: '100,000 RWF' })}
+                        </p>
+                        <Link href={route('properties.pay', property.id)} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#124B3A]">
+                            {subscription.pending ? t('See the payment') : t('Pay now')}
+                        </Link>
+                    </section>
+                ) : (
+                    <PropertyUnitsSection property={property} floorNumbers={floorNumbers} canEdit={canEdit} canEditProperty={canEditProperty} />
+                )}
             </div>
         </AuthenticatedLayout>
     );

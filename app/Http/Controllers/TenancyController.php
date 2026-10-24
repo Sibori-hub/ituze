@@ -49,7 +49,6 @@ class TenancyController extends Controller
     {
         $this->authorizeManager($request->user());
         $this->authorizePropertyAccess($request->user(), $property);
-        $this->ensurePropertyIsPaid($property);
 
         $data = $request->validate([
             ...app(TenantLocationService::class)->validationRules($request),
@@ -93,7 +92,6 @@ class TenancyController extends Controller
             abort(404);
         }
         abort_unless($request->user()->canAccessRoom($unit), 403, 'This room is not assigned to you.');
-        $this->ensurePropertyIsPaid($property);
 
         $unit->loadMissing('unitType');
         $isApartment = $unit->isApartmentAccommodation();
@@ -539,7 +537,6 @@ class TenancyController extends Controller
     public function renew(Request $request, Property $property, Unit $unit, Tenancy $tenancy): RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
-        $this->ensurePropertyIsPaid($property);
         $unit->loadMissing('unitType');
         $isApartment = $unit->isApartmentAccommodation();
         if ($tenancy->status !== 'active' || $tenancy->moveOutInspection()->exists()) {
@@ -941,18 +938,6 @@ class TenancyController extends Controller
     {
         if (! $user || ! in_array($user->role, ['admin', 'owner', 'manager'], true)) {
             abort(403, 'Only administrators and owners can manage tenancies.');
-        }
-    }
-
-    /** A self-registered owner's property takes tenants only while it is paid. */
-    private function ensurePropertyIsPaid(Property $property): void
-    {
-        if (! $property->loadMissing('owner')->subscriptionIsActive()) {
-            $message = 'Pay the subscription for "'.$property->name.'" first (100,000 RWF per month). Then you can add tenants.';
-
-            throw new \Illuminate\Http\Exceptions\HttpResponseException(request()->expectsJson()
-                ? response()->json(['message' => $message, 'errors' => ['subscription' => [$message]]], 422)
-                : back()->with('error', $message));
         }
     }
 }

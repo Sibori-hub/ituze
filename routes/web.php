@@ -424,7 +424,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{property}', [PropertyController::class, 'destroy'])->name('destroy');
 
         // Units: a category on one floor of the property; rooms are added inside them.
-        Route::post('/{property}/property-units', [\App\Http\Controllers\PropertyUnitController::class, 'store'])->name('property-units.store');
+        // Paying for the property (step 2 of creating it); units, rooms and tenants unlock once approved.
+        Route::get('/{property}/pay', [PropertyController::class, 'pay'])->name('pay');
+        Route::post('/{property}/property-units', [\App\Http\Controllers\PropertyUnitController::class, 'store'])->middleware('property.paid')->name('property-units.store');
         Route::post('/{property}/property-units/describe', [\App\Http\Controllers\AIDescriptionController::class, 'generateUnitDescription'])
             ->middleware('throttle:10,1')->name('property-units.describe');
         Route::put('/{property}/property-units/{propertyUnit}', [\App\Http\Controllers\PropertyUnitController::class, 'update'])->name('property-units.update');
@@ -433,8 +435,8 @@ Route::middleware('auth')->group(function () {
         // Rooms (stored as units; nested under properties)
         Route::prefix('{property}/units')->name('units.')->group(function () {
             Route::get('/', [UnitController::class, 'index'])->name('index');
-            Route::get('/create', [UnitController::class, 'create'])->name('create');
-            Route::post('/', [UnitController::class, 'store'])->name('store');
+            Route::get('/create', [UnitController::class, 'create'])->middleware('property.paid')->name('create');
+            Route::post('/', [UnitController::class, 'store'])->middleware('property.paid')->name('store');
             Route::post('/describe', [\App\Http\Controllers\AIDescriptionController::class, 'generateRoomDescription'])
                 ->middleware('throttle:10,1')->name('describe');
             Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
@@ -442,10 +444,10 @@ Route::middleware('auth')->group(function () {
             Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
             Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
             Route::middleware('owner.approved:owner')->group(function () {
-            Route::post('/{unit}/tenancy', [TenancyController::class, 'store'])->name('tenancy.store');
+            Route::post('/{unit}/tenancy', [TenancyController::class, 'store'])->middleware('property.paid')->name('tenancy.store');
             Route::post('/{unit}/tenancy/lease-note', [\App\Http\Controllers\LeaseNoteGenerationController::class, 'forAssignment'])->name('tenancy.lease-notes.generate');
             Route::post('/{unit}/tenancy/{tenancy}/lease-note', [\App\Http\Controllers\LeaseNoteGenerationController::class, 'forTenancy'])->name('tenancy.lease-notes.generate-for-tenancy');
-            Route::post('/{unit}/tenancy/{tenancy}/renewals', [TenancyController::class, 'renew'])->name('tenancy.renewals.store');
+            Route::post('/{unit}/tenancy/{tenancy}/renewals', [TenancyController::class, 'renew'])->middleware('property.paid')->name('tenancy.renewals.store');
             Route::post('/{unit}/tenancy/{tenancy}/move-out', [TenancyController::class, 'moveOut'])->name('tenancy.move-out');
             Route::post('/{unit}/tenancy/{tenancy}/charges/{charge}/payments', [TenancyController::class, 'storePayment'])->name('tenancy.payments.store');
             Route::post('/{unit}/tenancy/{tenancy}/rent-payments', [TenancyController::class, 'storeRentPayment'])->name('tenancy.rent-payments.store');
@@ -455,7 +457,7 @@ Route::middleware('auth')->group(function () {
             });
         });
 
-        Route::post('/{property}/tenants', [TenancyController::class, 'storeTenant'])->middleware('owner.approved:owner')->name('tenants.store');
+        Route::post('/{property}/tenants', [TenancyController::class, 'storeTenant'])->middleware(['owner.approved:owner', 'property.paid'])->name('tenants.store');
     });
 
     // Mobile money payment requests pushed to a tenant's phone.

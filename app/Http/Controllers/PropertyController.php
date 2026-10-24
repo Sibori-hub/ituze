@@ -169,11 +169,11 @@ class PropertyController extends Controller
                 ], 201);
             }
 
-            // A self-registered owner pays for each property: the payment form opens for it.
+            // A self-registered owner pays for the property as step 2 of creating it.
             if ($user->paysSubscription()) {
                 return redirect()
-                    ->route('subscription.show', ['property' => $property->id])
-                    ->with('success', 'Property "'.$property->name.'" saved. Pay for it to activate it: you can add units now, tenants once it is paid.');
+                    ->route('properties.pay', $property)
+                    ->with('success', 'Step 1 done: "'.$property->name.'" is saved. Now pay for it; units, rooms and tenants unlock once ITUZE approves the payment.');
             }
 
             return redirect()
@@ -269,7 +269,49 @@ class PropertyController extends Controller
             // The property itself: details, floors and new units.
             'canEditProperty' => ! $user->isReadOnly() && $user->canManageWholeProperty($property),
             'canDeleteProperty' => ! $user->isReadOnly() && ! $user->isManager(),
+            // Paid per property: units, rooms and tenants wait for an approved payment.
+            'subscription' => $this->propertySubscription($property),
         ]);
+    }
+
+    /**
+     * Step 2 of creating a property: pay for it. Also used later to renew it.
+     */
+    public function pay(Request $request, Property $property): Response|RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($property->owner_id === $user->id && $user->paysSubscription(), 403);
+
+        return Inertia::render('Properties/Pay', [
+            'property' => $property->only(['id', 'name', 'address']),
+            'subscription' => $this->propertySubscription($property),
+            'monthlyPrice' => \App\Services\SubscriptionService::monthlyPrice(),
+            'monthOptions' => \App\Services\SubscriptionService::monthOptions(),
+            'phone' => $user->phone,
+            'bank' => config('legal.qra_bank'),
+            'momoPay' => ['code' => config('services.momo_pay.code'), 'name' => config('services.momo_pay.name')],
+            'momoApi' => SubscriptionController::mobileMoneyApiAvailable(),
+        ]);
+    }
+
+    /** Where the property's payment stands: state, paid-until date and any payment being checked. */
+    private function propertySubscription(Property $property): array
+    {
+        $property->loadMissing('owner');
+        $pending = $property->subscriptionPayments()->where('status', 'pending')->latest('id')->first();
+
+        return [
+            'needed' => $property->needsSubscription(),
+            'state' => $property->subscriptionState(),
+            'active' => $property->subscriptionIsActive(),
+            'paid_until' => $property->paid_until?->toIso8601String(),
+            'pending' => $pending ? [
+                'amount' => (float) $pending->amount,
+                'months' => $pending->months,
+                'method' => $pending->method,
+                'sent_at' => $pending->created_at?->toIso8601String(),
+            ] : null,
+        ];
     }
 
     /**
