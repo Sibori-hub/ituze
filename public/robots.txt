@@ -1,2 +1,13 @@
 User-agent: *
-Disallow:
+# Public pages: home, listings, legal. The rest of the app is private.
+Allow: /$
+Allow: /spaces/
+Allow: /terms
+Allow: /privacy
+Allow: /images/
+Allow: /storage/
+Allow: /build/
+Allow: /icons/
+Disallow: /
+
+Sitemap: https://ituzeqraltd.com/sitemap.xml

@@ -5,7 +5,45 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title inertia>{{ config('app.name', 'ITUZE GREEN PLATFORM') }}</title>
+        @php
+            // Link previews and Google: public pages are indexed, the rest of the app is not.
+            $meta = array_merge(\App\Support\Seo::defaults(), $meta ?? []);
+            $public = request()->is('/', 'spaces/*', 'terms', 'privacy');
+            $canonical = request()->is('/') ? url('/') : $meta['url'];
+        @endphp
+        <title inertia>{{ $public ? $meta['title'] : config('app.name', 'ITUZE GREEN PLATFORM') }}</title>
+        <meta name="description" content="{{ $meta['description'] }}">
+        @if ($public)
+            <link rel="canonical" href="{{ $canonical }}">
+        @else
+            <meta name="robots" content="noindex, nofollow">
+        @endif
+        <meta property="og:site_name" content="ITUZE GREEN PLATFORM">
+        <meta property="og:type" content="{{ $meta['type'] }}">
+        <meta property="og:title" content="{{ $meta['title'] }}">
+        <meta property="og:description" content="{{ $meta['description'] }}">
+        <meta property="og:url" content="{{ $canonical }}">
+        <meta property="og:image" content="{{ $meta['image'] }}">
+        <meta property="og:image:alt" content="{{ $meta['title'] }}">
+        <meta property="og:locale" content="en_RW">
+        <meta property="og:locale:alternate" content="fr_FR">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $meta['title'] }}">
+        <meta name="twitter:description" content="{{ $meta['description'] }}">
+        <meta name="twitter:image" content="{{ $meta['image'] }}">
+        @if (request()->is('/'))
+            <script type="application/ld+json">{!! json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'Organization',
+                'name' => 'ITUZE GREEN PLATFORM',
+                'legalName' => 'Q.R.A GROUP LTD',
+                'url' => url('/'),
+                'logo' => url('/images/logo.png'),
+                'email' => 'info@qraltd.com',
+                'telephone' => '+250793905166',
+                'address' => ['@type' => 'PostalAddress', 'streetAddress' => 'KG 14 Ave, Gisozi', 'addressLocality' => 'Kigali', 'addressCountry' => 'RW'],
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+        @endif
 
         <!-- Favicon -->
         <link rel="icon" type="image/png" href="/images/logo.png">

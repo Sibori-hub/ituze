@@ -7,6 +7,7 @@ use App\Models\PropertyInquiry;
 use App\Models\Unit;
 use App\Models\User;
 use App\Notifications\NewPropertyInquiry;
+use App\Support\Seo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class PublicPropertyController extends Controller
 
         return Inertia::render('Public/Property', [
             'property' => $property,
-        ]);
+        ])->withViewData(['meta' => Seo::property($property)]);
     }
 
     public function showUnit(Property $property, Unit $unit): Response
@@ -49,7 +50,7 @@ class PublicPropertyController extends Controller
             'property' => $property,
             'selectedUnit' => $unit,
             'isUnitDetail' => true,
-        ]);
+        ])->withViewData(['meta' => Seo::property($property, $unit)]);
     }
 
     public function inquire(Request $request, Property $property): JsonResponse|RedirectResponse

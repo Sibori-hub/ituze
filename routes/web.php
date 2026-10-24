@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Public legal documents (linked from registration and the site footer).
+Route::get('/sitemap.xml', \App\Http\Controllers\SitemapController::class)->name('sitemap');
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
 
