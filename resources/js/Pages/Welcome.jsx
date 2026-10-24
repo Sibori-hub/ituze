@@ -22,7 +22,7 @@ import {
     Warehouse,
     X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 
 const heroSlides = [
@@ -162,24 +162,30 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
         return () => window.clearInterval(timer);
     }, []);
 
+    // Results update by themselves: lists at once, typing after a short pause.
+    const typingPause = useRef(true);
+    const searchKey = (filters) => JSON.stringify(Object.keys(filters).sort().map((key) => [key, String(filters[key] ?? '').trim()]));
+    const lastSearch = useRef(searchKey(searchForm));
     useEffect(() => {
-        setSearchForm({
-            search: searchFilters.search || '',
-            category: searchFilters.category || '',
-            province_id: searchFilters.province_id || '',
-            district_id: searchFilters.district_id || '',
-            sector_id: searchFilters.sector_id || '',
-            price_range: searchFilters.price_range || 'any',
-        });
-    }, [searchFilters.search, searchFilters.category, searchFilters.province_id, searchFilters.district_id, searchFilters.sector_id, searchFilters.price_range]);
+        if (searchKey(searchForm) === lastSearch.current) return undefined;
+        const timer = window.setTimeout(() => applySearch(searchForm, false), typingPause.current ? 450 : 0);
+        typingPause.current = true;
+        return () => window.clearTimeout(timer);
+    }, [searchForm]);
 
-    const applySearch = (filters) => {
+    const updateSearch = (changes, typing = false) => {
+        typingPause.current = typing;
+        setSearchForm((currentForm) => ({ ...currentForm, ...changes }));
+    };
+
+    const applySearch = (filters, scrollToResults = true) => {
+        lastSearch.current = searchKey(filters);
         router.get('/', filters, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
             onSuccess: () => {
-                document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (scrollToResults) document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             },
         });
     };
@@ -191,6 +197,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
 
     const clearSearch = () => {
         const emptyFilters = { search: '', category: '', province_id: '', district_id: '', sector_id: '', price_range: 'any' };
+        lastSearch.current = searchKey(emptyFilters);
         setSearchForm(emptyFilters);
         router.get('/', {}, {
             preserveState: true,
@@ -270,37 +277,34 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     </section>
 
                     <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <form onSubmit={submitSearch} className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(5,minmax(140px,.8fr))_auto]">
+                        <form onSubmit={submitSearch} role="search" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.6fr)_repeat(5,minmax(140px,1fr))]">
                             <label className="flex min-h-12 items-center gap-3 rounded-lg border border-slate-200 px-4 text-sm text-slate-500 focus-within:border-[#078dcc] focus-within:ring-2 focus-within:ring-[#078dcc]/20 sm:col-span-2 xl:col-span-1">
                                 <Search size={18} className="shrink-0" />
-                                <input value={searchForm.search} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, search: event.target.value }))} placeholder={t('Location or property name')} aria-label={t('Search by location or property name')} className="w-full border-0 p-0 outline-none ring-0 focus:ring-0" />
+                                <input value={searchForm.search} onChange={(event) => updateSearch({ search: event.target.value }, true)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); applySearch(searchForm); } }} placeholder={t('Location or property name')} aria-label={t('Search by location or property name')} className="w-full border-0 p-0 outline-none ring-0 focus:ring-0" />
                             </label>
-                            <select value={searchForm.category} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, category: event.target.value }))} aria-label="Property category" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.category} onChange={(event) => updateSearch({ category: event.target.value })} aria-label="Property category" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All categories')}</option>
                                 {propertyCategories.map((category) => <option key={category.slug} value={category.slug}>{t(category.name)}</option>)}
                             </select>
-                            <select value={searchForm.province_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, province_id: event.target.value, district_id: '', sector_id: '' }))} aria-label="Province" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.province_id} onChange={(event) => updateSearch({ province_id: event.target.value, district_id: '', sector_id: '' })} aria-label="Province" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All provinces')}</option>
                                 {(locations.provinces || []).map((province) => <option key={province.id} value={province.id}>{province.name}</option>)}
                             </select>
-                            <select value={searchForm.district_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, district_id: event.target.value, sector_id: '' }))} aria-label="District" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.district_id} onChange={(event) => updateSearch({ district_id: event.target.value, sector_id: '' })} aria-label="District" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All districts')}</option>
                                 {availableDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}
                             </select>
-                            <select value={searchForm.sector_id} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, sector_id: event.target.value }))} aria-label="Sector" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.sector_id} onChange={(event) => updateSearch({ sector_id: event.target.value })} aria-label="Sector" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All sectors')}</option>
                                 {availableSectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.name}</option>)}
                             </select>
-                            <select value={searchForm.price_range} onChange={(event) => setSearchForm((currentForm) => ({ ...currentForm, price_range: event.target.value }))} aria-label="Rent range" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.price_range} onChange={(event) => updateSearch({ price_range: event.target.value })} aria-label="Rent range" className="min-h-12 w-full sm:col-span-2 xl:col-span-1 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="any">{t('Any price')}</option>
                                 <option value="under-500000">{t('Under 500,000 RWF')}</option>
                                 <option value="500000-1500000">500,000 - 1,500,000 RWF</option>
                                 <option value="1500000-5000000">1,500,000 - 5,000,000 RWF</option>
                                 <option value="5000000-plus">Over 5,000,000 RWF</option>
                             </select>
-                            <button type="submit" className="min-h-12 rounded-lg bg-orange-500 px-8 text-sm font-bold text-white transition hover:bg-orange-600 sm:col-span-2 xl:col-span-1">
-                                <Search size={16} className="mr-2 inline" /> {t('Search')}
-                            </button>
                         </form>
                     </section>
 
