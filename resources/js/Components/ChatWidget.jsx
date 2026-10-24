@@ -3,6 +3,13 @@ import { usePage } from '@inertiajs/react';
 import { FileText, Headset, Loader2, MessageCircle, Paperclip, Send, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+const OPEN_EVENT = 'ituze:open-chat';
+
+/** Opens the chat window from anywhere, e.g. the dashboard footer. */
+export function openChat() {
+    window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
 const OPEN_POLL_MS = 4000;
 const CLOSED_POLL_MS = 30000;
 
@@ -62,6 +69,12 @@ export default function ChatWidget() {
     const fileRef = useRef(null);
 
     useEffect(() => setUnread(page.props.auth?.chatUnread ?? 0), [page.props.auth?.chatUnread]);
+
+    useEffect(() => {
+        const show = () => setOpen(true);
+        window.addEventListener(OPEN_EVENT, show);
+        return () => window.removeEventListener(OPEN_EVENT, show);
+    }, []);
 
     const merge = (incoming) => {
         if (!incoming.length) return;

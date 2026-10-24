@@ -1357,6 +1357,10 @@ export default {
         'Welcome to ITUZE!': 'Bienvenue sur ITUZE !',
         'To add your properties, pay for the houses you need: :price per house per month. Pay for 10 houses and you can add 10 properties.': 'Pour ajouter vos biens, payez les maisons dont vous avez besoin : :price par maison et par mois. Payez 10 maisons et vous pourrez ajouter 10 biens.',
         'Pay for houses': 'Payer les maisons',
+        'Buildings, tenants, leases and rent in one place. Simple, safe and in your language.': 'Bâtiments, locataires, baux et loyers au même endroit. Simple, sûr et dans votre langue.',
+        'Need help?': 'Besoin d\'aide ?',
+        'Public website': 'Site public',
+        'Privacy Policy': 'Politique de confidentialité',
     },
     rw: {
         'Log in': 'Injira',
@@ -2716,5 +2720,9 @@ export default {
         'Welcome to ITUZE!': 'Murakaza neza kuri ITUZE!',
         'To add your properties, pay for the houses you need: :price per house per month. Pay for 10 houses and you can add 10 properties.': 'Kugira ngo wongeremo inyubako zawe, ishyura inzu ukeneye: :price ku nzu imwe ku kwezi. Wishyuye inzu 10, ushobora kongeramo inyubako 10.',
         'Pay for houses': 'Ishyura inzu',
+        'Buildings, tenants, leases and rent in one place. Simple, safe and in your language.': 'Inyubako, abapangayi, amasezerano n\'ubukode hamwe. Byoroshye, bitekanye kandi mu rurimi rwawe.',
+        'Need help?': 'Ukeneye ubufasha?',
+        'Public website': 'Urubuga rusange',
+        'Privacy Policy': 'Politiki y\'ibanga',
     },
 };

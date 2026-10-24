@@ -1,5 +1,5 @@
 import BrandLockup from '@/Components/BrandLockup';
-import ChatWidget from '@/Components/ChatWidget';
+import ChatWidget, { openChat } from '@/Components/ChatWidget';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
 import InstallAppBanner, { isStandalone, promptInstall } from '@/Components/InstallAppBanner';
@@ -16,6 +16,8 @@ import {
     FileText,
     CreditCard,
     MessageSquare,
+    Phone,
+    Mail,
     BarChart3,
     ShieldCheck,
     Menu,
@@ -357,21 +359,57 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                         </div>
 
-                        <footer className="authenticated-main-footer mt-6 border-t border-gray-200/80 bg-white/70 px-4 py-4 backdrop-blur-sm sm:px-6">
-                            <div className="mx-auto flex max-w-7xl flex-col gap-2 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-                                <p>
+                        <footer className="authenticated-main-footer mt-8 border-t border-gray-200 bg-white">
+                            <div className="h-1 bg-gradient-to-r from-[#0E3B2E] via-emerald-500 to-[#D9A441]" aria-hidden="true" />
+                            <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_1fr_1fr]">
+                                <div>
+                                    <BrandLockup logoClassName="h-11 w-11" nameClassName="text-sm font-black text-[#0E3B2E]" subtitleClassName="text-[9px] font-semibold text-gray-500" />
+                                    <p className="mt-3 max-w-xs text-sm leading-6 text-gray-600">
+                                        {t('Buildings, tenants, leases and rent in one place. Simple, safe and in your language.')}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0E3B2E]">{t('Need help?')}</h2>
+                                    <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                                        {user.role !== 'admin' && (
+                                            <li>
+                                                <button type="button" onClick={openChat} className="inline-flex items-center gap-2 font-semibold text-[#0E3B2E] hover:underline">
+                                                    <MessageSquare size={15} aria-hidden="true" /> {t('Chat with us')}
+                                                </button>
+                                            </li>
+                                        )}
+                                        <li>
+                                            <a href="tel:+250793905166" className="inline-flex items-center gap-2 hover:text-[#0E3B2E] hover:underline">
+                                                <Phone size={15} className="text-gray-400" aria-hidden="true" /> 0793 905 166
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="mailto:info@qraltd.com" className="inline-flex items-center gap-2 hover:text-[#0E3B2E] hover:underline">
+                                                <Mail size={15} className="text-gray-400" aria-hidden="true" /> info@qraltd.com
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div>
+                                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#0E3B2E]">{t('ITUZE')}</h2>
+                                    <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                                        <li><Link href="/" className="hover:text-[#0E3B2E] hover:underline">{t('Public website')}</Link></li>
+                                        <li><Link href={route('legal.terms')} className="hover:text-[#0E3B2E] hover:underline">{t('Terms and Conditions')}</Link></li>
+                                        <li><Link href={route('legal.privacy')} className="hover:text-[#0E3B2E] hover:underline">{t('Privacy Policy')}</Link></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            {/* Bottom line; on phones it leaves room for the chat button. */}
+                            <div className={`border-t border-gray-100 bg-gray-50/80 ${user.role !== 'admin' ? 'pb-20 sm:pb-0' : ''}`}>
+                                <p className={`mx-auto max-w-7xl px-4 py-3 text-xs text-gray-500 sm:px-6 ${user.role !== 'admin' ? 'sm:pr-56' : ''}`}>
                                     © {new Date().getFullYear()} <span className="font-semibold text-[#0E3B2E]">ITUZE GREEN PLATFORM</span>
                                     <span aria-hidden="true"> · </span>
                                     {t('Powered by Q.R.A GROUP LTD')}. {t('All rights reserved.')}
                                 </p>
-                                <nav aria-label={t('Legal')} className="flex items-center gap-4">
-                                    <Link href={route('legal.terms')} className="font-medium transition-colors hover:text-[#0E3B2E] hover:underline">{t('Terms')}</Link>
-                                    <Link href={route('legal.privacy')} className="font-medium transition-colors hover:text-[#0E3B2E] hover:underline">{t('Privacy')}</Link>
-                                </nav>
                             </div>
                         </footer>
-                        {/* Room so the chat button never covers the footer links. */}
-                        {user.role !== 'admin' && <div className="h-20 shrink-0" aria-hidden="true" />}
                     </main>
                 </div>
             </div>
