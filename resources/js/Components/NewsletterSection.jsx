@@ -40,51 +40,57 @@ export default function NewsletterSection() {
     const banner = result ? RESULTS[result] : null;
 
     return (
-        <section id="newsletter" className="bg-white px-4 py-14 sm:px-6 lg:px-8" aria-labelledby="newsletter-title">
-            <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl bg-gradient-to-br from-[#e8f5ef] via-white to-[#fff3e6] p-8 shadow-xl ring-1 ring-slate-200 sm:p-12">
-                <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-orange-200/50 blur-3xl" aria-hidden="true" />
-                <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-emerald-200/50 blur-3xl" aria-hidden="true" />
+        <section id="newsletter" className="bg-white px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="newsletter-title">
+            <div className="relative mx-auto max-w-4xl overflow-hidden rounded-2xl bg-gradient-to-r from-[#eef8f3] via-white to-[#fff4e8] px-5 py-5 ring-1 ring-slate-200/80 sm:px-7">
+                {/* Thin brand stripe on the left edge */}
+                <span className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[#0E3B2E] to-orange-500" aria-hidden="true" />
+                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-orange-200/40 blur-2xl" aria-hidden="true" />
 
-                <div className="relative grid items-center gap-8 lg:grid-cols-[1fr_1.1fr]">
-                    <div>
-                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0E3B2E] text-white shadow-lg">
-                            <Mail size={22} aria-hidden="true" />
+                <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+                    <div className="flex min-w-0 items-center gap-3 md:flex-1">
+                        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#0E3B2E] shadow-sm ring-1 ring-emerald-100">
+                            <Mail size={20} aria-hidden="true" />
+                            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-orange-500 ring-2 ring-white" aria-hidden="true" />
                         </span>
-                        <h2 id="newsletter-title" className="mt-5 text-3xl font-light text-slate-900 sm:text-4xl">{t('Get ITUZE news first')}</h2>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">
-                            {t('New spaces for rent, tips for owners and special offers — straight to your inbox. No spam, unsubscribe any time.')}
-                        </p>
+                        <div className="min-w-0">
+                            <h2 id="newsletter-title" className="text-lg font-semibold text-slate-900">{t('Get ITUZE news first')}</h2>
+                            <p className="mt-0.5 text-[13px] leading-5 text-slate-600">
+                                {t('New spaces for rent, tips for owners and special offers — straight to your inbox. No spam, unsubscribe any time.')}
+                            </p>
+                        </div>
                     </div>
 
-                    <div>
+                    <div className="md:w-[380px] md:shrink-0">
                         {banner && (
-                            <p className={`mb-4 flex items-start gap-2 rounded-2xl px-4 py-3 text-sm font-medium ring-1 ring-inset ${banner.tone}`} role="status">
-                                <banner.Icon size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                            <p className={`mb-2 flex items-start gap-2 rounded-xl px-3 py-2 text-[13px] font-medium ring-1 ring-inset ${banner.tone}`} role="status">
+                                <banner.Icon size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
                                 {t(banner.text)}
                             </p>
                         )}
 
                         {sent ? (
-                            <div className="rounded-2xl bg-white/90 p-6 text-center shadow ring-1 ring-emerald-200" role="status">
-                                <MailCheck size={32} className="mx-auto text-emerald-700" aria-hidden="true" />
-                                <p className="mt-3 text-lg font-bold text-slate-900">{t('Almost done! Check your email.')}</p>
-                                <p className="mt-1 text-sm text-slate-600">{t('We sent you a link. Click it to confirm your subscription.')}</p>
-                                <button type="button" onClick={() => setSent(false)} className="mt-4 text-sm font-semibold text-[#0E3B2E] underline underline-offset-4 hover:text-[#124B3A]">
-                                    {t('Use another email')}
-                                </button>
+                            <div className="flex items-start gap-3 rounded-xl bg-white px-4 py-3 ring-1 ring-emerald-200" role="status">
+                                <MailCheck size={22} className="mt-0.5 shrink-0 text-emerald-700" aria-hidden="true" />
+                                <div className="min-w-0 text-[13px]">
+                                    <p className="font-semibold text-slate-900">{t('Almost done! Check your email.')}</p>
+                                    <p className="text-slate-600">{t('We sent you a link. Click it to confirm your subscription.')}</p>
+                                    <button type="button" onClick={() => setSent(false)} className="mt-1 font-semibold text-[#0E3B2E] underline underline-offset-4 hover:text-[#124B3A]">
+                                        {t('Use another email')}
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <form onSubmit={submit} noValidate>
-                                <label htmlFor="newsletter-email" className="mb-1.5 block text-[13px] font-medium text-gray-700">{t('Your email address')}</label>
-                                <div className="flex flex-col gap-3 sm:flex-row">
+                                <label htmlFor="newsletter-email" className="sr-only">{t('Your email address')}</label>
+                                <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200 focus-within:ring-2 focus-within:ring-[#0E3B2E]/40">
                                     <input
                                         id="newsletter-email"
                                         type="email"
                                         value={data.email}
                                         onChange={(e) => setData('email', e.target.value)}
-                                        placeholder="name@example.com"
+                                        placeholder={t('Your email address')}
                                         autoComplete="email"
-                                        className="min-h-[48px] w-full flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
+                                        className="min-h-[42px] w-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-gray-800 placeholder:text-gray-500 focus:ring-0"
                                         aria-invalid={Boolean(errors.email) || undefined}
                                         aria-describedby={`newsletter-note${errors.email ? ' newsletter-error' : ''}`}
                                         required
@@ -92,14 +98,14 @@ export default function NewsletterSection() {
                                     <button
                                         type="submit"
                                         disabled={processing || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)}
-                                        className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 text-sm font-bold text-white shadow-[0_10px_24px_-12px_rgba(249,115,22,0.9)] transition hover:bg-orange-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-300 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+                                        className="inline-flex min-h-[42px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-orange-500 px-4 text-sm font-bold text-white transition hover:bg-orange-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-300 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
                                     >
-                                        {processing ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
+                                        {processing ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
                                         {t('Subscribe')}
                                     </button>
                                 </div>
-                                {errors.email && <p id="newsletter-error" className="mt-2 text-xs font-medium text-red-600" role="alert">{t(errors.email)}</p>}
-                                <p id="newsletter-note" className="mt-3 text-xs text-slate-500">
+                                {errors.email && <p id="newsletter-error" className="mt-1.5 text-xs font-medium text-red-600" role="alert">{t(errors.email)}</p>}
+                                <p id="newsletter-note" className="mt-1.5 text-[11px] text-slate-500">
                                     {t('We only use your email for ITUZE news. Every email has an unsubscribe link.')}
                                 </p>
                                 <div className="hidden" aria-hidden="true">
