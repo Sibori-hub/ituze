@@ -41,7 +41,7 @@ class SubscriptionPaymentDecided extends Notification implements ShouldQueue
         if ($this->approved()) {
             return $mail
                 ->subject('Subscription paid until '.$payment->period_end?->format('j M Y'))
-                ->line('We received your payment of '.$amount.' for '.$payment->months.' month'.($payment->months > 1 ? 's' : '').'.')
+                ->line('We received your payment of '.$amount.' for '.$payment->planLabel().'.')
                 ->line('Your ITUZE subscription is now paid until '.$payment->period_end?->format('j F Y').'.')
                 ->line('Receipt number: '.$payment->receipt_number)
                 ->action('View my subscription', url('/subscription'))

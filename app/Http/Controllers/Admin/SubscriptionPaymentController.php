@@ -51,6 +51,8 @@ class SubscriptionPaymentController extends Controller
                 'created_at' => $payment->created_at?->toIso8601String(),
                 'owner' => $payment->owner?->only(['id', 'name', 'email', 'phone']),
                 'months' => $payment->months,
+                'houses' => $payment->houses,
+                'purpose' => $payment->purpose,
                 'amount' => (float) $payment->amount,
                 'method' => $payment->method,
                 'reference' => $payment->reference,

@@ -42,7 +42,7 @@ class SubscriptionPaymentSubmitted extends Notification implements ShouldQueue
         return (new MailMessage)
             ->subject('Subscription payment to check: '.$payment->owner?->name)
             ->greeting('Hello,')
-            ->line($payment->owner?->name.' paid '.number_format((float) $payment->amount, 0).' RWF by '.$this->method().' for '.$payment->months.' month'.($payment->months > 1 ? 's' : '').'.')
+            ->line($payment->owner?->name.' paid '.number_format((float) $payment->amount, 0).' RWF by '.$this->method().' for '.$payment->planLabel().'.')
             ->line(($payment->method === 'momo_pay' ? 'MoMo transaction ID: ' : 'Reference: ').$payment->reference)
             ->lineIf($payment->method === 'momo_pay', 'Sender: '.$payment->sender_name.' · '.$payment->sender_phone.' · paid '.$payment->paid_at?->format('j M Y, H:i'))
             ->line($payment->method === 'momo_pay'

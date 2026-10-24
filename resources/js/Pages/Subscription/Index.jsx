@@ -43,7 +43,23 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
     const [subscription, setSubscription] = useState(initial);
     useEffect(() => setSubscription(initial), [initial]);
 
+    // Priced per house per month. "Renew" picks months and houses (never fewer
+    // than the houses already on ITUZE); "Add houses" pays extra houses for
+    // the months left in the current period.
+    const housesUsed = subscription.houses_used ?? 0;
+    const paidHouses = subscription.paid_houses ?? 0;
+    const monthsLeft = subscription.months_left ?? 0;
+    const minHouses = Math.max(1, housesUsed);
+    const canAddHouses = monthsLeft > 0 && !subscription.blocked;
+    const wantsAdd = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('add') === '1';
+    const [purpose, setPurpose] = useState(canAddHouses && wantsAdd ? 'add_houses' : 'renewal');
     const [months, setMonths] = useState(1);
+    const [houses, setHouses] = useState(Math.max(minHouses, paidHouses, 1));
+    const [extraHouses, setExtraHouses] = useState(1);
+    const adding = purpose === 'add_houses';
+    const planMonths = adding ? monthsLeft : months;
+    const planHouses = adding ? extraHouses : houses;
+    const plan = { purpose, months: planMonths, houses: planHouses };
     // MoMo Pay and bank transfer (with the slip); the phone request only where
     // the MoMo API is connected.
     const methods = [
@@ -53,7 +69,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
         ['cheque', 'Cheque', Banknote],
     ].filter(Boolean);
     const [method, setMethod] = useState('momo_pay');
-    const total = months * monthlyPrice;
+    const total = planMonths * planHouses * monthlyPrice;
     const paidUntil = subscription.paid_until ? new Date(subscription.paid_until) : null;
     const startFrom = paidUntil && paidUntil > new Date() ? paidUntil : new Date();
     const newEnd = new Date(startFrom);
@@ -99,7 +115,8 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                         <div className="rounded-2xl bg-white/15 px-5 py-4 text-right ring-1 ring-white/20">
                             <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{t('Price')}</p>
                             <p className="font-[Sora] text-2xl font-bold">{money(monthlyPrice)}</p>
-                            <p className="text-xs text-white/80">{t('per month, all your buildings and managers')}</p>
+                            <p className="text-xs text-white/80">{t('per house, per month')}</p>
+                            {paidHouses > 0 && <p className="mt-1 text-xs font-semibold text-white">{t(':used of :paid houses used', { used: housesUsed, paid: paidHouses })}</p>}
                         </div>
                     </div>
                 </section>
@@ -109,8 +126,40 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                     <section aria-labelledby="pay-title" className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-3">
                         <h2 id="pay-title" className="flex items-center gap-2 font-[Sora] text-lg font-bold text-gray-900"><Wallet size={19} className="text-[#0E3B2E]" aria-hidden="true" />{t('Pay your subscription')}</h2>
 
+                        {canAddHouses && (
+                            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('What do you want to pay?')}>
+                                {[['renewal', 'Renew my subscription'], ['add_houses', 'Add houses']].map(([value, label]) => (
+                                    <button key={value} type="button" role="radio" aria-checked={purpose === value} onClick={() => setPurpose(value)}
+                                        className={`min-h-10 rounded-lg px-3 text-sm font-semibold transition ${purpose === value ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
+                                        {t(label)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         <fieldset className="mt-5">
-                            <legend className="text-sm font-semibold text-gray-900">{t('1. How many months?')}</legend>
+                            <legend className="text-sm font-semibold text-gray-900">{adding ? t('1. How many houses do you want to add?') : t('1. How many houses?')}</legend>
+                            <div className="mt-2 flex items-center gap-3">
+                                <button type="button" onClick={() => (adding ? setExtraHouses((n) => Math.max(1, n - 1)) : setHouses((n) => Math.max(minHouses, n - 1)))}
+                                    disabled={adding ? extraHouses <= 1 : houses <= minHouses}
+                                    className="flex h-11 w-11 flex-none items-center justify-center rounded-xl border-2 border-gray-200 text-xl font-bold text-gray-800 hover:border-gray-300 disabled:opacity-40" aria-label={t('One house less')}>−</button>
+                                <span className="min-w-[4rem] text-center" aria-live="polite">
+                                    <span className="block font-[Sora] text-2xl font-bold text-gray-900">{planHouses}</span>
+                                    <span className="block text-xs text-gray-600">{t(planHouses === 1 ? 'house' : 'houses')}</span>
+                                </span>
+                                <button type="button" onClick={() => (adding ? setExtraHouses((n) => Math.min(100, n + 1)) : setHouses((n) => Math.min(500, n + 1)))}
+                                    className="flex h-11 w-11 flex-none items-center justify-center rounded-xl border-2 border-gray-200 text-xl font-bold text-gray-800 hover:border-gray-300" aria-label={t('One house more')}>+</button>
+                                <p className="text-xs text-gray-600">
+                                    {adding
+                                        ? t('You have :paid house(s) paid until :date. Each extra house costs :price for the :months month(s) left.', { paid: paidHouses, date: longDate(paidUntil), price: money(monthsLeft * monthlyPrice), months: monthsLeft })
+                                        : housesUsed > 0 ? t('You have :count house(s) on ITUZE, so at least :count.', { count: housesUsed }) : t('One house = one building. You can add more later.')}
+                                </p>
+                            </div>
+                        </fieldset>
+
+                        {!adding && (
+                        <fieldset className="mt-5">
+                            <legend className="text-sm font-semibold text-gray-900">{t('2. How many months?')}</legend>
                             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                                 {monthOptions.map((option) => (
                                     <label key={option} className={`relative cursor-pointer rounded-2xl border-2 p-3 text-center transition ${months === option ? 'border-[#0E3B2E] bg-emerald-50/60 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}>
@@ -118,7 +167,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                         {option === 12 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#D9A441] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0E3B2E]">{t('1 year')}</span>}
                                         <span className="block font-[Sora] text-xl font-bold text-gray-900">{option}</span>
                                         <span className="block text-xs text-gray-600">{t(option === 1 ? 'month' : 'months')}</span>
-                                        <span className="mt-1 block text-xs font-semibold text-[#0E3B2E]">{money(option * monthlyPrice)}</span>
+                                        <span className="mt-1 block text-xs font-semibold text-[#0E3B2E]">{money(option * houses * monthlyPrice)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -127,9 +176,16 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                 {t('Total :total · paid until :date after payment', { total: money(total), date: longDate(newEnd) })}
                             </p>
                         </fieldset>
+                        )}
+                        {adding && (
+                            <p className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                                <CalendarCheck2 size={16} className="text-[#0E3B2E]" aria-hidden="true" />
+                                {t('Total :total · :houses house(s) in all until :date', { total: money(total), houses: paidHouses + extraHouses, date: longDate(paidUntil) })}
+                            </p>
+                        )}
 
                         <fieldset className="mt-6">
-                            <legend className="text-sm font-semibold text-gray-900">{t('2. How do you pay?')}</legend>
+                            <legend className="text-sm font-semibold text-gray-900">{adding ? t('2. How do you pay?') : t('3. How do you pay?')}</legend>
                             <div className={`mt-2 grid gap-2 ${methods.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                 {methods.map(([value, label, Icon]) => (
                                     <label key={value} className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center text-xs font-semibold transition sm:text-sm ${method === value ? 'border-[#0E3B2E] bg-emerald-50/60 text-[#0E3B2E]' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
@@ -142,10 +198,10 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                         </fieldset>
 
                         <div className="mt-5">
-                            {method === 'momo_pay' ? <MomoPayForm months={months} total={total} money={money} momoPay={momoPay} defaultPhone={ownerPhone} />
+                            {method === 'momo_pay' ? <MomoPayForm plan={plan} total={total} money={money} momoPay={momoPay} defaultPhone={ownerPhone} />
                             : method === 'mobile_money'
-                                ? <MobileMoneyPay months={months} total={total} defaultPhone={ownerPhone} money={money} onPaid={(status) => { setSubscription(status); router.reload({ only: ['payments', 'subscription'] }); }} />
-                                : <TransferPay key={method} months={months} method={method} total={total} money={money} bank={bank} />}
+                                ? <MobileMoneyPay plan={plan} total={total} defaultPhone={ownerPhone} money={money} onPaid={(status) => { setSubscription(status); router.reload({ only: ['payments', 'subscription'] }); }} />
+                                : <TransferPay key={method} plan={plan} method={method} total={total} money={money} bank={bank} />}
                         </div>
                     </section>
 
@@ -158,6 +214,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                 : [Smartphone, t('Keep the MoMo SMS: its transaction ID proves your payment.')],
                             [FileCheck2, t('Every payment is checked by ITUZE, usually the same day. You get an email and SMS.')],
                             [CalendarCheck2, t('Paying early adds the months after your current end date: you never lose days.')],
+                            [Banknote, t('One house = one building, :price per month. To add a house, pay for it first.', { price: money(monthlyPrice) })],
                             [Clock3, t('Reminders come 7 and 3 days before the end. After the end you have :days days before a pause.', { days: 7 })],
                             [ShieldCheck, t('A pause never deletes anything. Pay and everything is back immediately.')],
                         ].map(([Icon, text], index) => (
@@ -221,7 +278,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
 }
 
 /** Request to pay on the owner's phone, then follow it until approved. */
-function MobileMoneyPay({ months, total, defaultPhone, money, onPaid }) {
+function MobileMoneyPay({ plan, total, defaultPhone, money, onPaid }) {
     const { t } = useTranslation();
     const [phone, setPhone] = useState(toLocalDigits(defaultPhone || ''));
     const [state, setState] = useState({ step: 'idle', error: '', payment: null, request: null });
@@ -258,7 +315,7 @@ function MobileMoneyPay({ months, total, defaultPhone, money, onPaid }) {
         }
         setState({ step: 'sending', error: '', payment: null, request: null });
         try {
-            const result = await call(route('subscription.momo.start'), { method: 'POST', body: JSON.stringify({ months, phone: `0${phone}` }) });
+            const result = await call(route('subscription.momo.start'), { method: 'POST', body: JSON.stringify({ ...plan, phone: `0${phone}` }) });
             setState({ step: 'waiting', error: '', payment: result.payment, request: result.request });
             follow(result.payment.id);
         } catch (error) {
@@ -320,11 +377,11 @@ const localDateTime = (date) => {
  * MoMo Pay without the API: pay our merchant code, then type what the MoMo
  * SMS says. ITUZE checks it against the MoMo statement and approves.
  */
-function MomoPayForm({ months, total, money, momoPay, defaultPhone }) {
+function MomoPayForm({ plan, total, money, momoPay, defaultPhone }) {
     const { t } = useTranslation();
-    const form = useForm({ months, amount: total, sender_name: '', sender_phone: toLocalDigits(defaultPhone || ''), paid_at: localDateTime(new Date()), transaction_id: '', proof: null });
+    const form = useForm({ ...plan, amount: total, sender_name: '', sender_phone: toLocalDigits(defaultPhone || ''), paid_at: localDateTime(new Date()), transaction_id: '', proof: null });
     const [submitted, setSubmitted] = useState(false);
-    useEffect(() => { form.setData((current) => ({ ...current, months, amount: total })); }, [months, total]);
+    useEffect(() => { form.setData((current) => ({ ...current, ...plan, amount: total })); }, [plan.purpose, plan.months, plan.houses, total]);
 
     const dial = momoPay.code ? `*182*8*1*${momoPay.code}#` : null;
     const clientErrors = {};
@@ -381,7 +438,7 @@ function MomoPayForm({ months, total, money, momoPay, defaultPhone }) {
                 <label className="block text-sm font-medium text-gray-800">
                     {t('Amount paid')}
                     <input value={money(total)} readOnly className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900" aria-describedby="momo-amount-help" />
-                    <span id="momo-amount-help" className="mt-1 block text-xs text-gray-600">{t('For :months month(s). Change the months above if you paid for more.', { months })}</span>
+                    <span id="momo-amount-help" className="mt-1 block text-xs text-gray-600">{t(':houses house(s) × :months month(s). Change them above if you paid for more.', { houses: plan.houses, months: plan.months })}</span>
                     {form.errors.amount && <span className="mt-1 block text-xs text-red-600">{t(form.errors.amount)}</span>}
                 </label>
                 <label className="block text-sm font-medium text-gray-800">
@@ -410,6 +467,7 @@ function MomoPayForm({ months, total, money, momoPay, defaultPhone }) {
                 {form.errors.proof && <span className="mt-1 block text-xs text-red-600">{t(form.errors.proof)}</span>}
             </div>
 
+            {(form.errors.houses || form.errors.months) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.houses || form.errors.months)}</p>}
             {form.errors.reference && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.reference)}</p>}
 
             <button disabled={form.processing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60">
@@ -421,11 +479,11 @@ function MomoPayForm({ months, total, money, momoPay, defaultPhone }) {
 }
 
 /** Bank transfer or cheque: reference plus a photo / PDF of the slip or cheque. */
-function TransferPay({ months, method, total, money, bank }) {
+function TransferPay({ plan, method, total, money, bank }) {
     const { t } = useTranslation();
-    const form = useForm({ months, method, reference: '', proof: null });
+    const form = useForm({ ...plan, method, reference: '', proof: null });
     const [submitted, setSubmitted] = useState(false);
-    useEffect(() => { form.setData((current) => ({ ...current, months, method })); }, [months, method]);
+    useEffect(() => { form.setData((current) => ({ ...current, ...plan, method })); }, [plan.purpose, plan.months, plan.houses, method]);
 
     const isCheque = method === 'cheque';
     const clientErrors = {};
@@ -471,6 +529,7 @@ function TransferPay({ months, method, total, money, bank }) {
                     className={`mt-1.5 w-full rounded-xl border px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${errorFor('reference') ? 'border-red-400 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`}
                     aria-invalid={errorFor('reference') ? 'true' : undefined} />
                 {errorFor('reference') && <span className="mt-1 block text-xs text-red-600">{errorFor('reference')}</span>}
+                {(form.errors.houses || form.errors.months) && <span className="mt-1 block text-xs text-red-600">{t(form.errors.houses || form.errors.months)}</span>}
             </label>
             <div>
                 <p className="text-sm font-medium text-gray-800">{isCheque ? t('Photo of the cheque') : t('Photo or PDF of the slip')}</p>

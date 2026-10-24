@@ -31,6 +31,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'status',
         'expires_at',
+        'paid_houses',
         'national_id',
         'identity_document_type',
         'identity_document',
@@ -81,6 +82,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'terms_accepted_at' => 'datetime',
             'disabled_at' => 'datetime',
             'expires_at' => 'datetime',
+            'paid_houses' => 'integer',
             'profile_completed' => 'boolean',
             'login_enabled' => 'boolean',
             'must_change_password' => 'boolean',
@@ -325,6 +327,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function paysSubscription(): bool
     {
         return $this->isOwner() && ! $this->isManaged();
+    }
+
+    /** Houses (buildings) this owner has on ITUZE. */
+    public function housesUsed(): int
+    {
+        return $this->properties()->count();
+    }
+
+    /** A self-registered owner adds a house only within the houses they paid for. */
+    public function canAddHouse(): bool
+    {
+        return ! $this->paysSubscription() || $this->housesUsed() < (int) $this->paid_houses;
     }
 
     /** Last moment of access: the paid-until date plus the grace days. */

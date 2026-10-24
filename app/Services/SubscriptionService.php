@@ -27,9 +27,53 @@ class SubscriptionService
         return array_map('intval', config('legal.owner_subscription_month_options', [1, 3, 6, 12]));
     }
 
-    public static function priceFor(int $months): int
+    /** The price is per house per month. */
+    public static function priceFor(int $months, int $houses = 1): int
     {
-        return $months * self::monthlyPrice();
+        return $months * max(1, $houses) * self::monthlyPrice();
+    }
+
+    /** Whole months left in the paid period, at least one: what an extra house costs. */
+    public static function monthsLeft(User $owner): int
+    {
+        if (! $owner->expires_at || $owner->expires_at->isPast()) {
+            return 0;
+        }
+
+        // Calendar months, rounded up (a part of a month counts as a month).
+        return max(1, (int) ceil(round(now()->diffInMonths($owner->expires_at), 3)));
+    }
+
+    /**
+     * Months, houses and price for a payment, checked against the owner.
+     * Renewal: any month option, at least one house and never fewer than the
+     * houses they have. Adding houses: only while paid, for the months left.
+     *
+     * @return array{purpose: string, months: int, houses: int, amount: int}
+     */
+    public static function quote(User $owner, string $purpose, int $months, int $houses): array
+    {
+        if ($purpose === SubscriptionPayment::ADD_HOUSES) {
+            $left = self::monthsLeft($owner);
+            if ($left === 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['houses' => 'Your subscription has ended. Renew it, choosing all the houses you need.']);
+            }
+            if ($houses < 1 || $houses > 100) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['houses' => 'Choose how many houses to add (1 to 100).']);
+            }
+
+            return ['purpose' => $purpose, 'months' => $left, 'houses' => $houses, 'amount' => self::priceFor($left, $houses)];
+        }
+
+        $minimum = max(1, $owner->housesUsed());
+        if ($houses < $minimum || $houses > 500) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['houses' => "You have {$owner->housesUsed()} house(s) on ITUZE, so pay for at least {$minimum}."]);
+        }
+        if (! in_array($months, self::monthOptions(), true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['months' => 'Choose 1, 3, 6 or 12 months.']);
+        }
+
+        return ['purpose' => SubscriptionPayment::RENEWAL, 'months' => $months, 'houses' => $houses, 'amount' => self::priceFor($months, $houses)];
     }
 
     /**
@@ -45,12 +89,19 @@ class SubscriptionService
             }
 
             $owner = User::query()->whereKey($locked->owner_id)->lockForUpdate()->firstOrFail();
-            $start = $owner->expires_at && $owner->expires_at->isFuture()
-                ? $owner->expires_at->copy()
-                : Carbon::now();
-            $end = $start->copy()->addMonthsNoOverflow($locked->months);
-
-            $owner->forceFill(['expires_at' => $end])->save();
+            if ($locked->purpose === SubscriptionPayment::ADD_HOUSES && $owner->expires_at && $owner->expires_at->isFuture()) {
+                // Extra houses join the current period; the end date stays.
+                $start = Carbon::now();
+                $end = $owner->expires_at->copy();
+                $owner->forceFill(['paid_houses' => (int) $owner->paid_houses + $locked->houses])->save();
+            } else {
+                $early = $owner->expires_at && $owner->expires_at->isFuture();
+                $start = $early ? $owner->expires_at->copy() : Carbon::now();
+                $end = $start->copy()->addMonthsNoOverflow($locked->months);
+                // Paying early never takes away houses already paid for this period.
+                $houses = max($locked->houses, $owner->housesUsed(), $early ? (int) $owner->paid_houses : 0);
+                $owner->forceFill(['expires_at' => $end, 'paid_houses' => $houses])->save();
+            }
             $locked->update([
                 'status' => SubscriptionPayment::APPROVED,
                 'period_start' => $start->toDateString(),

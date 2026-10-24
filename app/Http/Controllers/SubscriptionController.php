@@ -71,7 +71,7 @@ class SubscriptionController extends Controller
     {
         $owner = $this->owner($request);
         $data = $request->validate([
-            'months' => ['required', 'integer', Rule::in(SubscriptionService::monthOptions())],
+            ...$this->planRules(),
             'method' => ['required', Rule::in(['bank_transfer', 'cheque'])],
             'reference' => ['required', 'string', 'max:120'],
             'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
@@ -80,12 +80,12 @@ class SubscriptionController extends Controller
             'proof.required' => 'Attach a photo or PDF of the bank slip or cheque.',
         ]);
         $this->ensureNothingWaiting($owner);
+        $plan = $this->plan($owner, $data);
 
         $file = $request->file('proof');
         $payment = SubscriptionPayment::create([
             'owner_id' => $owner->id,
-            'months' => $data['months'],
-            'amount' => SubscriptionService::priceFor((int) $data['months']),
+            ...$plan,
             'method' => $data['method'],
             'reference' => trim($data['reference']),
             'proof_path' => $file->store('subscription-proofs', 'local'),
@@ -111,9 +111,9 @@ class SubscriptionController extends Controller
             'sender_phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('sender_phone')),
             'transaction_id' => preg_replace('/\s+/', '', (string) $request->input('transaction_id')),
         ]);
-        $price = SubscriptionService::priceFor(max(1, (int) $request->input('months')));
+        $plan = $this->plan($owner, $request->validate($this->planRules()));
+        $price = $plan['amount'];
         $data = $request->validate([
-            'months' => ['required', 'integer', Rule::in(SubscriptionService::monthOptions())],
             'sender_name' => ['required', 'string', 'max:120'],
             'sender_phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/'],
             'amount' => ['required', 'numeric', Rule::in([$price])],
@@ -128,7 +128,7 @@ class SubscriptionController extends Controller
             'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
             'sender_phone.regex' => 'Enter the 10-digit MTN or Airtel number that paid (078, 079, 072 or 073).',
-            'amount.in' => 'For the months you chose the amount is '.number_format($price).' RWF. Pay exactly this amount.',
+            'amount.in' => 'For the houses and months you chose the amount is '.number_format($price).' RWF. Pay exactly this amount.',
             'paid_at.before_or_equal' => 'The payment date and time cannot be in the future.',
             'paid_at.after' => 'This payment is more than 30 days old. Please contact ITUZE.',
             'transaction_id.regex' => 'Enter the transaction ID from the MoMo SMS: numbers only.',
@@ -139,8 +139,7 @@ class SubscriptionController extends Controller
         $file = $request->file('proof');
         $payment = SubscriptionPayment::create([
             'owner_id' => $owner->id,
-            'months' => $data['months'],
-            'amount' => $price,
+            ...$plan,
             'method' => 'momo_pay',
             'reference' => $data['transaction_id'],
             'sender_name' => trim($data['sender_name']),
@@ -173,7 +172,7 @@ class SubscriptionController extends Controller
         $owner = $this->owner($request);
         abort_unless(self::mobileMoneyApiAvailable(), 404);
         $data = $request->validate([
-            'months' => ['required', 'integer', Rule::in(SubscriptionService::monthOptions())],
+            ...$this->planRules(),
             'phone' => ['required', 'string', 'max:20'],
         ]);
         $phone = MobileMoneyService::msisdn($data['phone']);
@@ -186,11 +185,11 @@ class SubscriptionController extends Controller
             ->each(fn (SubscriptionPayment $payment) => $payment->mobileMoneyRequest && $this->mobileMoney->refresh($payment->mobileMoneyRequest));
         $this->ensureNothingWaiting($owner, mobileMoneyOnly: true);
 
-        $months = (int) $data['months'];
+        $plan = $this->plan($owner, $data);
         try {
             $momo = $this->mobileMoney->start(
-                $owner, null, null, $phone, SubscriptionService::priceFor($months),
-                'ITUZE subscription, '.$months.' month'.($months > 1 ? 's' : ''), 'subscription',
+                $owner, null, null, $phone, $plan['amount'],
+                'ITUZE subscription, '.$plan['houses'].' house(s), '.$plan['months'].' month(s)', 'subscription',
             );
         } catch (MobileMoneyException $e) {
             throw ValidationException::withMessages(['phone' => $e->getMessage()]);
@@ -198,8 +197,7 @@ class SubscriptionController extends Controller
 
         $payment = SubscriptionPayment::create([
             'owner_id' => $owner->id,
-            'months' => $months,
-            'amount' => SubscriptionService::priceFor($months),
+            ...$plan,
             'method' => 'mobile_money',
             'status' => SubscriptionPayment::PENDING,
             'mobile_money_request_id' => $momo->id,
@@ -242,6 +240,22 @@ class SubscriptionController extends Controller
         return $user;
     }
 
+    /** What the owner pays for: renew (months and houses) or add houses. */
+    private function planRules(): array
+    {
+        return [
+            'purpose' => ['nullable', Rule::in([SubscriptionPayment::RENEWAL, SubscriptionPayment::ADD_HOUSES])],
+            'months' => ['required', 'integer', 'min:1', 'max:12'],
+            'houses' => ['required', 'integer', 'min:1', 'max:500'],
+        ];
+    }
+
+    /** @return array{purpose: string, months: int, houses: int, amount: int} */
+    private function plan(User $owner, array $data): array
+    {
+        return SubscriptionService::quote($owner, $data['purpose'] ?? SubscriptionPayment::RENEWAL, (int) $data['months'], (int) $data['houses']);
+    }
+
     /** One payment at a time, so nothing is paid twice by mistake. */
     private function ensureNothingWaiting(User $owner, bool $mobileMoneyOnly = false): void
     {
@@ -268,6 +282,9 @@ class SubscriptionController extends Controller
 
         return [
             'paid_until' => $expires?->toIso8601String(),
+            'paid_houses' => (int) $owner->paid_houses,
+            'houses_used' => $owner->housesUsed(),
+            'months_left' => SubscriptionService::monthsLeft($owner),
             'days_left' => $expires ? (int) floor(now()->diffInDays($expires, false)) : null,
             'in_grace' => $owner->inSubscriptionGrace(),
             'grace_ends_at' => $graceEnds?->toIso8601String(),
@@ -286,6 +303,8 @@ class SubscriptionController extends Controller
             'id' => $payment->id,
             'created_at' => $payment->created_at?->toIso8601String(),
             'months' => $payment->months,
+            'houses' => $payment->houses,
+            'purpose' => $payment->purpose,
             'amount' => (float) $payment->amount,
             'method' => $payment->method,
             'reference' => $payment->reference,

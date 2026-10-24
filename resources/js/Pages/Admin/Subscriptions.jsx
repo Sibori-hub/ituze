@@ -103,7 +103,7 @@ export default function AdminSubscriptions({ payments, filters = {}, counts = {}
                                     </div>
                                     <div className="min-w-[160px]">
                                         <p className="font-[Sora] font-bold tabular-nums text-gray-900">{money(payment.amount)}</p>
-                                        <p className="text-xs text-gray-600">{t(payment.months === 1 ? '1 month' : ':count months', { count: payment.months })} · {date(payment.created_at)}</p>
+                                        <p className="text-xs text-gray-600">{t(payment.purpose === 'add_houses' ? ':houses extra house(s)' : ':houses house(s)', { houses: payment.houses })} · {t(payment.months === 1 ? '1 month' : ':count months', { count: payment.months })} · {date(payment.created_at)}</p>
                                     </div>
                                     <div className="min-w-[180px]">
                                         <p className="text-sm text-gray-800">{t(METHOD_LABEL[payment.method] || payment.method)}</p>

@@ -32,7 +32,7 @@ class SubscriptionPaymentReceived extends Notification implements ShouldQueue
         $payment = $this->payment->loadMissing('owner:id,name');
 
         return $payment->owner?->name.' paid '.number_format((float) $payment->amount, 0).' RWF by mobile money for '
-            .$payment->months.' month'.($payment->months > 1 ? 's' : '').' (paid until '.$payment->period_end?->format('j M Y').').';
+            .$payment->planLabel().' (paid until '.$payment->period_end?->format('j M Y').').';
     }
 
     public function toMail(object $notifiable): MailMessage

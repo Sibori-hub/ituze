@@ -40,7 +40,7 @@ class SubscriptionPaymentTest extends TestCase
 
     public function test_mobile_money_payment_adds_months_after_the_current_end(): void
     {
-        $start = $this->actingAs($this->owner)->postJson(route('subscription.momo.start'), ['months' => 3, 'phone' => '0788123456'])
+        $start = $this->actingAs($this->owner)->postJson(route('subscription.momo.start'), ['months' => 3, 'houses' => 1, 'phone' => '0788123456'])
             ->assertCreated()
             ->assertJsonPath('payment.amount', 300000)
             ->assertJsonPath('request.amount', 300000);
@@ -70,7 +70,7 @@ class SubscriptionPaymentTest extends TestCase
         $slip = fn () => UploadedFile::fake()->create('slip.pdf', 100, 'application/pdf');
 
         $this->actingAs($this->owner)->post(route('subscription.transfer'), [
-            'months' => 1, 'method' => 'bank_transfer', 'reference' => 'BK-778899', 'proof' => $slip(),
+            'months' => 1, 'houses' => 1, 'method' => 'bank_transfer', 'reference' => 'BK-778899', 'proof' => $slip(),
         ])->assertSessionHasNoErrors();
         $payment = SubscriptionPayment::query()->firstOrFail();
         $this->assertSame('pending', $payment->status);
@@ -78,7 +78,7 @@ class SubscriptionPaymentTest extends TestCase
         Notification::assertSentTo($this->admin, SubscriptionPaymentSubmitted::class);
 
         // Only one slip at a time.
-        $this->post(route('subscription.transfer'), ['months' => 1, 'method' => 'cheque', 'reference' => 'CHQ-1', 'proof' => $slip()])
+        $this->post(route('subscription.transfer'), ['months' => 1, 'houses' => 1, 'method' => 'cheque', 'reference' => 'CHQ-1', 'proof' => $slip()])
             ->assertSessionHasErrors('reference');
 
         // The owner cannot approve; the admin can, and sees the proof.
@@ -89,7 +89,7 @@ class SubscriptionPaymentTest extends TestCase
         $this->assertSame('2026-11-25', $this->owner->fresh()->expires_at->toDateString());
 
         // A second slip is rejected with a reason the owner is told.
-        $this->actingAs($this->owner)->post(route('subscription.transfer'), ['months' => 6, 'method' => 'cheque', 'reference' => 'CHQ-2', 'proof' => $slip()]);
+        $this->actingAs($this->owner)->post(route('subscription.transfer'), ['months' => 6, 'houses' => 1, 'method' => 'cheque', 'reference' => 'CHQ-2', 'proof' => $slip()]);
         $second = SubscriptionPayment::query()->latest('id')->firstOrFail();
         $this->actingAs($this->admin)->post(route('admin.subscriptions.reject', $second), ['reason' => ''])->assertSessionHasErrors('reason');
         $this->post(route('admin.subscriptions.reject', $second), ['reason' => 'Cheque not signed'])->assertSessionHasNoErrors();
@@ -102,7 +102,7 @@ class SubscriptionPaymentTest extends TestCase
     {
         config(['services.momo_pay.code' => '123456']);
         $form = fn (array $overrides = []) => [
-            'months' => 1, 'amount' => 100000, 'sender_name' => 'Jean Bosco', 'sender_phone' => '+250 788 123 456',
+            'months' => 1, 'houses' => 1, 'amount' => 100000, 'sender_name' => 'Jean Bosco', 'sender_phone' => '+250 788 123 456',
             'paid_at' => '2026-10-19 09:30', 'transaction_id' => '12345 67890', ...$overrides,
         ];
 
@@ -144,13 +144,60 @@ class SubscriptionPaymentTest extends TestCase
         $this->actingAs($other)->post(route('subscription.momopay'), $form())->assertSessionHasErrors('transaction_id');
     }
 
+    public function test_the_price_is_per_house_and_an_owner_pays_for_a_house_before_adding_it(): void
+    {
+        $this->owner->forceFill(['expires_at' => null, 'paid_houses' => 0])->save();
+        $slip = fn () => UploadedFile::fake()->create('slip.pdf', 100, 'application/pdf');
+        $house = fn (string $name) => \App\Models\Property::create(['owner_id' => $this->owner->id, 'name' => $name, 'address' => 'KG 1 Ave', 'total_floors' => 1]);
+
+        // Not paid yet: no house can be added.
+        $this->assertFalse($this->owner->fresh()->canAddHouse());
+
+        // 2 houses × 3 months = 600,000 RWF.
+        $this->actingAs($this->owner)->post(route('subscription.transfer'), [
+            'months' => 3, 'houses' => 2, 'method' => 'bank_transfer', 'reference' => 'BK-1', 'proof' => $slip(),
+        ])->assertSessionHasNoErrors();
+        $payment = SubscriptionPayment::query()->latest('id')->firstOrFail();
+        $this->assertSame([600000.0, 2, 3, 'renewal'], [(float) $payment->amount, $payment->houses, $payment->months, $payment->purpose]);
+        $this->actingAs($this->admin)->post(route('admin.subscriptions.approve', $payment))->assertSessionHasNoErrors();
+
+        $owner = $this->owner->fresh();
+        $this->assertSame(2, $owner->paid_houses);
+        $this->assertSame('2027-01-19', $owner->expires_at->toDateString());
+
+        // Two houses fit; the third needs a payment first.
+        $house('House A');
+        $house('House B');
+        $this->assertFalse($owner->fresh()->canAddHouse());
+        $this->actingAs($owner)->get(route('properties.create'))->assertRedirect(route('subscription.show', ['add' => 1]));
+
+        // Renewing for fewer houses than the owner has is refused.
+        $this->post(route('subscription.transfer'), ['months' => 1, 'houses' => 1, 'method' => 'cheque', 'reference' => 'CHQ-9', 'proof' => $slip()])
+            ->assertSessionHasErrors('houses');
+
+        // One extra house for the 3 months left = 300,000 RWF; the end date stays.
+        $this->get(route('subscription.show'))->assertInertia(fn (Assert $page) => $page
+            ->where('subscription.paid_houses', 2)->where('subscription.houses_used', 2)->where('subscription.months_left', 3));
+        $this->post(route('subscription.transfer'), ['purpose' => 'add_houses', 'months' => 12, 'houses' => 1, 'method' => 'cheque', 'reference' => 'CHQ-10', 'proof' => $slip()])
+            ->assertSessionHasNoErrors();
+        $extra = SubscriptionPayment::query()->latest('id')->firstOrFail();
+        $this->assertSame([300000.0, 1, 3, 'add_houses'], [(float) $extra->amount, $extra->houses, $extra->months, $extra->purpose]);
+        $this->actingAs($this->admin)->post(route('admin.subscriptions.approve', $extra))->assertSessionHasNoErrors();
+
+        $owner->refresh();
+        $this->assertSame(3, $owner->paid_houses);
+        $this->assertSame('2027-01-19', $owner->expires_at->toDateString());
+        $this->assertTrue($owner->canAddHouse());
+        Notification::assertSentTo($owner, SubscriptionPaymentDecided::class, fn ($notification) => str_contains(implode(' ', $notification->toMail($owner)->introLines), '1 extra house for 3 months'));
+    }
+
     public function test_the_test_mobile_money_driver_never_runs_on_the_live_site(): void
     {
         $this->app['env'] = 'production';
 
         $this->actingAs($this->owner)->get(route('subscription.show'))->assertInertia(fn (Assert $page) => $page->where('momoApi', false));
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class)
-            ->postJson(route('subscription.momo.start'), ['months' => 1, 'phone' => '0788123456'])->assertNotFound();
+            ->postJson(route('subscription.momo.start'), ['months' => 1, 'houses' => 1, 'phone' => '0788123456'])->assertNotFound();
         $this->assertSame(0, SubscriptionPayment::count());
     }
 
@@ -170,7 +217,7 @@ class SubscriptionPaymentTest extends TestCase
         $this->get(route('subscription.show'))->assertOk();
 
         // Paying after the end starts from today and lifts the pause.
-        $id = $this->postJson(route('subscription.momo.start'), ['months' => 1, 'phone' => '0788123456'])->json('payment.id');
+        $id = $this->postJson(route('subscription.momo.start'), ['months' => 1, 'houses' => 1, 'phone' => '0788123456'])->json('payment.id');
         $this->getJson(route('subscription.momo.status', $id))->assertJsonPath('subscription.blocked', false);
         $this->assertSame('2026-11-19', $this->owner->fresh()->expires_at->toDateString());
         $this->actingAs($this->owner->fresh())->get(route('properties.index'))->assertOk();
@@ -203,7 +250,7 @@ class SubscriptionPaymentTest extends TestCase
         $this->actingAs($this->owner->fresh())->get(route('properties.index'))->assertRedirect(route('account.status'));
         $this->get(route('account.status'))->assertInertia(fn (Assert $page) => $page->where('neverPaid', true)->where('canPay', true));
 
-        $id = $this->postJson(route('subscription.momo.start'), ['months' => 1, 'phone' => '0788123456'])->json('payment.id');
+        $id = $this->postJson(route('subscription.momo.start'), ['months' => 1, 'houses' => 1, 'phone' => '0788123456'])->json('payment.id');
         $this->getJson(route('subscription.momo.status', $id))->assertJsonPath('payment.status', 'approved');
         $this->assertSame('2026-11-19', $this->owner->fresh()->expires_at->toDateString());
         $this->actingAs($this->owner->fresh())->get(route('properties.index'))->assertOk();
@@ -220,7 +267,7 @@ class SubscriptionPaymentTest extends TestCase
         $managed->forceFill(['email_verified_at' => now(), 'phone_verified_at' => now()])->save();
         $this->actingAs($managed)->get(route('subscription.show'))->assertForbidden();
 
-        $this->actingAs($this->owner)->postJson(route('subscription.momo.start'), ['months' => 2, 'phone' => '0788123456'])->assertUnprocessable();
+        $this->actingAs($this->owner)->postJson(route('subscription.momo.start'), ['months' => 2, 'houses' => 1, 'phone' => '0788123456'])->assertUnprocessable();
         $this->actingAs($this->admin)->get(route('subscription.show'))->assertForbidden();
     }
 }
