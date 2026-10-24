@@ -30,7 +30,7 @@ const heroSlides = [
     {
         title: 'Premium offices in Kigali',
         subtitle: 'A better address for ambitious teams',
-        price: 'From 21,750 RWF / m²',
+        price: 'Offices in the heart of Kigali',
         location: 'Kimihurura, Kigali',
         image: '/images/hero/kigali-convention-centre.jpg',
         name: 'Kigali Convention Centre',
