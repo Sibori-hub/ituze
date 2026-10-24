@@ -31,7 +31,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['ad_purchases', 'activity_logs', 'subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['contact_messages', 'ad_purchases', 'activity_logs', 'subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -104,6 +104,12 @@ class RentalLifecycleTest extends TestCase
         Schema::create('property_inquiries', function (Blueprint $table) {
             $table->id();
             $table->string('status')->default('new');
+            $table->timestamps();
+        });
+        // The admin menu counts unanswered website messages.
+        Schema::create('contact_messages', function (Blueprint $table) {
+            $table->id();
+            $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });
         Schema::create('unit_types', function (Blueprint $table) {

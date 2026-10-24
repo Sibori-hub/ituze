@@ -46,6 +46,7 @@ class NewContactMessage extends Notification implements ShouldQueue
         }
 
         return $mail
+            ->action('Open messages', route('admin.messages'))
             ->line('Reply by phone, WhatsApp or email soon.')
             ->salutation('ITUZE GREEN PLATFORM · Q.R.A GROUP LTD');
     }

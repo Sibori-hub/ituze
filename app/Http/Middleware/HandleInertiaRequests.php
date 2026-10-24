@@ -38,6 +38,10 @@ class HandleInertiaRequests extends Middleware
                 // Self-registered owners can add managers; a manager sees who they work for.
                 'canHireManagers' => (bool) $request->user()?->canHireManagers(),
                 'employer' => $request->user()?->isManager() ? $request->user()->employer?->only(['id', 'name']) : null,
+                // Admin menu badge: website messages not answered yet.
+                'newMessages' => $request->user()?->isAdmin()
+                    ? \App\Models\ContactMessage::query()->whereNull('read_at')->count()
+                    : null,
                 // Advertisers unlock their buildings with their first paid listing.
                 'advertiserPaid' => $request->user()?->isAdvertiser() ? $request->user()->hasPaidForListings() : null,
                 // Paid-until status for self-registered owners (reminder banner, menu).

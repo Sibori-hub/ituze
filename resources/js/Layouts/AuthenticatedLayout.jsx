@@ -27,6 +27,7 @@ import {
     Briefcase,
     Wallet,
     Newspaper,
+    Inbox,
     AlertTriangle,
     Leaf,
 } from 'lucide-react';
@@ -53,6 +54,7 @@ const adminNavigation = [
     { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
     { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck },
     { name: 'Subscriptions', href: 'admin.subscriptions', icon: Wallet },
+    { name: 'Messages', href: 'admin.messages', icon: Inbox, badge: 'newMessages' },
     { name: 'Newsletter', href: 'admin.newsletter', icon: Newspaper },
     { name: 'All Users', href: 'admin.users', icon: UsersIcon },
     { name: 'Properties', href: 'properties.index', icon: Building2 },
@@ -183,6 +185,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                         }
                                     />
                                     {t(item.name)}
+                                    {item.badge && pageProps.auth[item.badge] > 0 && (
+                                        <span className="ml-auto min-w-[1.375rem] rounded-full bg-red-600 px-1.5 py-0.5 text-center text-[11px] font-bold leading-4 text-white">
+                                            {pageProps.auth[item.badge]}
+                                            <span className="sr-only"> {t('new')}</span>
+                                        </span>
+                                    )}
                                 </>
                             );
                             return (

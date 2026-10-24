@@ -78,4 +78,35 @@ class ContactMessageTest extends TestCase
         $this->post(route('contact.store'), $this->form())->assertStatus(429);
         $this->assertSame(10, ContactMessage::count());
     }
+
+    public function test_the_admin_reads_marks_and_deletes_messages(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
+        $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved']);
+        $first = ContactMessage::create($this->form());
+        $second = ContactMessage::create($this->form(['name' => 'Jean Bosco', 'message' => 'Do you have a warehouse in Gikondo?']));
+
+        $this->actingAs($owner)->get(route('admin.messages'))->assertForbidden();
+
+        $this->actingAs($admin)->get(route('admin.messages'))
+            ->assertInertia(fn ($page) => $page->component('Admin/Messages')
+                ->has('messages.data', 2)
+                ->where('counts.new', 2)
+                ->where('auth.newMessages', 2));
+
+        $this->actingAs($admin)->patch(route('admin.messages.update', $first), ['answered' => true])->assertSessionHas('success');
+        $this->assertNotNull($first->fresh()->read_at);
+
+        $this->actingAs($admin)->get(route('admin.messages', ['status' => 'answered']))
+            ->assertInertia(fn ($page) => $page->has('messages.data', 1)->where('messages.data.0.name', 'Aline Uwase')->where('auth.newMessages', 1));
+        $this->actingAs($admin)->get(route('admin.messages', ['status' => 'all', 'search' => 'warehouse']))
+            ->assertInertia(fn ($page) => $page->has('messages.data', 1)->where('messages.data.0.name', 'Jean Bosco'));
+
+        $this->actingAs($admin)->patch(route('admin.messages.update', $first), ['answered' => false]);
+        $this->assertNull($first->fresh()->read_at);
+
+        $this->actingAs($owner)->delete(route('admin.messages.destroy', $second))->assertForbidden();
+        $this->actingAs($admin)->delete(route('admin.messages.destroy', $second))->assertSessionHas('success');
+        $this->assertSame(1, ContactMessage::count());
+    }
 }
