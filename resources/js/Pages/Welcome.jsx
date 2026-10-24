@@ -255,7 +255,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Home')}</a>
                             <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Properties')}</a>
                             <a href="#cities" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Cities')}</a>
-                            <a href="#enquiry" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Enquiry')}</a>
                             <a href="#contact" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Contact us')}</a>
                         </nav>
                         <div className="flex items-center gap-2">
@@ -277,7 +276,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         <div className="border-t border-slate-100 bg-white px-4 py-3 text-sm md:hidden">
                             <a className="block py-2 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
                             <a className="block py-2 font-medium text-slate-700" href="#cities">{t('Cities')}</a>
-                            <a className="block py-2 font-medium text-slate-700" href="#enquiry">{t('Enquiry')}</a>
                             <a className="block py-2 font-medium text-slate-700" href="#contact">{t('Contact us')}</a>
                             {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-2 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
                             {!auth?.user && <button type="button" onClick={() => { setInquiryOpen(true); setMenuOpen(false); }} className="block w-full py-2 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
@@ -422,7 +420,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </div>
                     </section>
 
-                    <section id="enquiry" className="mx-auto max-w-7xl px-6 py-12 lg:px-8"><div className="grid overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200"><div className="relative min-h-80 bg-[#0e3b2e] p-8 text-white sm:p-12"><div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,59,46,.72),rgba(6,75,120,.8)),url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85')] bg-cover bg-center" /><div className="relative max-w-lg"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">{t('Need help finding a space?')}</p><h2 className="mt-4 text-4xl font-light">{t('Tell us what you are looking for.')}</h2><p className="mt-5 leading-7 text-white/75">{t('Our team can help you find an office, apartment, café, commercial building, or warehouse in Kigali.')}</p><button type="button" onClick={() => setInquiryOpen(true)} className="mt-8 inline-flex items-center gap-2 rounded bg-orange-500 px-6 py-3 font-bold hover:bg-orange-600">{t('Start an enquiry')} <MessageCircle size={17} /></button></div></div></div></section>
                     <section className="border-t border-slate-100 bg-[#f6f8fa]">
                         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
                             <div className="text-center">
@@ -465,10 +462,10 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                 <div className="mt-6 flex gap-3">
                                     <a href={`tel:${companyPhone}`} aria-label={t('Call Ituze')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><Phone size={17} /></a>
                                     <a href={`mailto:info@qraltd.com`} aria-label={t('Email Ituze')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><Mail size={17} /></a>
-                                    <a href="#enquiry" aria-label={t('Send an enquiry')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><MessageCircle size={17} /></a>
+                                    <a href="#contact" aria-label={t('Contact us')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition hover:bg-[#f97316]"><MessageCircle size={17} /></a>
                                 </div>
                             </div>
-                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#cities">{t('Explore by cities')}</a><a className="block transition hover:text-white" href="#enquiry">{t('Send an enquiry')}</a><a className="block transition hover:text-white" href="#contact">{t('Contact us')}</a></div></div>
+                            <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Explore')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><a className="block transition hover:text-white" href="#featured">{t('Featured spaces')}</a><a className="block transition hover:text-white" href="#cities">{t('Explore by cities')}</a><a className="block transition hover:text-white" href="#contact">{t('Contact us')}</a></div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:info@qraltd.com`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> {companyEmail}</a></div></div>
                         </div>
