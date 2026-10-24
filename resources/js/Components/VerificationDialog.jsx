@@ -3,7 +3,7 @@ import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import OtpInput from '@/Components/OtpInput';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { AlertCircle, Check, CheckCircle2, Clock, Inbox, Loader2, RotateCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
 
 const RESEND_COOLDOWN = 30;
@@ -104,13 +104,20 @@ export default function VerificationDialog({
           ? t('Less than a minute left to use this code.')
           : '';
 
-    const verify = (code) => {
+    // The last wrong code: never sent again by itself (phone autofill can retype it).
+    const lastWrongCode = useRef(null);
+
+    const verify = (code, typedByHand = false) => {
         if (processing || code.length !== 6) return;
+        if (!typedByHand && code === lastWrongCode.current) return;
 
         transform(() => ({ otp: code }));
         post(verifyRoute, {
             preserveScroll: true,
+            // Stay on the same screen: a wrong code shows an error, no page rebuild.
+            preserveState: true,
             onError: () => {
+                lastWrongCode.current = code;
                 setData('otp', '');
                 // A new key replays the error state (and shake, where motion is allowed).
                 setAttempt((count) => count + 1);
@@ -125,6 +132,7 @@ export default function VerificationDialog({
                 setCooldown(RESEND_COOLDOWN * 2);
                 setSecondsLeft(page.props.expiresIn ?? 0);
                 setData('otp', '');
+                lastWrongCode.current = null;
             },
         });
     };
@@ -193,7 +201,7 @@ export default function VerificationDialog({
                             className="mt-7"
                             onSubmit={(event) => {
                                 event.preventDefault();
-                                verify(data.otp);
+                                verify(data.otp, true);
                             }}
                             noValidate
                         >

@@ -92,7 +92,7 @@ function PhoneEnterCode({ phoneReset }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('password.phone.verify'), { preserveScroll: true, onError: () => setData('otp', '') });
+        post(route('password.phone.verify'), { preserveScroll: true, preserveState: true, onError: () => setData('otp', '') });
     };
 
     return (
