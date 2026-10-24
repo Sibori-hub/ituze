@@ -146,7 +146,7 @@ export default function ChatWidget() {
                     role="dialog"
                     aria-modal="false"
                     aria-labelledby="chat-title"
-                    className="fixed inset-x-3 bottom-20 z-50 flex h-[min(70vh,560px)] flex-col overflow-hidden rounded-2xl bg-gray-50 shadow-2xl ring-1 ring-black/10 sm:inset-x-auto sm:right-6 sm:w-[380px]"
+                    className="fixed inset-x-3 bottom-[7.5rem] z-50 flex h-[min(65vh,540px)] flex-col overflow-hidden rounded-2xl bg-gray-50 shadow-2xl ring-1 ring-black/10 sm:inset-x-auto sm:right-6 sm:w-[380px]"
                 >
                     <header className="flex items-center gap-3 bg-[#0E3B2E] px-4 py-3 text-white">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15" aria-hidden="true"><Headset size={18} /></span>
@@ -206,7 +206,7 @@ export default function ChatWidget() {
             <button
                 type="button"
                 onClick={() => setOpen((value) => !value)}
-                className="fixed bottom-4 right-4 z-50 flex h-14 items-center gap-2 rounded-full bg-[#0E3B2E] pl-4 pr-5 font-semibold text-white shadow-xl shadow-black/20 transition hover:bg-[#124B3A] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/30 sm:right-6"
+                className="fixed bottom-14 right-4 z-50 flex h-14 items-center gap-2 rounded-full bg-[#0E3B2E] pl-4 pr-5 font-semibold text-white shadow-xl shadow-black/20 transition hover:bg-[#124B3A] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/30 sm:right-6"
                 aria-expanded={open}
                 aria-label={unread > 0 ? t('Chat with ITUZE (:count new)', { count: unread }) : t('Chat with ITUZE')}
             >

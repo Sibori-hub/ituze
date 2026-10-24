@@ -364,27 +364,27 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                         </div>
 
-                        <footer className="authenticated-main-footer mt-8 border-t border-gray-200 bg-white">
-                            <div className="h-0.5 bg-gradient-to-r from-[#0E3B2E] via-emerald-500 to-[#D9A441]" aria-hidden="true" />
-                            {/* One slim line; on phones it leaves room for the chat button. */}
-                            <div className={`mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${user.role !== 'admin' ? 'pb-20 sm:pb-3 sm:pr-56' : ''}`}>
-                                <p>
-                                    © {new Date().getFullYear()} <span className="font-semibold text-[#0E3B2E]">ITUZE GREEN PLATFORM</span>
-                                    <span aria-hidden="true"> · </span>
-                                    {t('Powered by Q.R.A GROUP LTD')}
-                                </p>
-                                <nav aria-label={t('Legal')} className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                    {user.role !== 'admin' && (
-                                        <button type="button" onClick={openChat} className="inline-flex items-center gap-1 font-medium text-[#0E3B2E] hover:underline">
-                                            <MessageSquare size={13} aria-hidden="true" /> {t('Chat with us')}
-                                        </button>
-                                    )}
-                                    <Link href={route('legal.terms')} className="font-medium hover:text-[#0E3B2E] hover:underline">{t('Terms')}</Link>
-                                    <Link href={route('legal.privacy')} className="font-medium hover:text-[#0E3B2E] hover:underline">{t('Privacy')}</Link>
-                                </nav>
-                            </div>
-                        </footer>
+                        {/* Room so the chat button never covers the end of the page. */}
+                        {user.role !== 'admin' && <div className="h-16 shrink-0" aria-hidden="true" />}
                     </main>
+                    <footer className="authenticated-main-footer shrink-0 bg-gray-950 text-gray-400">
+                        <div className="h-0.5 bg-gradient-to-r from-[#0E3B2E] via-emerald-500 to-[#D9A441]" aria-hidden="true" />
+                        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 text-xs sm:px-6">
+                            <p className="min-w-0 truncate">
+                                © {new Date().getFullYear()} <span className="font-semibold text-white">ITUZE GREEN PLATFORM</span>
+                                <span className="hidden sm:inline"><span aria-hidden="true"> · </span>{t('Powered by Q.R.A GROUP LTD')}</span>
+                            </p>
+                            <nav aria-label={t('Legal')} className="flex flex-none items-center gap-x-4">
+                                {user.role !== 'admin' && (
+                                    <button type="button" onClick={openChat} className="hidden items-center gap-1 font-medium text-emerald-300 hover:text-white hover:underline sm:inline-flex">
+                                        <MessageSquare size={13} aria-hidden="true" /> {t('Chat with us')}
+                                    </button>
+                                )}
+                                <Link href={route('legal.terms')} className="font-medium text-gray-300 hover:text-white hover:underline">{t('Terms')}</Link>
+                                <Link href={route('legal.privacy')} className="font-medium text-gray-300 hover:text-white hover:underline">{t('Privacy')}</Link>
+                            </nav>
+                        </div>
+                    </footer>
                 </div>
             </div>
             {user.role !== 'admin' && <ChatWidget />}
