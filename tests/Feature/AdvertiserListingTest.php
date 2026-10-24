@@ -34,7 +34,7 @@ class AdvertiserListingTest extends TestCase
         $this->advertiser->forceFill(['email_verified_at' => now(), 'phone_verified_at' => now()])->save();
 
         $type = UnitType::create(['name' => 'Offices']);
-        $this->building = Property::create(['owner_id' => $this->advertiser->id, 'name' => 'Ad Tower', 'total_floors' => 2, 'requires_listing' => true]);
+        $this->building = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $this->advertiser->id, 'name' => 'Ad Tower', 'total_floors' => 2, 'requires_listing' => true]);
         $unit = PropertyUnit::create(['property_id' => $this->building->id, 'unit_type_id' => $type->id, 'floor_number' => 1]);
         Unit::create([
             'property_id' => $this->building->id, 'property_unit_id' => $unit->id, 'unit_type_id' => $type->id, 'floor_number' => 1,
@@ -150,7 +150,7 @@ class AdvertiserListingTest extends TestCase
     public function test_owner_buildings_stay_on_the_homepage_without_a_listing(): void
     {
         $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'expires_at' => now()->addMonth(), 'phone' => '0788000007']);
-        $property = Property::create(['owner_id' => $owner->id, 'name' => 'Owner House', 'total_floors' => 1]);
+        $property = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $owner->id, 'name' => 'Owner House', 'total_floors' => 1]);
         Unit::create([
             'property_id' => $property->id, 'unit_type_id' => UnitType::first()->id, 'floor_number' => 0,
             'unit_number' => 'B1', 'rent_amount' => 200000, 'rent_frequency' => 'monthly', 'status' => 'available',

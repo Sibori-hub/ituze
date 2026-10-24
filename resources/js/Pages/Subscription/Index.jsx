@@ -3,9 +3,9 @@ import RwandaFlag from '@/Components/RwandaFlag';
 import RwandaPhoneInput from '@/Components/RwandaPhoneInput';
 import { formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/lib/rwanda';
 import { useTranslation } from '@/localization';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
-    AlertCircle, AlertTriangle, Banknote, CalendarCheck2, CheckCircle2, Clock3, FileCheck2, FileText, Landmark,
+    AlertCircle, AlertTriangle, Banknote, Building2, CalendarCheck2, CheckCircle2, Clock3, FileCheck2, FileText, Landmark,
     Loader2, Receipt, Send, ShieldCheck, Smartphone, Upload, Wallet, XCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -34,7 +34,15 @@ const STATUS_STYLE = {
 };
 const METHOD_LABEL = { momo_pay: 'MoMo Pay', mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
 
-export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null, momoPay = {}, momoApi = false }) {
+const STATE_STYLE = {
+    unpaid: ['bg-amber-50 text-amber-900 ring-amber-200', 'Waiting for payment'],
+    active: ['bg-emerald-50 text-emerald-800 ring-emerald-200', 'Active'],
+    expiring: ['bg-sky-50 text-sky-800 ring-sky-200', 'Ends soon'],
+    grace: ['bg-red-50 text-red-800 ring-red-200', 'Overdue'],
+    paused: ['bg-gray-100 text-gray-700 ring-gray-200', 'Paused'],
+};
+
+export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null, momoPay = {}, momoApi = false, selectedProperty = null }) {
     const { t, language } = useTranslation();
     const locale = localeFor(language);
     const money = (value) => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
@@ -43,23 +51,18 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
     const [subscription, setSubscription] = useState(initial);
     useEffect(() => setSubscription(initial), [initial]);
 
-    // Priced per house per month. "Renew" picks months and houses (never fewer
-    // than the houses already on ITUZE); "Add houses" pays extra houses for
-    // the months left in the current period.
-    const housesUsed = subscription.houses_used ?? 0;
-    const paidHouses = subscription.paid_houses ?? 0;
-    const monthsLeft = subscription.months_left ?? 0;
-    const minHouses = Math.max(1, housesUsed);
-    const canAddHouses = monthsLeft > 0 && !subscription.blocked;
-    const wantsAdd = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('add') === '1';
-    const [purpose, setPurpose] = useState(canAddHouses && wantsAdd ? 'add_houses' : 'renewal');
+    // Each property is paid on its own: 100,000 RWF per month.
+    const properties = subscription.properties || [];
+    const firstToPay = properties.find((p) => p.id === selectedProperty) || properties.find((p) => p.state !== 'active') || properties[0];
+    const [propertyId, setPropertyId] = useState(firstToPay?.id ?? null);
+    useEffect(() => {
+        if (!properties.some((p) => p.id === propertyId)) setPropertyId(firstToPay?.id ?? null);
+    }, [properties.length]);
+    const property = properties.find((p) => p.id === propertyId) || null;
+    const waiting = new Set(payments.filter((p) => p.status === 'pending').map((p) => p.property_id));
+
     const [months, setMonths] = useState(1);
-    const [houses, setHouses] = useState(Math.max(minHouses, paidHouses, 1));
-    const [extraHouses, setExtraHouses] = useState(1);
-    const adding = purpose === 'add_houses';
-    const planMonths = adding ? monthsLeft : months;
-    const planHouses = adding ? extraHouses : houses;
-    const plan = { purpose, months: planMonths, houses: planHouses };
+    const plan = { property_id: propertyId, months };
     // MoMo Pay and bank transfer (with the slip); the phone request only where
     // the MoMo API is connected.
     const methods = [
@@ -69,13 +72,14 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
         ['cheque', 'Cheque', Banknote],
     ].filter(Boolean);
     const [method, setMethod] = useState('momo_pay');
-    const total = planMonths * planHouses * monthlyPrice;
-    const paidUntil = subscription.paid_until ? new Date(subscription.paid_until) : null;
+    const total = months * monthlyPrice;
+    const paidUntil = property?.paid_until ? new Date(property.paid_until) : null;
     const startFrom = paidUntil && paidUntil > new Date() ? paidUntil : new Date();
     const newEnd = new Date(startFrom);
     newEnd.setMonth(newEnd.getMonth() + months);
 
-    const tone = subscription.blocked ? 'red' : subscription.in_grace ? 'red' : subscription.days_left !== null && subscription.days_left <= 7 ? 'amber' : 'green';
+    const needsAttention = (subscription.unpaid || 0) + (subscription.grace || 0) + (subscription.paused || 0);
+    const tone = subscription.grace || subscription.paused ? 'red' : subscription.unpaid || subscription.expiring ? 'amber' : 'green';
     const tones = {
         green: 'from-[#0E3B2E] to-[#1F7A5A] text-white',
         amber: 'from-amber-500 to-amber-600 text-white',
@@ -92,31 +96,28 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                     <div className="relative flex flex-wrap items-center justify-between gap-6">
                         <div className="flex items-start gap-4">
                             <span className="flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25" aria-hidden="true">
-                                {subscription.blocked || subscription.in_grace ? <AlertTriangle size={26} /> : <ShieldCheck size={26} />}
+                                {tone === 'green' ? <ShieldCheck size={26} /> : <AlertTriangle size={26} />}
                             </span>
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">{t('ITUZE subscription')}</p>
                                 <h1 className="mt-1 font-[Sora] text-2xl font-bold sm:text-3xl">
-                                    {subscription.blocked
-                                        ? t('Your account is paused')
-                                        : subscription.in_grace
-                                            ? t('Payment overdue')
-                                            : paidUntil ? t('Paid until :date', { date: longDate(paidUntil) }) : t('Not paid yet')}
+                                    {properties.length === 0
+                                        ? t('Add your first property')
+                                        : needsAttention
+                                            ? t(':count property(ies) need payment', { count: needsAttention })
+                                            : t('All your properties are paid')}
                                 </h1>
                                 <p className="mt-1 text-sm text-white/85">
-                                    {subscription.blocked
-                                        ? t('Your data is safe. Pay below and you and your managers can continue straight away.')
-                                        : subscription.in_grace
-                                            ? t('Your subscription ended on :end. Pay before :grace to avoid a pause.', { end: longDate(paidUntil), grace: longDate(subscription.grace_ends_at) })
-                                            : subscription.days_left !== null ? t(':days days left', { days: Math.max(0, subscription.days_left) }) : ''}
+                                    {properties.length === 0
+                                        ? t('Create a property, then pay for it here to activate it.')
+                                        : t(':active of :total properties active', { active: subscription.active || 0, total: properties.length })}
                                 </p>
                             </div>
                         </div>
                         <div className="rounded-2xl bg-white/15 px-5 py-4 text-right ring-1 ring-white/20">
                             <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{t('Price')}</p>
                             <p className="font-[Sora] text-2xl font-bold">{money(monthlyPrice)}</p>
-                            <p className="text-xs text-white/80">{t('per house, per month')}</p>
-                            {paidHouses > 0 && <p className="mt-1 text-xs font-semibold text-white">{t(':used of :paid houses used', { used: housesUsed, paid: paidHouses })}</p>}
+                            <p className="text-xs text-white/80">{t('per property, per month')}</p>
                         </div>
                     </div>
                 </section>
@@ -124,40 +125,38 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                 <div className="grid gap-5 lg:grid-cols-5">
                     {/* Pay */}
                     <section aria-labelledby="pay-title" className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-3">
-                        <h2 id="pay-title" className="flex items-center gap-2 font-[Sora] text-lg font-bold text-gray-900"><Wallet size={19} className="text-[#0E3B2E]" aria-hidden="true" />{t('Pay your subscription')}</h2>
+                        <h2 id="pay-title" className="flex items-center gap-2 font-[Sora] text-lg font-bold text-gray-900"><Wallet size={19} className="text-[#0E3B2E]" aria-hidden="true" />{t('Pay for a property')}</h2>
 
-                        {canAddHouses && (
-                            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('What do you want to pay?')}>
-                                {[['renewal', 'Renew my subscription'], ['add_houses', 'Add houses']].map(([value, label]) => (
-                                    <button key={value} type="button" role="radio" aria-checked={purpose === value} onClick={() => setPurpose(value)}
-                                        className={`min-h-10 rounded-lg px-3 text-sm font-semibold transition ${purpose === value ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
-                                        {t(label)}
-                                    </button>
-                                ))}
+                        {properties.length === 0 ? (
+                            <div className="mt-5 rounded-2xl border-2 border-dashed border-gray-200 p-6 text-center">
+                                <p className="text-sm text-gray-700">{t('You have no property yet. Create one, and its payment form opens right after.')}</p>
+                                <Link href={route('properties.create')} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#124B3A]">{t('Add a property')}</Link>
                             </div>
-                        )}
-
+                        ) : (
+                        <>
                         <fieldset className="mt-5">
-                            <legend className="text-sm font-semibold text-gray-900">{adding ? t('1. How many houses do you want to add?') : t('1. How many houses?')}</legend>
-                            <div className="mt-2 flex items-center gap-3">
-                                <button type="button" onClick={() => (adding ? setExtraHouses((n) => Math.max(1, n - 1)) : setHouses((n) => Math.max(minHouses, n - 1)))}
-                                    disabled={adding ? extraHouses <= 1 : houses <= minHouses}
-                                    className="flex h-11 w-11 flex-none items-center justify-center rounded-xl border-2 border-gray-200 text-xl font-bold text-gray-800 hover:border-gray-300 disabled:opacity-40" aria-label={t('One house less')}>−</button>
-                                <span className="min-w-[4rem] text-center" aria-live="polite">
-                                    <span className="block font-[Sora] text-2xl font-bold text-gray-900">{planHouses}</span>
-                                    <span className="block text-xs text-gray-600">{t(planHouses === 1 ? 'house' : 'houses')}</span>
-                                </span>
-                                <button type="button" onClick={() => (adding ? setExtraHouses((n) => Math.min(100, n + 1)) : setHouses((n) => Math.min(500, n + 1)))}
-                                    className="flex h-11 w-11 flex-none items-center justify-center rounded-xl border-2 border-gray-200 text-xl font-bold text-gray-800 hover:border-gray-300" aria-label={t('One house more')}>+</button>
-                                <p className="text-xs text-gray-600">
-                                    {adding
-                                        ? t('You have :paid house(s) paid until :date. Each extra house costs :price for the :months month(s) left.', { paid: paidHouses, date: longDate(paidUntil), price: money(monthsLeft * monthlyPrice), months: monthsLeft })
-                                        : housesUsed > 0 ? t('You have :count house(s) on ITUZE, so at least :count.', { count: housesUsed }) : t('One house = one building. You can add more later.')}
-                                </p>
+                            <legend className="text-sm font-semibold text-gray-900">{t('1. Which property?')}</legend>
+                            <div className="mt-2 space-y-2">
+                                {properties.map((item) => {
+                                    const [style, label] = STATE_STYLE[item.state] || STATE_STYLE.active;
+                                    return (
+                                        <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition ${propertyId === item.id ? 'border-[#0E3B2E] bg-emerald-50/60' : 'border-gray-200 hover:border-gray-300'}`}>
+                                            <input type="radio" name="property" value={item.id} checked={propertyId === item.id} onChange={() => setPropertyId(item.id)} className="sr-only" />
+                                            <Building2 size={18} className="flex-none text-[#0E3B2E]" aria-hidden="true" />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate font-semibold text-gray-900">{item.name}</span>
+                                                <span className="block text-xs text-gray-600">
+                                                    {item.paid_until ? t('Paid until :date', { date: longDate(item.paid_until) }) : t('Not paid yet')}
+                                                    {waiting.has(item.id) ? ` · ${t('a payment is being checked')}` : ''}
+                                                </span>
+                                            </span>
+                                            <span className={`flex-none rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${style}`}>{t(label)}</span>
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </fieldset>
 
-                        {!adding && (
                         <fieldset className="mt-5">
                             <legend className="text-sm font-semibold text-gray-900">{t('2. How many months?')}</legend>
                             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -167,25 +166,18 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                         {option === 12 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#D9A441] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0E3B2E]">{t('1 year')}</span>}
                                         <span className="block font-[Sora] text-xl font-bold text-gray-900">{option}</span>
                                         <span className="block text-xs text-gray-600">{t(option === 1 ? 'month' : 'months')}</span>
-                                        <span className="mt-1 block text-xs font-semibold text-[#0E3B2E]">{money(option * houses * monthlyPrice)}</span>
+                                        <span className="mt-1 block text-xs font-semibold text-[#0E3B2E]">{money(option * monthlyPrice)}</span>
                                     </label>
                                 ))}
                             </div>
                             <p className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                                <CalendarCheck2 size={16} className="text-[#0E3B2E]" aria-hidden="true" />
-                                {t('Total :total · paid until :date after payment', { total: money(total), date: longDate(newEnd) })}
+                                <CalendarCheck2 size={16} className="flex-none text-[#0E3B2E]" aria-hidden="true" />
+                                {t('Total :total · :property paid until :date after payment', { total: money(total), property: property?.name ?? '', date: longDate(newEnd) })}
                             </p>
                         </fieldset>
-                        )}
-                        {adding && (
-                            <p className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                                <CalendarCheck2 size={16} className="text-[#0E3B2E]" aria-hidden="true" />
-                                {t('Total :total · :houses house(s) in all until :date', { total: money(total), houses: paidHouses + extraHouses, date: longDate(paidUntil) })}
-                            </p>
-                        )}
 
                         <fieldset className="mt-6">
-                            <legend className="text-sm font-semibold text-gray-900">{adding ? t('2. How do you pay?') : t('3. How do you pay?')}</legend>
+                            <legend className="text-sm font-semibold text-gray-900">{t('3. How do you pay?')}</legend>
                             <div className={`mt-2 grid gap-2 ${methods.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                 {methods.map(([value, label, Icon]) => (
                                     <label key={value} className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center text-xs font-semibold transition sm:text-sm ${method === value ? 'border-[#0E3B2E] bg-emerald-50/60 text-[#0E3B2E]' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
@@ -198,11 +190,13 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                         </fieldset>
 
                         <div className="mt-5">
-                            {method === 'momo_pay' ? <MomoPayForm plan={plan} total={total} money={money} momoPay={momoPay} defaultPhone={ownerPhone} />
+                            {method === 'momo_pay' ? <MomoPayForm plan={plan} propertyName={property?.name} total={total} money={money} momoPay={momoPay} defaultPhone={ownerPhone} />
                             : method === 'mobile_money'
                                 ? <MobileMoneyPay plan={plan} total={total} defaultPhone={ownerPhone} money={money} onPaid={(status) => { setSubscription(status); router.reload({ only: ['payments', 'subscription'] }); }} />
                                 : <TransferPay key={method} plan={plan} method={method} total={total} money={money} bank={bank} />}
                         </div>
+                        </>
+                        )}
                     </section>
 
                     {/* How it works */}
@@ -214,7 +208,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                 : [Smartphone, t('Keep the MoMo SMS: its transaction ID proves your payment.')],
                             [FileCheck2, t('Every payment is checked by ITUZE, usually the same day. You get an email and SMS.')],
                             [CalendarCheck2, t('Paying early adds the months after your current end date: you never lose days.')],
-                            [Banknote, t('One house = one building, :price per month. To add a house, pay for it first.', { price: money(monthlyPrice) })],
+                            [Building2, t('Each property is paid on its own: :price per month. Until it is paid you can set up its units, but not add tenants.', { price: money(monthlyPrice) })],
                             [Clock3, t('Reminders come 7 and 3 days before the end. After the end you have :days days before a pause.', { days: 7 })],
                             [ShieldCheck, t('A pause never deletes anything. Pay and everything is back immediately.')],
                         ].map(([Icon, text], index) => (
@@ -236,6 +230,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                 <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-600">
                                     <tr>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Date')}</th>
+                                        <th scope="col" className="px-5 py-3 font-semibold">{t('Property')}</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Months')}</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Method')}</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Status')}</th>
@@ -252,6 +247,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                                     <p className="text-gray-900">{longDate(payment.created_at)}</p>
                                                     {payment.receipt_number && <p className="font-mono text-[11px] text-gray-500">{payment.receipt_number}</p>}
                                                 </td>
+                                                <td className="px-5 py-3 font-medium text-gray-900">{payment.property || '—'}</td>
                                                 <td className="px-5 py-3 text-gray-800">{payment.months}</td>
                                                 <td className="px-5 py-3 text-gray-800">
                                                     {t(METHOD_LABEL[payment.method] || payment.method)}
@@ -377,11 +373,11 @@ const localDateTime = (date) => {
  * MoMo Pay without the API: pay our merchant code, then type what the MoMo
  * SMS says. ITUZE checks it against the MoMo statement and approves.
  */
-function MomoPayForm({ plan, total, money, momoPay, defaultPhone }) {
+function MomoPayForm({ plan, propertyName, total, money, momoPay, defaultPhone }) {
     const { t } = useTranslation();
     const form = useForm({ ...plan, amount: total, sender_name: '', sender_phone: toLocalDigits(defaultPhone || ''), paid_at: localDateTime(new Date()), transaction_id: '', proof: null });
     const [submitted, setSubmitted] = useState(false);
-    useEffect(() => { form.setData((current) => ({ ...current, ...plan, amount: total })); }, [plan.purpose, plan.months, plan.houses, total]);
+    useEffect(() => { form.setData((current) => ({ ...current, ...plan, amount: total })); }, [plan.property_id, plan.months, total]);
 
     const dial = momoPay.code ? `*182*8*1*${momoPay.code}#` : null;
     const clientErrors = {};
@@ -438,7 +434,7 @@ function MomoPayForm({ plan, total, money, momoPay, defaultPhone }) {
                 <label className="block text-sm font-medium text-gray-800">
                     {t('Amount paid')}
                     <input value={money(total)} readOnly className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900" aria-describedby="momo-amount-help" />
-                    <span id="momo-amount-help" className="mt-1 block text-xs text-gray-600">{t(':houses house(s) × :months month(s). Change them above if you paid for more.', { houses: plan.houses, months: plan.months })}</span>
+                    <span id="momo-amount-help" className="mt-1 block text-xs text-gray-600">{t(':property for :months month(s). Change it above if you paid for more.', { property: propertyName ?? '', months: plan.months })}</span>
                     {form.errors.amount && <span className="mt-1 block text-xs text-red-600">{t(form.errors.amount)}</span>}
                 </label>
                 <label className="block text-sm font-medium text-gray-800">
@@ -467,7 +463,7 @@ function MomoPayForm({ plan, total, money, momoPay, defaultPhone }) {
                 {form.errors.proof && <span className="mt-1 block text-xs text-red-600">{t(form.errors.proof)}</span>}
             </div>
 
-            {(form.errors.houses || form.errors.months) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.houses || form.errors.months)}</p>}
+            {(form.errors.property_id || form.errors.months) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.property_id || form.errors.months)}</p>}
             {form.errors.reference && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.reference)}</p>}
 
             <button disabled={form.processing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60">
@@ -483,7 +479,7 @@ function TransferPay({ plan, method, total, money, bank }) {
     const { t } = useTranslation();
     const form = useForm({ ...plan, method, reference: '', proof: null });
     const [submitted, setSubmitted] = useState(false);
-    useEffect(() => { form.setData((current) => ({ ...current, ...plan, method })); }, [plan.purpose, plan.months, plan.houses, method]);
+    useEffect(() => { form.setData((current) => ({ ...current, ...plan, method })); }, [plan.property_id, plan.months, method]);
 
     const isCheque = method === 'cheque';
     const clientErrors = {};
@@ -529,7 +525,7 @@ function TransferPay({ plan, method, total, money, bank }) {
                     className={`mt-1.5 w-full rounded-xl border px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${errorFor('reference') ? 'border-red-400 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`}
                     aria-invalid={errorFor('reference') ? 'true' : undefined} />
                 {errorFor('reference') && <span className="mt-1 block text-xs text-red-600">{errorFor('reference')}</span>}
-                {(form.errors.houses || form.errors.months) && <span className="mt-1 block text-xs text-red-600">{t(form.errors.houses || form.errors.months)}</span>}
+                {(form.errors.property_id || form.errors.months) && <span className="mt-1 block text-xs text-red-600">{t(form.errors.property_id || form.errors.months)}</span>}
             </label>
             <div>
                 <p className="text-sm font-medium text-gray-800">{isCheque ? t('Photo of the cheque') : t('Photo or PDF of the slip')}</p>

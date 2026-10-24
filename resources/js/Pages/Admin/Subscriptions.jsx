@@ -51,12 +51,13 @@ export default function AdminSubscriptions({ payments, filters = {}, counts = {}
                     </div>
                 </section>
 
-                <section aria-label={t('Summary')} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                <section aria-label={t('Summary')} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                     {[
                         ['To check', counts.pending, Clock3, 'bg-amber-50 text-amber-800 ring-amber-100', () => visit({ status: 'pending' })],
                         ['Ending in 7 days', counts.expiring, CalendarClock, 'bg-sky-50 text-sky-800 ring-sky-100'],
                         ['Overdue (grace)', counts.grace, AlertTriangle, 'bg-red-50 text-red-700 ring-red-100'],
                         ['Paused', counts.paused, PauseCircle, 'bg-gray-100 text-gray-700 ring-gray-200'],
+                        ['Not paid yet', counts.unpaid, Clock3, 'bg-amber-50 text-amber-900 ring-amber-100'],
                         ['Received this month', money(counts.month_total), CheckCircle2, 'bg-emerald-50 text-emerald-800 ring-emerald-100'],
                     ].map(([label, value, Icon, tone, onClick]) => {
                         const Tag = onClick ? 'button' : 'div';
@@ -94,16 +95,20 @@ export default function AdminSubscriptions({ payments, filters = {}, counts = {}
                                     <div className="min-w-[200px] flex-1">
                                         <p className="font-semibold text-gray-900">{payment.owner?.name}</p>
                                         <p className="text-xs text-gray-600">{payment.owner?.email} · {payment.owner?.phone}</p>
-                                        {payment.owner_status && (
-                                            <p className={`mt-1 text-xs font-semibold ${payment.owner_status.blocked ? 'text-red-700' : payment.owner_status.in_grace ? 'text-amber-800' : 'text-emerald-800'}`}>
-                                                {payment.owner_status.paid_until ? t('Paid until :date', { date: date(payment.owner_status.paid_until) }) : t('Not paid yet')}
-                                                {payment.owner_status.blocked ? ` · ${t('Paused')}` : payment.owner_status.in_grace ? ` · ${t('Overdue')}` : ''}
+                                        {payment.property && (
+                                            <p className="mt-1 text-xs text-gray-800">
+                                                <span className="font-semibold">{payment.property}</span>
+                                                {' · '}
+                                                <span className={`font-semibold ${payment.property_state === 'paused' ? 'text-red-700' : payment.property_state === 'grace' ? 'text-amber-800' : payment.property_state === 'unpaid' ? 'text-gray-600' : 'text-emerald-800'}`}>
+                                                    {payment.property_paid_until ? t('Paid until :date', { date: date(payment.property_paid_until) }) : t('Not paid yet')}
+                                                    {payment.property_state === 'paused' ? ` · ${t('Paused')}` : payment.property_state === 'grace' ? ` · ${t('Overdue')}` : ''}
+                                                </span>
                                             </p>
                                         )}
                                     </div>
                                     <div className="min-w-[160px]">
                                         <p className="font-[Sora] font-bold tabular-nums text-gray-900">{money(payment.amount)}</p>
-                                        <p className="text-xs text-gray-600">{t(payment.purpose === 'add_houses' ? ':houses extra house(s)' : ':houses house(s)', { houses: payment.houses })} · {t(payment.months === 1 ? '1 month' : ':count months', { count: payment.months })} · {date(payment.created_at)}</p>
+                                        <p className="text-xs text-gray-600">{t(payment.months === 1 ? '1 month' : ':count months', { count: payment.months })} · {date(payment.created_at)}</p>
                                     </div>
                                     <div className="min-w-[180px]">
                                         <p className="text-sm text-gray-800">{t(METHOD_LABEL[payment.method] || payment.method)}</p>

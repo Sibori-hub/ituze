@@ -19,7 +19,7 @@ class SubscriptionPayment extends Model
     public const ADD_HOUSES = 'add_houses';
 
     protected $fillable = [
-        'owner_id', 'months', 'houses', 'purpose', 'amount', 'method', 'reference', 'sender_name', 'sender_phone', 'paid_at', 'proof_path', 'proof_name', 'status',
+        'owner_id', 'property_id', 'months', 'houses', 'purpose', 'amount', 'method', 'reference', 'sender_name', 'sender_phone', 'paid_at', 'proof_path', 'proof_name', 'status',
         'mobile_money_request_id', 'period_start', 'period_end', 'receipt_number', 'submitted_by',
         'reviewed_by', 'reviewed_at', 'rejection_reason',
     ];
@@ -34,12 +34,17 @@ class SubscriptionPayment extends Model
         'paid_at' => 'datetime',
     ];
 
-    /** "2 houses for 3 months" or "1 extra house for 2 months". */
+    /** "Kigali Heights for 3 months". */
     public function planLabel(): string
     {
-        $houses = $this->houses.($this->purpose === self::ADD_HOUSES ? ' extra' : '').' house'.($this->houses === 1 ? '' : 's');
+        $name = $this->property?->name ?? 'a property';
 
-        return $houses.' for '.$this->months.' month'.($this->months === 1 ? '' : 's');
+        return $name.' for '.$this->months.' month'.($this->months === 1 ? '' : 's');
+    }
+
+    public function property()
+    {
+        return $this->belongsTo(Property::class);
     }
 
     public function owner()

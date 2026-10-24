@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\Property;
 use App\Models\User;
 use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
@@ -17,7 +18,7 @@ class SubscriptionReminder extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public string $kind)
+    public function __construct(public string $kind, public Property $property)
     {
         $this->onConnection('deferred');
     }
@@ -28,42 +29,43 @@ class SubscriptionReminder extends Notification implements ShouldQueue
     }
 
     /** @return array{subject: string, line: string} */
-    public static function text(User $owner, string $kind): array
+    public static function text(Property $property, string $kind): array
     {
-        $end = $owner->expires_at?->format('j M Y');
-        $graceEnd = $owner->subscriptionGraceEndsAt()?->format('j M Y');
+        $name = $property->name;
+        $end = $property->paid_until?->format('j M Y');
+        $graceEnd = $property->paid_until?->copy()->addDays(Property::graceDays())->format('j M Y');
         $price = number_format((int) config('legal.owner_subscription_monthly_rwf', 100000), 0).' RWF';
 
         return match ($kind) {
             'days_7', 'days_3' => [
-                'subject' => 'Your ITUZE subscription ends on '.$end,
-                'line' => 'Your subscription ends on '.$end.' ('.($kind === 'days_7' ? '7' : '3').' days). Pay '.$price.' per month by MoMo or bank to keep your account and your managers working.',
+                'subject' => $name.': subscription ends on '.$end,
+                'line' => 'The subscription for '.$name.' ends on '.$end.'. Pay '.$price.' per month to keep it running.',
             ],
             'due' => [
-                'subject' => 'Your ITUZE subscription ended today',
-                'line' => 'Your subscription ended today. You have until '.$graceEnd.' to pay before your account and your managers are paused.',
+                'subject' => $name.': subscription ended today',
+                'line' => 'The subscription for '.$name.' ended today. Pay before '.$graceEnd.' or it will be paused.',
             ],
             default => [
-                'subject' => 'Your ITUZE account is paused',
-                'line' => 'Your subscription was not renewed, so your account and your managers are paused. Your data is safe: pay any time to continue.',
+                'subject' => $name.' is paused',
+                'line' => $name.' is paused: its subscription was not renewed. Your data is safe; pay any time to continue.',
             ],
         };
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        $text = self::text($notifiable, $this->kind);
+        $text = self::text($this->property, $this->kind);
 
         return (new MailMessage)
             ->subject($text['subject'])
             ->greeting('Hello '.($notifiable->first_name ?? $notifiable->name).',')
             ->line($text['line'])
-            ->action('Pay my subscription', url('/subscription'))
+            ->action('Pay my subscription', route('subscription.show', ['property' => $this->property->id]))
             ->salutation('ITUZE GREEN PLATFORM · Q.R.A GROUP LTD');
     }
 
     public function toSms(object $notifiable): string
     {
-        return 'ITUZE: '.self::text($notifiable, $this->kind)['line'].' Pay: '.url('/subscription');
+        return 'ITUZE: '.self::text($this->property, $this->kind)['line'].' Pay: '.route('subscription.show', ['property' => $this->property->id]);
     }
 }

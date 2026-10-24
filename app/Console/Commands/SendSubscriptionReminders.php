@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\MobileMoneyRequest;
+use App\Models\Property;
 use App\Models\User;
 use App\Notifications\SubscriptionReminder;
 use App\Services\MobileMoney\MobileMoneyService;
@@ -37,17 +38,18 @@ class SendSubscriptionReminders extends Command
         $grace = (int) config('legal.owner_subscription_grace_days', 7);
         $sent = 0;
 
-        $owners = User::query()
-            ->where('role', 'owner')
-            ->whereNull('created_by')
-            ->where('status', 'approved')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', $today->addDays(8)->endOfDay())
-            ->where('expires_at', '>=', $today->subDays($grace + 7))
+        // Each property of a self-registered owner is paid, and reminded, on its own.
+        $properties = Property::query()
+            ->whereHas('owner', fn ($owner) => $owner->where('role', 'owner')->whereNull('created_by')->where('status', 'approved'))
+            ->whereNotNull('paid_until')
+            ->where('paid_until', '<=', $today->addDays(8)->endOfDay())
+            ->where('paid_until', '>=', $today->subDays($grace + 7))
+            ->with('owner')
             ->get();
 
-        foreach ($owners as $owner) {
-            $end = CarbonImmutable::parse($owner->expires_at)->startOfDay();
+        foreach ($properties as $property) {
+            $owner = $property->owner;
+            $end = CarbonImmutable::parse($property->paid_until)->startOfDay();
             $daysLeft = (int) $today->diffInDays($end, false);
 
             $kind = match (true) {
@@ -64,6 +66,7 @@ class SendSubscriptionReminders extends Command
             // Once per kind and paid-until date: a renewal starts a new cycle.
             $fresh = DB::table('subscription_reminders')->insertOrIgnore([
                 'owner_id' => $owner->id,
+                'property_id' => $property->id,
                 'kind' => $kind,
                 'expires_on' => $end->toDateString(),
                 'created_at' => now(),
@@ -73,10 +76,10 @@ class SendSubscriptionReminders extends Command
             }
 
             try {
-                $owner->notify(new SubscriptionReminder($kind));
+                $owner->notify(new SubscriptionReminder($kind, $property));
                 $sent++;
             } catch (Throwable $e) {
-                Log::warning('Subscription reminder not sent: '.$e->getMessage(), ['owner' => $owner->id, 'kind' => $kind]);
+                Log::warning('Subscription reminder not sent: '.$e->getMessage(), ['owner' => $owner->id, 'property' => $property->id, 'kind' => $kind]);
             }
         }
 

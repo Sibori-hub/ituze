@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\SubscriptionController;
+use App\Models\Property;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Services\SubscriptionService;
@@ -33,7 +34,7 @@ class SubscriptionPaymentController extends Controller
         $search = trim($filters['search'] ?? '');
 
         $payments = SubscriptionPayment::query()
-            ->with(['owner', 'reviewer:id,name'])
+            ->with(['owner', 'property', 'reviewer:id,name'])
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             // Mobile money payments still waiting on the phone are not for admins to review.
             ->when($status === 'pending', fn ($query) => $query->whereNull('mobile_money_request_id'))
@@ -42,6 +43,7 @@ class SubscriptionPaymentController extends Controller
                 ->orWhere('receipt_number', 'like', "%{$search}%")
                 ->orWhere('sender_name', 'like', "%{$search}%")
                 ->orWhere('sender_phone', 'like', "%{$search}%")
+                ->orWhereHas('property', fn ($property) => $property->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('owner', fn ($owner) => $owner->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))))
             ->latest('id')
             ->paginate(20)
@@ -51,8 +53,7 @@ class SubscriptionPaymentController extends Controller
                 'created_at' => $payment->created_at?->toIso8601String(),
                 'owner' => $payment->owner?->only(['id', 'name', 'email', 'phone']),
                 'months' => $payment->months,
-                'houses' => $payment->houses,
-                'purpose' => $payment->purpose,
+                'property' => $payment->property?->name,
                 'amount' => (float) $payment->amount,
                 'method' => $payment->method,
                 'reference' => $payment->reference,
@@ -67,20 +68,24 @@ class SubscriptionPaymentController extends Controller
                 'reviewer' => $payment->reviewer?->name,
                 'reviewed_at' => $payment->reviewed_at?->toIso8601String(),
                 'rejection_reason' => $payment->rejection_reason,
-                'owner_status' => $payment->owner ? SubscriptionController::statusFor($payment->owner) : null,
+                // The property's own paid-until date.
+                'property_state' => $payment->property?->setRelation('owner', $payment->owner)->subscriptionState(),
+                'property_paid_until' => $payment->property?->paid_until?->toIso8601String(),
             ]);
 
-        $owners = User::query()->where('role', 'owner')->whereNull('created_by')->where('status', 'approved');
-        $graceDays = (int) config('legal.owner_subscription_grace_days', 7);
+        // Properties of self-registered owners, each paid on its own.
+        $properties = Property::query()->whereHas('owner', fn ($owner) => $owner->where('role', 'owner')->whereNull('created_by')->where('status', 'approved'));
+        $graceDays = Property::graceDays();
 
         return Inertia::render('Admin/Subscriptions', [
             'payments' => $payments,
             'filters' => ['status' => $status, 'search' => $search],
             'counts' => [
                 'pending' => SubscriptionPayment::query()->where('status', 'pending')->whereNull('mobile_money_request_id')->count(),
-                'expiring' => (clone $owners)->whereBetween('expires_at', [now(), now()->addDays(7)])->count(),
-                'grace' => (clone $owners)->whereBetween('expires_at', [now()->subDays($graceDays), now()])->count(),
-                'paused' => (clone $owners)->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '<', now()->subDays($graceDays)))->count(),
+                'expiring' => (clone $properties)->whereBetween('paid_until', [now(), now()->addDays(7)])->count(),
+                'grace' => (clone $properties)->whereBetween('paid_until', [now()->subDays($graceDays), now()])->count(),
+                'paused' => (clone $properties)->where('paid_until', '<', now()->subDays($graceDays))->count(),
+                'unpaid' => (clone $properties)->whereNull('paid_until')->count(),
                 'month_total' => (float) SubscriptionPayment::query()->where('status', 'approved')->where('reviewed_at', '>=', now()->startOfMonth())->sum('amount'),
             ],
             'monthlyPrice' => SubscriptionService::monthlyPrice(),

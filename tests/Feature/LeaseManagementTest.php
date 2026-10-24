@@ -39,7 +39,7 @@ class LeaseManagementTest extends TestCase
 
         $this->admin = User::factory()->create(['role' => 'admin', 'phone' => '0788000001']);
         $this->owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'expires_at' => now()->addYear(), 'phone' => '0788000002']);
-        $property = Property::create(['owner_id' => $this->owner->id, 'name' => 'Lease Plaza', 'total_floors' => 2]);
+        $property = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $this->owner->id, 'name' => 'Lease Plaza', 'total_floors' => 2]);
         $type = UnitType::create(['name' => 'Offices']);
         $parent = PropertyUnit::create(['property_id' => $property->id, 'unit_type_id' => $type->id, 'floor_number' => 1]);
         $this->unit = Unit::create([

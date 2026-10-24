@@ -221,7 +221,7 @@ export default function AdminChats({ conversations: initialList = [], selected: 
                                 {person.houses !== null && (
                                     <div className="flex items-center gap-2 text-gray-700">
                                         <Building2 size={14} className="text-gray-400" aria-hidden="true" />
-                                        {person.paid_houses !== null ? t(':used of :paid houses used', { used: person.houses, paid: person.paid_houses }) : t(':houses house(s)', { houses: person.houses })}
+                                        {person.paid_houses !== null ? t(':paid of :count properties paid', { paid: person.paid_houses, count: person.houses }) : t(':houses house(s)', { houses: person.houses })}
                                     </div>
                                 )}
                             </dl>

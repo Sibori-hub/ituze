@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\Property;
 use App\Models\User;
 use Carbon\Carbon;
 use Tests\TestCase;
@@ -15,27 +16,37 @@ class UserSubscriptionTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_a_new_owner_who_has_not_paid_uses_the_dashboard_but_cannot_add_a_house(): void
+    public function test_the_owner_account_is_never_paused_only_each_property(): void
     {
         $owner = new User(['role' => 'owner', 'expires_at' => null]);
 
         $this->assertFalse($owner->isExpired());
-        $this->assertFalse($owner->canAddHouse());
     }
 
-    public function test_owner_keeps_working_for_seven_grace_days_after_the_plan_end(): void
+    public function test_a_property_works_for_seven_grace_days_after_its_paid_until_date(): void
     {
-        $owner = new User(['role' => 'owner', 'expires_at' => '2026-09-26 11:59:59']);
+        $owner = new User(['role' => 'owner']);
+        $property = (new Property(['name' => 'Kigali Heights']))->setRelation('owner', $owner);
+        $this->assertSame('unpaid', $property->subscriptionState());
+        $this->assertFalse($property->subscriptionIsActive());
+
+        $property->paid_until = '2026-09-26 11:59:59';
+        Carbon::setTestNow('2026-09-20 12:00:00');
+        $this->assertSame('expiring', $property->subscriptionState());
 
         // Just after the end: grace, still working.
         Carbon::setTestNow('2026-09-26 12:00:00');
-        $this->assertFalse($owner->isExpired());
-        $this->assertTrue($owner->inSubscriptionGrace());
+        $this->assertSame('grace', $property->subscriptionState());
+        $this->assertTrue($property->subscriptionIsActive());
 
         // Seven days later: paused.
         Carbon::setTestNow('2026-10-03 12:00:00');
-        $this->assertTrue($owner->isExpired());
-        $this->assertFalse($owner->inSubscriptionGrace());
+        $this->assertSame('paused', $property->subscriptionState());
+        $this->assertFalse($property->subscriptionIsActive());
+
+        // A managed owner's property never needs a subscription.
+        $managed = (new Property(['name' => 'Managed']))->setRelation('owner', new User(['role' => 'owner', 'created_by' => 1]));
+        $this->assertSame('free', $managed->subscriptionState());
     }
 
     public function test_owner_with_an_active_plan_is_not_expired(): void

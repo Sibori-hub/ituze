@@ -19,7 +19,7 @@ class MobilePropertyBrowseTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['tenancies', 'unit_images', 'property_images', 'units', 'property_units', 'unit_types', 'properties', 'cells', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['users', 'tenancies', 'unit_images', 'property_images', 'units', 'property_units', 'unit_types', 'properties', 'cells', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -50,10 +50,18 @@ class MobilePropertyBrowseTest extends TestCase
             $table->timestamps();
         });
 
+        // Public listings check whether the owner pays per property.
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('role')->default('owner');
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->softDeletes();
+        });
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
             $table->boolean('requires_listing')->default(false);
             $table->timestamp('listed_until')->nullable();
+            $table->dateTime('paid_until')->nullable()->default('2099-12-31 00:00:00');
             $table->unsignedSmallInteger('total_floors')->default(0);
             $table->unsignedTinyInteger('basement_floors')->default(0);
             $table->unsignedBigInteger('created_by')->nullable();

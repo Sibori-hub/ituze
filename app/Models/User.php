@@ -312,15 +312,9 @@ class User extends Authenticatable implements MustVerifyEmail
             return false;
         }
 
-        // A new owner who has not paid yet uses the dashboard; adding a house
-        // needs a payment (see canAddHouse). Someone who never paid but has
-        // houses is blocked.
-        if (! $this->expires_at) {
-            return $this->exists && $this->housesUsed() > 0;
-        }
-
-        // Blocked only once the grace days after the paid-until date have passed.
-        return $this->subscriptionGraceEndsAt()->isPast();
+        // Self-registered owners pay per property (see Property::subscriptionState):
+        // an unpaid property is limited, the account itself always works.
+        return false;
     }
 
     /** An advertiser has paid for listings at least once (needed before adding buildings). */
@@ -340,18 +334,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function housesUsed(): int
     {
         return $this->properties()->count();
-    }
-
-    /** A self-registered owner adds a house only within the houses they paid for, while paid. */
-    public function canAddHouse(): bool
-    {
-        if (! $this->paysSubscription()) {
-            return true;
-        }
-
-        return $this->expires_at !== null
-            && $this->expires_at->isFuture()
-            && $this->housesUsed() < (int) $this->paid_houses;
     }
 
     /** Last moment of access: the paid-until date plus the grace days. */

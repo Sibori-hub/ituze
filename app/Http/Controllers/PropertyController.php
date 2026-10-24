@@ -78,9 +78,6 @@ class PropertyController extends Controller
     {
         $user = $request->user();
         abort_if($user->isManager(), 403, 'Only the owner can add a property.');
-        if (! $user->canAddHouse()) {
-            return redirect()->route('subscription.show', ['add' => 1])->with('error', $this->houseLimitMessage($user));
-        }
         $ownerId = null;
         $owners = collect();
 
@@ -105,14 +102,6 @@ class PropertyController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         abort_if($request->user()->isManager(), 403, 'Only the owner can add a property.');
-        if (! $request->user()->canAddHouse()) {
-            $message = $this->houseLimitMessage($request->user());
-
-            return $request->expectsJson()
-                ? response()->json(['message' => $message, 'errors' => ['name' => [$message]]], 422)
-                : redirect()->route('subscription.show', ['add' => 1])->with('error', $message);
-        }
-
         try {
             $user = $request->user();
             $rules = [
@@ -180,6 +169,13 @@ class PropertyController extends Controller
                 ], 201);
             }
 
+            // A self-registered owner pays for each property: the payment form opens for it.
+            if ($user->paysSubscription()) {
+                return redirect()
+                    ->route('subscription.show', ['property' => $property->id])
+                    ->with('success', 'Property "'.$property->name.'" saved. Pay for it to activate it: you can add units now, tenants once it is paid.');
+            }
+
             return redirect()
                 ->route('properties.index')
                 ->with('success', '🏠 Property "' . $property->name . '" created successfully!');
@@ -203,15 +199,6 @@ class PropertyController extends Controller
      * Admins add properties only for owners they created (managed owners);
      * self-registered owners add their own.
      */
-    private function houseLimitMessage(User $owner): string
-    {
-        $paid = (int) $owner->paid_houses;
-
-        return $paid > 0
-            ? "Your subscription covers {$paid} house".($paid === 1 ? '' : 's').'. Pay for one more house to add it.'
-            : 'Pay your subscription first, choosing how many houses you need.';
-    }
-
     private function managedOwnerRule()
     {
         return Rule::exists('users', 'id')->where(fn ($query) => $query

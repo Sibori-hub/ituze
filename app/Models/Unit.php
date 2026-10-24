@@ -93,6 +93,8 @@ class Unit extends Model
             ->whereHas('property', fn ($property) => $property->where(fn ($inner) => $inner
                 ->where('requires_listing', false)
                 ->orWhere('listed_until', '>', now())))
+            // A self-registered owner's property shows only while it is paid.
+            ->whereHas('property', fn ($property) => $property->subscriptionActive())
             ->whereDoesntHave('activeTenancy')
             ->whereDoesntHave('scheduledTenancy');
     }

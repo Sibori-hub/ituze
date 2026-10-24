@@ -38,9 +38,9 @@ class ManagerAccessTest extends TestCase
         $this->owner = $this->makeOwner('owner@example.com', '0788000010');
         $type = UnitType::create(['name' => 'Offices']);
         $shopType = UnitType::create(['name' => 'Shops']);
-        $this->whole = Property::create(['owner_id' => $this->owner->id, 'name' => 'Whole Plaza', 'total_floors' => 2]);
-        $this->partial = Property::create(['owner_id' => $this->owner->id, 'name' => 'Partial Tower', 'total_floors' => 3]);
-        $this->other = Property::create(['owner_id' => $this->owner->id, 'name' => 'Other House', 'total_floors' => 1]);
+        $this->whole = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $this->owner->id, 'name' => 'Whole Plaza', 'total_floors' => 2]);
+        $this->partial = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $this->owner->id, 'name' => 'Partial Tower', 'total_floors' => 3]);
+        $this->other = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $this->owner->id, 'name' => 'Other House', 'total_floors' => 1]);
         $this->offices = PropertyUnit::create(['property_id' => $this->partial->id, 'unit_type_id' => $type->id, 'floor_number' => 1]);
         $this->shops = PropertyUnit::create(['property_id' => $this->partial->id, 'unit_type_id' => $shopType->id, 'floor_number' => 0]);
         $this->officeRoom = $this->room($this->partial, $this->offices, '101');
@@ -100,7 +100,7 @@ class ManagerAccessTest extends TestCase
 
         // Another owner's property cannot be given.
         $stranger = $this->makeOwner('stranger@example.com', '0788000020');
-        $foreign = Property::create(['owner_id' => $stranger->id, 'name' => 'Foreign', 'total_floors' => 1]);
+        $foreign = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $stranger->id, 'name' => 'Foreign', 'total_floors' => 1]);
         $this->actingAs($this->owner)->post(route('managers.store'), [
             'first_name' => 'Bad', 'last_name' => 'Pick', 'email' => 'bad@example.com', 'phone' => '0788555445',
             'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
@@ -173,18 +173,18 @@ class ManagerAccessTest extends TestCase
         $this->actingAs($this->owner)->get(route('reports.index'))->assertInertia(fn (Assert $page) => $page->where('overview.rent_collected', 400000));
     }
 
-    public function test_manager_is_paused_with_the_owner_and_can_be_disabled(): void
+    public function test_manager_keeps_working_when_a_property_lapses_and_can_be_disabled(): void
     {
         $manager = $this->hireManager();
         $this->actingAs($manager)->get(route('dashboard'))->assertOk();
 
-        // Owner's subscription ends: the manager is paused too.
-        $this->owner->forceFill(['expires_at' => now()->subDays(8)])->save(); // past the 7-day grace
-        $this->actingAs($manager->fresh())->get(route('properties.index'))->assertRedirect(route('account.status'));
-        $this->get(route('account.status'))->assertInertia(fn (Assert $page) => $page->where('managerPaused', true));
+        // Paid per property: a lapsed property limits that property only, the team keeps working.
+        $this->whole->forceFill(['paid_until' => now()->subDays(8)])->save(); // past the 7-day grace
+        $this->owner->forceFill(['expires_at' => now()->subDays(8)])->save();
+        $this->assertSame('paused', $this->whole->fresh()->subscriptionState());
+        $this->actingAs($manager->fresh())->get(route('properties.index'))->assertOk();
 
-        // Owner pays again, then disables the manager.
-        $this->owner->forceFill(['expires_at' => now()->addMonth()])->save();
+        // The owner disables the manager.
         $this->actingAs($this->owner)->post(route('managers.disable', $manager))->assertSessionHasNoErrors();
         $this->assertTrue($manager->fresh()->isDisabled());
         $this->actingAs($manager->fresh())->get(route('dashboard'))->assertRedirect(route('login'));

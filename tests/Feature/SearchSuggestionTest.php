@@ -25,7 +25,7 @@ class SearchSuggestionTest extends TestCase
         $cell = Cell::firstOrCreate(['name' => $sectorName.' Cell', 'sector_id' => $sector->id]);
         $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved']);
         $type = UnitType::firstOrCreate(['name' => 'Offices']);
-        $property = Property::create(['owner_id' => $owner->id, 'cell_id' => $cell->id, 'name' => $name, 'address' => 'KG 1 Ave', 'total_floors' => 1]);
+        $property = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $owner->id, 'cell_id' => $cell->id, 'name' => $name, 'address' => 'KG 1 Ave', 'total_floors' => 1]);
 
         foreach (range(1, $available + $rented) as $number) {
             Unit::create([

@@ -57,7 +57,7 @@ class ChatController extends Controller
                 'role' => $user->roleLabel(),
                 'status' => $user->status,
                 'houses' => $user->isOwner() ? $user->housesUsed() : null,
-                'paid_houses' => $user->paysSubscription() ? (int) $user->paid_houses : null,
+                'paid_houses' => $user->paysSubscription() ? $user->properties()->subscriptionActive()->count() : null,
                 'subscription' => $user->paysSubscription() ? SubscriptionController::statusFor($user) : null,
                 'member_since' => $user->created_at?->toIso8601String(),
             ] : null,

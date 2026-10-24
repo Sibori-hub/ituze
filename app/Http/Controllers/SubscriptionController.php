@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Models\Property;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Notifications\SubscriptionPaymentSubmitted;
@@ -50,8 +51,10 @@ class SubscriptionController extends Controller
             'subscription' => $this->status($owner),
             'monthlyPrice' => SubscriptionService::monthlyPrice(),
             'monthOptions' => SubscriptionService::monthOptions(),
+            'selectedProperty' => $request->integer('property') ?: null,
             'payments' => SubscriptionPayment::query()
                 ->where('owner_id', $owner->id)
+                ->with('property:id,name')
                 ->latest('id')
                 ->limit(50)
                 ->get()
@@ -79,8 +82,8 @@ class SubscriptionController extends Controller
             'reference.required' => 'Enter the bank slip reference or the cheque number.',
             'proof.required' => 'Attach a photo or PDF of the bank slip or cheque.',
         ]);
-        $this->ensureNothingWaiting($owner);
         $plan = $this->plan($owner, $data);
+        $this->ensureNothingWaiting($owner, $plan['property_id']);
 
         $file = $request->file('proof');
         $payment = SubscriptionPayment::create([
@@ -140,7 +143,7 @@ class SubscriptionController extends Controller
             'transaction_id.regex' => 'Enter the transaction ID from the MoMo SMS: numbers only.',
             'transaction_id.unique' => 'This transaction ID was already used for a payment.',
         ]);
-        $this->ensureNothingWaiting($owner);
+        $this->ensureNothingWaiting($owner, $plan['property_id']);
 
         $file = $request->file('proof');
         $payment = SubscriptionPayment::create([
@@ -195,13 +198,12 @@ class SubscriptionController extends Controller
         SubscriptionPayment::query()->where('owner_id', $owner->id)->where('status', SubscriptionPayment::PENDING)
             ->whereNotNull('mobile_money_request_id')->with('mobileMoneyRequest')->get()
             ->each(fn (SubscriptionPayment $payment) => $payment->mobileMoneyRequest && $this->mobileMoney->refresh($payment->mobileMoneyRequest));
-        $this->ensureNothingWaiting($owner, mobileMoneyOnly: true);
-
         $plan = $this->plan($owner, $data);
+        $this->ensureNothingWaiting($owner, $plan['property_id'], mobileMoneyOnly: true);
         try {
             $momo = $this->mobileMoney->start(
                 $owner, null, null, $phone, $plan['amount'],
-                'ITUZE subscription, '.$plan['houses'].' house(s), '.$plan['months'].' month(s)', 'subscription',
+                'ITUZE subscription, property #'.$plan['property_id'].', '.$plan['months'].' month(s)', 'subscription',
             );
         } catch (MobileMoneyException $e) {
             throw ValidationException::withMessages(['phone' => $e->getMessage()]);
@@ -252,27 +254,27 @@ class SubscriptionController extends Controller
         return $user;
     }
 
-    /** What the owner pays for: renew (months and houses) or add houses. */
+    /** What the owner pays for: one property, for some months. */
     private function planRules(): array
     {
         return [
-            'purpose' => ['nullable', Rule::in([SubscriptionPayment::RENEWAL, SubscriptionPayment::ADD_HOUSES])],
+            'property_id' => ['required', 'integer'],
             'months' => ['required', 'integer', 'min:1', 'max:12'],
-            'houses' => ['required', 'integer', 'min:1', 'max:500'],
         ];
     }
 
-    /** @return array{purpose: string, months: int, houses: int, amount: int} */
+    /** @return array{property_id: int, purpose: string, months: int, houses: int, amount: int} */
     private function plan(User $owner, array $data): array
     {
-        return SubscriptionService::quote($owner, $data['purpose'] ?? SubscriptionPayment::RENEWAL, (int) $data['months'], (int) $data['houses']);
+        return SubscriptionService::quote($owner, Property::query()->find($data['property_id']), (int) $data['months']);
     }
 
-    /** One payment at a time, so nothing is paid twice by mistake. */
-    private function ensureNothingWaiting(User $owner, bool $mobileMoneyOnly = false): void
+    /** One payment at a time per property, so nothing is paid twice by mistake. */
+    private function ensureNothingWaiting(User $owner, int $propertyId, bool $mobileMoneyOnly = false): void
     {
         $waiting = SubscriptionPayment::query()
             ->where('owner_id', $owner->id)
+            ->where('property_id', $propertyId)
             ->where('status', SubscriptionPayment::PENDING)
             ->when($mobileMoneyOnly, fn ($query) => $query->whereNotNull('mobile_money_request_id'))
             ->when(! $mobileMoneyOnly, fn ($query) => $query->whereNull('mobile_money_request_id'))
@@ -282,25 +284,36 @@ class SubscriptionController extends Controller
             throw ValidationException::withMessages([
                 $mobileMoneyOnly ? 'phone' : 'reference' => $mobileMoneyOnly
                     ? 'A mobile money request is still waiting. Approve it on your phone or wait 3 minutes and try again.'
-                    : 'A payment you sent is still being checked. You will be told as soon as it is approved.',
+                    : 'A payment for this property is still being checked. You will be told as soon as it is approved.',
             ]);
         }
     }
 
     public static function statusFor(User $owner): array
     {
-        $expires = $owner->expires_at;
-        $graceEnds = $owner->subscriptionGraceEndsAt();
+        $properties = Property::query()->where('owner_id', $owner->id)->orderBy('name')->get(['id', 'owner_id', 'name', 'paid_until'])
+            ->each(fn (Property $property) => $property->setRelation('owner', $owner))
+            ->map(fn (Property $property) => [
+                'id' => $property->id,
+                'name' => $property->name,
+                'state' => $property->subscriptionState(),
+                'paid_until' => $property->paid_until?->toIso8601String(),
+                'days_left' => $property->paid_until ? (int) floor(now()->diffInDays($property->paid_until, false)) : null,
+                'grace_ends_at' => $property->paid_until?->copy()->addDays(Property::graceDays())->toIso8601String(),
+            ])
+            ->values();
+        $count = fn (string ...$states) => $properties->whereIn('state', $states)->count();
 
         return [
-            'paid_until' => $expires?->toIso8601String(),
-            'paid_houses' => (int) $owner->paid_houses,
-            'houses_used' => $owner->housesUsed(),
-            'months_left' => SubscriptionService::monthsLeft($owner),
-            'days_left' => $expires ? (int) floor(now()->diffInDays($expires, false)) : null,
-            'in_grace' => $owner->inSubscriptionGrace(),
-            'grace_ends_at' => $graceEnds?->toIso8601String(),
-            'blocked' => $owner->isExpired(),
+            'properties' => $properties->all(),
+            'unpaid' => $count('unpaid'),
+            'expiring' => $count('expiring'),
+            'grace' => $count('grace'),
+            'paused' => $count('paused'),
+            'active' => $count('active', 'expiring'),
+            // Kept for screens that show one date: the latest paid property.
+            'paid_until' => $owner->expires_at?->toIso8601String(),
+            'blocked' => false,
         ];
     }
 
@@ -314,6 +327,8 @@ class SubscriptionController extends Controller
         return [
             'id' => $payment->id,
             'created_at' => $payment->created_at?->toIso8601String(),
+            'property_id' => $payment->property_id,
+            'property' => $payment->property?->name,
             'months' => $payment->months,
             'houses' => $payment->houses,
             'purpose' => $payment->purpose,

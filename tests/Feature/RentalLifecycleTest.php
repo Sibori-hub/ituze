@@ -98,6 +98,8 @@ class RentalLifecycleTest extends TestCase
             $table->id();
             $table->boolean('requires_listing')->default(false);
             $table->timestamp('listed_until')->nullable();
+            // Paid per property: these test buildings are paid.
+            $table->dateTime('paid_until')->nullable()->default('2099-12-31 00:00:00');
             $table->unsignedSmallInteger('total_floors')->default(0);
             $table->unsignedTinyInteger('basement_floors')->default(0);
             $table->unsignedBigInteger('created_by')->nullable();

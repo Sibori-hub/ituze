@@ -24,7 +24,7 @@ class SeoTest extends TestCase
         $sector = Sector::create(['name' => 'Kimihurura', 'district_id' => $district->id]);
         $cell = Cell::create(['name' => 'Rugando', 'sector_id' => $sector->id]);
         $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved']);
-        $property = Property::create(['owner_id' => $owner->id, 'cell_id' => $cell->id, 'name' => 'Kigali Heights', 'address' => 'KG 7 Ave', 'total_floors' => 3]);
+        $property = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $owner->id, 'cell_id' => $cell->id, 'name' => 'Kigali Heights', 'address' => 'KG 7 Ave', 'total_floors' => 3]);
         $unit = Unit::create([
             'property_id' => $property->id, 'unit_type_id' => UnitType::create(['name' => 'Office'])->id, 'floor_number' => 2,
             'unit_number' => 'B2', 'rent_amount' => 850000, 'rent_frequency' => 'monthly', 'size_sqm' => 45, 'status' => 'available',
