@@ -33,7 +33,7 @@ class SubscriptionPaymentController extends Controller
         $search = trim($filters['search'] ?? '');
 
         $payments = SubscriptionPayment::query()
-            ->with(['owner:id,name,email,phone', 'reviewer:id,name'])
+            ->with(['owner', 'reviewer:id,name'])
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             // Mobile money payments still waiting on the phone are not for admins to review.
             ->when($status === 'pending', fn ($query) => $query->whereNull('mobile_money_request_id'))

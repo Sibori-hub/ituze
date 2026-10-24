@@ -44,12 +44,12 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
     useEffect(() => setSubscription(initial), [initial]);
 
     const [months, setMonths] = useState(1);
-    // MoMo Pay first; bank transfer once the account number is set; the phone
-    // request only where the MoMo API is connected.
+    // MoMo Pay and bank transfer (with the slip); the phone request only where
+    // the MoMo API is connected.
     const methods = [
         ['momo_pay', 'MoMo Pay', Smartphone],
         momoApi && ['mobile_money', 'Mobile money', Smartphone],
-        bank && ['bank_transfer', 'Bank transfer', Landmark],
+        ['bank_transfer', 'Bank transfer', Landmark],
         ['cheque', 'Cheque', Banknote],
     ].filter(Boolean);
     const [method, setMethod] = useState('momo_pay');

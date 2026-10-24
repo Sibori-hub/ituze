@@ -133,6 +133,10 @@ class SubscriptionPaymentTest extends TestCase
         $this->post(route('admin.subscriptions.approve', $payment))->assertSessionHasNoErrors();
         $this->assertSame('2026-11-25', $this->owner->fresh()->expires_at->toDateString());
         Notification::assertSentTo($this->owner, SubscriptionPaymentDecided::class, fn ($notification) => $notification->payment->status === 'approved');
+        // The list shows the owner as paid, not "Not paid yet".
+        $this->get(route('admin.subscriptions', ['status' => 'approved']))
+            ->assertInertia(fn (Assert $page) => $page->where('payments.data.0.owner_status.blocked', false)
+                ->where('payments.data.0.owner_status.paid_until', fn ($value) => str_starts_with((string) $value, '2026-11-25')));
 
         // The same transaction ID cannot pay a second time, even for another owner.
         $other = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'profile_completed' => true, 'phone' => '0788000003']);

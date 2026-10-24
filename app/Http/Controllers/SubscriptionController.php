@@ -57,8 +57,7 @@ class SubscriptionController extends Controller
                 ->get()
                 ->map(fn (SubscriptionPayment $payment) => $this->paymentRow($payment)),
             'phone' => $owner->phone,
-            // Bank transfer is offered only once the account number is set.
-            'bank' => filled(config('legal.qra_bank.account_number')) ? config('legal.qra_bank') : null,
+            'bank' => config('legal.qra_bank'),
             'momoPay' => [
                 'code' => config('services.momo_pay.code'),
                 'name' => config('services.momo_pay.name'),
