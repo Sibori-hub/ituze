@@ -266,6 +266,11 @@ export default {
         'Trucks at the MAGERWA warehouse, Kigali': 'Camions à l\'entrepôt MAGERWA, Kigali',
         'Offices in the heart of Kigali': 'Des bureaux au cœur de Kigali',
         'Balconies of a residential building in Kigali': 'Balcons d\'un immeuble résidentiel à Kigali',
+        'Live and work near BK Arena': 'Vivre et travailler près de la BK Arena',
+        'Remera, the lively heart of Kigali': 'Remera, le cœur animé de Kigali',
+        'Offices, shops and apartments close to everything': 'Bureaux, boutiques et appartements proches de tout',
+        'Remera, Kigali': 'Remera, Kigali',
+        'BK Arena, Remera': 'BK Arena, Remera',
     },
     rw: {
         'Find your perfect space to rent | ITUZE GREEN PLATFORM': 'Shaka ahantu heza ho gukodesha | ITUZE GREEN PLATFORM',
@@ -534,5 +539,10 @@ export default {
         'Trucks at the MAGERWA warehouse, Kigali': 'Amakamyo ku bubiko bwa MAGERWA, Kigali',
         'Offices in the heart of Kigali': 'Ibiro mu mutima wa Kigali',
         'Balconies of a residential building in Kigali': 'Balukoni z\'inyubako yo guturamo i Kigali',
+        'Live and work near BK Arena': 'Tura kandi ukorere hafi ya BK Arena',
+        'Remera, the lively heart of Kigali': 'Remera, umutima ukeye wa Kigali',
+        'Offices, shops and apartments close to everything': 'Ibiro, amaduka n\'amazu yo guturamo hafi ya byose',
+        'Remera, Kigali': 'Remera, Kigali',
+        'BK Arena, Remera': 'BK Arena, Remera',
     },
 };

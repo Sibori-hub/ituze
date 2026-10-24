@@ -40,6 +40,16 @@ const heroSlides = [
         cta: 'See offices',
     },
     {
+        title: 'Live and work near BK Arena',
+        subtitle: 'Remera, the lively heart of Kigali',
+        price: 'Offices, shops and apartments close to everything',
+        location: 'Remera, Kigali',
+        image: '/images/hero/bk-arena.jpg',
+        name: 'BK Arena, Remera',
+        credit: 'Igiraneza Divine, CC0',
+        source: 'https://commons.wikimedia.org/wiki/File:BK_ARENA(ENTERTAINMENT_HOUSE).jpg',
+    },
+    {
         title: 'Apartments to call home',
         subtitle: 'Comfortable homes in green, quiet neighbourhoods',
         price: 'Furnished and unfurnished apartments',
