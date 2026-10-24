@@ -36,6 +36,44 @@ const heroSlides = [
         name: 'Kigali Convention Centre',
         credit: 'Emmanuel Kwizera, CC BY-SA 4.0',
         source: 'https://commons.wikimedia.org/wiki/File:An_aerial_of_Kigali_Convention_Center_on_June_19,_2019._Photo_by_Emmanuel_Kwizera.jpg',
+        category: 'offices',
+        cta: 'See offices',
+    },
+    {
+        title: 'Apartments to call home',
+        subtitle: 'Comfortable homes in green, quiet neighbourhoods',
+        price: 'Furnished and unfurnished apartments',
+        location: 'Nyarutarama, Kigali',
+        image: '/images/hero/nyarutarama-homes.jpg',
+        name: 'Homes above Kigali Golf Club, Nyarutarama',
+        credit: 'Gilbert Sibomana, CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Kigali_Golf_Club.jpg',
+        category: 'apartments',
+        cta: 'See apartments',
+    },
+    {
+        title: 'Spaces for coffee shops',
+        subtitle: 'Welcome your customers in the right place',
+        price: 'Ground floors, terraces and gardens',
+        location: 'Musanze, Rwanda',
+        image: '/images/hero/musanze-coffee-shop.jpg',
+        name: 'A coffee shop garden in Musanze',
+        credit: 'Gisa Kevin (VAWMC), CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Nature_is_beauty_but_when_it_comes_to_Rwanda.jpg',
+        category: 'coffee-shops',
+        cta: 'See coffee shops',
+    },
+    {
+        title: 'Warehouses and storage',
+        subtitle: 'Room to store, move and grow your stock',
+        price: 'Space for trucks and containers',
+        location: 'Kigali, Rwanda',
+        image: '/images/hero/kigali-warehouse.jpg',
+        name: 'Trucks at the MAGERWA warehouse, Kigali',
+        credit: 'Mrbobax, CC BY-SA 4.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Warehouse_Trucks_parking.jpg',
+        category: 'warehouses',
+        cta: 'See warehouses',
     },
     {
         title: 'Spaces made for business',
@@ -168,9 +206,9 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     const companyMapUrl = 'https://www.google.com/maps/search/?api=1&query=KG%2014%20Ave%2C%20Kigali-Gisozi-Musezero%3A%20ULK-Kagugu%20Road%2C%20Source%20Oil%20Building';
 
     useEffect(() => {
-        const timer = window.setInterval(() => setSlide((value) => (value + 1) % heroSlides.length), 6500);
-        return () => window.clearInterval(timer);
-    }, []);
+        const timer = window.setTimeout(() => setSlide((value) => (value + 1) % heroSlides.length), 6500);
+        return () => window.clearTimeout(timer);
+    }, [slide]);
 
     // Results update by themselves: lists at once, typing after a short pause.
     const typingPause = useRef(true);
@@ -285,7 +323,26 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     <section className="relative h-[26rem] overflow-hidden bg-[#0e3b2e] sm:h-[31rem]">
                         {heroSlides.map((item, index) => <img key={item.image} src={item.image} alt="" fetchpriority={index === 0 ? 'high' : 'low'} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${index === slide ? 'opacity-60' : 'opacity-0'}`} />)}
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent" />
-                        <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 pb-6 sm:px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-4 text-4xl font-light leading-tight sm:mt-5 sm:text-6xl lg:text-7xl">{t(current.title)}</h1><p className="mt-3 text-base font-medium text-white/85 sm:mt-4 sm:text-lg">{t(current.subtitle)}</p><p className="mt-4 text-xl font-bold sm:mt-6 sm:text-2xl">{t(current.price)}</p><button type="button" onClick={() => openContactForm('rent')} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-orange-600 sm:mt-8 sm:px-7 sm:py-3.5">{t('Make an enquiry')} <ArrowRight size={16} /></button></div></div>
+                        <div className="relative mx-auto flex h-full max-w-7xl items-center px-4 pb-6 sm:px-6 lg:px-8"><div className="max-w-2xl text-white"><p className="flex items-center gap-2 text-sm font-semibold"><MapPin size={16} className="text-orange-400" /> {t(current.location)}</p><h1 className="mt-4 text-4xl font-light leading-tight sm:mt-5 sm:text-6xl lg:text-7xl">{t(current.title)}</h1><p className="mt-3 text-base font-medium text-white/85 sm:mt-4 sm:text-lg">{t(current.subtitle)}</p><p className="mt-4 text-xl font-bold sm:mt-6 sm:text-2xl">{t(current.price)}</p><button type="button" onClick={() => {
+                            if (!current.category) return openContactForm('rent');
+                            const filters = { search: '', category: current.category, province_id: '', district_id: '', sector_id: '', price_range: 'any' };
+                            setSearchForm(filters);
+                            applySearch(filters);
+                        }} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-orange-600 sm:mt-8 sm:px-7 sm:py-3.5">{t(current.cta || 'Make an enquiry')} <ArrowRight size={16} /></button></div></div>
+                        <div className="absolute inset-x-0 bottom-12 flex justify-center gap-2 sm:bottom-14" role="group" aria-label={t('Choose a slide')}>
+                            {heroSlides.map((item, index) => (
+                                <button
+                                    key={item.image}
+                                    type="button"
+                                    onClick={() => setSlide(index)}
+                                    aria-label={t(item.title)}
+                                    aria-current={index === slide ? 'true' : undefined}
+                                    className="flex h-6 items-center px-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                                >
+                                    <span className={`block h-1.5 rounded-full transition-all ${index === slide ? 'w-7 bg-orange-400' : 'w-3 bg-white/60 hover:bg-white'}`} />
+                                </button>
+                            ))}
+                        </div>
                     </section>
 
                     <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -479,7 +536,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
             {legalDoc && <LegalModal document={legalDoc} onClose={() => setLegalDoc(null)} />}
             {creditsOpen && (
                 <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="credits-title" onClick={() => setCreditsOpen(false)} onKeyDown={(e) => e.key === 'Escape' && setCreditsOpen(false)}>
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <h2 id="credits-title" className="text-lg font-bold text-slate-900">{t('Photo credits')}</h2>
                         <p className="mt-1 text-sm text-slate-600">{t('Photos of Rwanda from Wikimedia Commons:')}</p>
                         <ul className="mt-4 space-y-2 text-sm text-slate-700">
