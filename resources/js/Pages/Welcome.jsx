@@ -1,7 +1,6 @@
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/react';
 import BrandLockup from '@/Components/BrandLockup';
 import ContactSection from '@/Components/ContactSection';
-import NewsletterSection from '@/Components/NewsletterSection';
 import InstallAppBanner from '@/Components/InstallAppBanner';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import LegalModal from '@/Components/LegalModal';
@@ -451,7 +450,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </div>
                     </section>
                     <ContactSection phone={companyPhone} phoneDisplay={companyPhoneDisplay} email={companyEmail} address={companyAddress} mapUrl={companyMapUrl} whatsappUrl={whatsappUrl} />
-                    <NewsletterSection />
                 </main>
 
                 <footer className="relative bg-[#063f67] text-white">
