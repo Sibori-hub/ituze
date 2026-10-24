@@ -1354,6 +1354,9 @@ export default {
         'Write a reply…': 'Écrivez une réponse…',
         'About this person': 'À propos de cette personne',
         'Details about the person appear here.': 'Les informations sur la personne s\'affichent ici.',
+        'Welcome to ITUZE!': 'Bienvenue sur ITUZE !',
+        'To add your properties, pay for the houses you need: :price per house per month. Pay for 10 houses and you can add 10 properties.': 'Pour ajouter vos biens, payez les maisons dont vous avez besoin : :price par maison et par mois. Payez 10 maisons et vous pourrez ajouter 10 biens.',
+        'Pay for houses': 'Payer les maisons',
     },
     rw: {
         'Log in': 'Injira',
@@ -2710,5 +2713,8 @@ export default {
         'Write a reply…': 'Andika igisubizo…',
         'About this person': 'Ibyerekeye uyu muntu',
         'Details about the person appear here.': 'Amakuru y\'uyu muntu agaragara hano.',
+        'Welcome to ITUZE!': 'Murakaza neza kuri ITUZE!',
+        'To add your properties, pay for the houses you need: :price per house per month. Pay for 10 houses and you can add 10 properties.': 'Kugira ngo wongeremo inyubako zawe, ishyura inzu ukeneye: :price ku nzu imwe ku kwezi. Wishyuye inzu 10, ushobora kongeramo inyubako 10.',
+        'Pay for houses': 'Ishyura inzu',
     },
 };

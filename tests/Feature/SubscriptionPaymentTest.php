@@ -244,20 +244,31 @@ class SubscriptionPaymentTest extends TestCase
         Notification::assertSentToTimes($this->owner, SubscriptionReminder::class, 3);
     }
 
-    public function test_an_approved_owner_pays_the_first_month_before_using_the_system(): void
+    public function test_an_approved_owner_uses_the_dashboard_and_pays_for_houses_before_adding_them(): void
     {
         $this->owner->approveAccount();
-        $this->actingAs($this->owner->fresh())->get(route('properties.index'))->assertRedirect(route('account.status'));
-        $this->get(route('account.status'))->assertInertia(fn (Assert $page) => $page->where('neverPaid', true)->where('canPay', true));
+        $owner = $this->owner->fresh();
+        // Dashboard and lists open at once, with a welcome banner; adding a property waits for a payment.
+        $this->actingAs($owner)->get(route('properties.index'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('auth.subscription.paid_until', null)->where('auth.subscription.blocked', false));
+        $this->get(route('properties.create'))->assertRedirect(route('subscription.show', ['add' => 1]));
 
-        $id = $this->postJson(route('subscription.momo.start'), ['months' => 1, 'houses' => 1, 'phone' => '0788123456'])->json('payment.id');
+        // Pays for 10 houses at once, then can add 10 properties.
+        $id = $this->postJson(route('subscription.momo.start'), ['months' => 1, 'houses' => 10, 'phone' => '0788123456'])
+            ->assertJsonPath('payment.amount', 1000000)->json('payment.id');
         $this->getJson(route('subscription.momo.status', $id))->assertJsonPath('payment.status', 'approved');
-        $this->assertSame('2026-11-19', $this->owner->fresh()->expires_at->toDateString());
-        $this->actingAs($this->owner->fresh())->get(route('properties.index'))->assertOk();
+        $owner->refresh();
+        $this->assertSame('2026-11-19', $owner->expires_at->toDateString());
+        $this->assertSame(10, $owner->paid_houses);
+        $this->get(route('properties.create'))->assertOk();
+        foreach (range(1, 10) as $number) {
+            \App\Models\Property::create(['owner_id' => $owner->id, 'name' => 'House '.$number, 'address' => 'KG 1 Ave', 'total_floors' => 1]);
+        }
+        $this->assertFalse($owner->fresh()->canAddHouse());
 
         // The admin dashboard counts the money.
         $this->actingAs($this->admin)->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page
-            ->where('adminOverview.subscriptionMoney.month', 100000)
+            ->where('adminOverview.subscriptionMoney.month', 1000000)
             ->where('adminOverview.subscriptionMoney.paying_owners', 1));
     }
 

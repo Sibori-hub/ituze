@@ -32,7 +32,7 @@ class AccountApproved extends Notification implements ShouldQueue
     private function nextStep(object $notifiable): string
     {
         return match (true) {
-            $notifiable->paysSubscription() => 'Log in and pay your first month to start managing your properties.',
+            $notifiable->paysSubscription() => 'Log in, then pay for your houses (100,000 RWF per house/month) to add them.',
             $notifiable->isAdvertiser() => 'Log in to publish your first building.',
             default => 'You can now log in and start using ITUZE.',
         };

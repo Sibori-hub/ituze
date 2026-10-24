@@ -15,11 +15,12 @@ class UserSubscriptionTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_owner_without_an_expiry_date_is_expired(): void
+    public function test_a_new_owner_who_has_not_paid_uses_the_dashboard_but_cannot_add_a_house(): void
     {
         $owner = new User(['role' => 'owner', 'expires_at' => null]);
 
-        $this->assertTrue($owner->isExpired());
+        $this->assertFalse($owner->isExpired());
+        $this->assertFalse($owner->canAddHouse());
     }
 
     public function test_owner_keeps_working_for_seven_grace_days_after_the_plan_end(): void

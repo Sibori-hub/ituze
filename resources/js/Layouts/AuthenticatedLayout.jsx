@@ -301,6 +301,16 @@ export default function AuthenticatedLayout({ header, children }) {
                     <main className="authenticated-page-content flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-smooth" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
                         <div className="flex-1 p-4 sm:p-6">
                         <InstallAppBanner />
+                        {pageProps.auth.subscription && !pageProps.auth.subscription.paid_until && !route().current('subscription.show') && (
+                            <div className="mx-auto mb-4 flex max-w-7xl flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" role="status">
+                                <Building2 size={18} className="shrink-0 text-emerald-700" aria-hidden="true" />
+                                <p className="min-w-0 flex-1">
+                                    <span className="font-semibold">{t('Welcome to ITUZE!')}</span>{' '}
+                                    {t('To add your properties, pay for the houses you need: :price per house per month. Pay for 10 houses and you can add 10 properties.', { price: '100,000 RWF' })}
+                                </p>
+                                <Link href={route('subscription.show')} className="rounded-xl bg-[#0E3B2E] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#124B3A]">{t('Pay for houses')}</Link>
+                            </div>
+                        )}
                         {pageProps.auth.subscription && (pageProps.auth.subscription.in_grace || (pageProps.auth.subscription.days_left !== null && pageProps.auth.subscription.days_left <= 7)) && !route().current('subscription.show') && (
                             <div className={`mx-auto mb-4 flex max-w-7xl flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${pageProps.auth.subscription.in_grace ? 'border-red-200 bg-red-50 text-red-950' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="status">
                                 <AlertTriangle size={18} className={`shrink-0 ${pageProps.auth.subscription.in_grace ? 'text-red-700' : 'text-amber-700'}`} aria-hidden="true" />

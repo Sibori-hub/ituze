@@ -59,13 +59,14 @@ class OwnerApprovalTest extends TestCase
 
             return $channels === ['mail', SmsChannel::class]
                 && str_contains($sms, 'your account is approved')
-                && str_contains($sms, 'pay your first month')
+                && str_contains($sms, 'pay for your houses')
                 && mb_strlen($sms) <= 160
                 && $notification->toMail($owner)->subject === 'Your ITUZE account is approved';
         });
-        // No free time: the owner pays the first month before using the system.
+        // The dashboard opens at once; adding a property waits for a payment.
         $this->assertNull($owner->expires_at);
-        $this->assertTrue($owner->isExpired());
+        $this->assertFalse($owner->isExpired());
+        $this->assertFalse($owner->canAddHouse());
     }
 
     public function test_admin_can_access_dashboard_without_owner_approval_or_active_subscription(): void
