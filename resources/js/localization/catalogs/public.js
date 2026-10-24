@@ -265,6 +265,7 @@ export default {
         'Space for trucks and containers': 'De la place pour camions et conteneurs',
         'Trucks at the MAGERWA warehouse, Kigali': 'Camions à l\'entrepôt MAGERWA, Kigali',
         'Offices in the heart of Kigali': 'Des bureaux au cœur de Kigali',
+        'Balconies of a residential building in Kigali': 'Balcons d\'un immeuble résidentiel à Kigali',
     },
     rw: {
         'Find your perfect space to rent | ITUZE GREEN PLATFORM': 'Shaka ahantu heza ho gukodesha | ITUZE GREEN PLATFORM',
@@ -532,5 +533,6 @@ export default {
         'Space for trucks and containers': 'Umwanya w\'amakamyo na kontineri',
         'Trucks at the MAGERWA warehouse, Kigali': 'Amakamyo ku bubiko bwa MAGERWA, Kigali',
         'Offices in the heart of Kigali': 'Ibiro mu mutima wa Kigali',
+        'Balconies of a residential building in Kigali': 'Balukoni z\'inyubako yo guturamo i Kigali',
     },
 };
