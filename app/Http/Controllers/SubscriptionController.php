@@ -117,7 +117,15 @@ class SubscriptionController extends Controller
             'sender_name' => ['required', 'string', 'max:120'],
             'sender_phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/'],
             'amount' => ['required', 'numeric', Rule::in([$price])],
-            'paid_at' => ['required', 'date', 'before_or_equal:now', 'after:'.now()->subDays(30)->toDateTimeString()],
+            'paid_at' => ['required', 'date', function (string $attribute, mixed $value, \Closure $fail) {
+                // The owner types Kigali time; the site runs on UTC. A phone clock a few minutes fast is fine.
+                $paidAt = self::kigaliTime((string) $value);
+                if ($paidAt->isAfter(now()->addMinutes(10))) {
+                    $fail('The payment date and time cannot be in the future.');
+                } elseif ($paidAt->isBefore(now()->subDays(30))) {
+                    $fail('This payment is more than 30 days old. Please contact ITUZE.');
+                }
+            }],
             'transaction_id' => [
                 'required', 'regex:/^[0-9]{6,20}$/',
                 // One MoMo payment pays one subscription: a used transaction ID is refused.
@@ -129,8 +137,6 @@ class SubscriptionController extends Controller
         ], [
             'sender_phone.regex' => 'Enter the 10-digit MTN or Airtel number that paid (078, 079, 072 or 073).',
             'amount.in' => 'For the houses and months you chose the amount is '.number_format($price).' RWF. Pay exactly this amount.',
-            'paid_at.before_or_equal' => 'The payment date and time cannot be in the future.',
-            'paid_at.after' => 'This payment is more than 30 days old. Please contact ITUZE.',
             'transaction_id.regex' => 'Enter the transaction ID from the MoMo SMS: numbers only.',
             'transaction_id.unique' => 'This transaction ID was already used for a payment.',
         ]);
@@ -144,7 +150,7 @@ class SubscriptionController extends Controller
             'reference' => $data['transaction_id'],
             'sender_name' => trim($data['sender_name']),
             'sender_phone' => $data['sender_phone'],
-            'paid_at' => Carbon::parse($data['paid_at']),
+            'paid_at' => self::kigaliTime($data['paid_at'])->utc(),
             'proof_path' => $file?->store('subscription-proofs', 'local'),
             'proof_name' => $file ? mb_substr($file->getClientOriginalName(), 0, 200) : null,
             'status' => SubscriptionPayment::PENDING,
@@ -154,6 +160,12 @@ class SubscriptionController extends Controller
         Notification::send(User::query()->where('role', 'admin')->get(), new SubscriptionPaymentSubmitted($payment));
 
         return back()->with('success', 'Thank you. We are checking your MoMo payment; your subscription starts as soon as it is approved. You will get an SMS and email.');
+    }
+
+    /** A date and time typed in Rwanda (e.g. 2026-10-24T17:05), as a moment in time. */
+    public static function kigaliTime(string $value): Carbon
+    {
+        return Carbon::parse($value, config('app.schedule_timezone', 'Africa/Kigali'));
     }
 
     /**

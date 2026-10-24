@@ -59,7 +59,7 @@ class OwnerApprovalTest extends TestCase
 
             return $channels === ['mail', SmsChannel::class]
                 && str_contains($sms, 'your account is approved')
-                && str_contains($sms, 'pay for your houses')
+                && str_contains($sms, 'Pay for your houses')
                 && mb_strlen($sms) <= 160
                 && $notification->toMail($owner)->subject === 'Your ITUZE account is approved';
         });

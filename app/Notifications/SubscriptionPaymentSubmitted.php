@@ -44,7 +44,7 @@ class SubscriptionPaymentSubmitted extends Notification implements ShouldQueue
             ->greeting('Hello,')
             ->line($payment->owner?->name.' paid '.number_format((float) $payment->amount, 0).' RWF by '.$this->method().' for '.$payment->planLabel().'.')
             ->line(($payment->method === 'momo_pay' ? 'MoMo transaction ID: ' : 'Reference: ').$payment->reference)
-            ->lineIf($payment->method === 'momo_pay', 'Sender: '.$payment->sender_name.' · '.$payment->sender_phone.' · paid '.$payment->paid_at?->format('j M Y, H:i'))
+            ->lineIf($payment->method === 'momo_pay', 'Sender: '.$payment->sender_name.' · '.$payment->sender_phone.' · paid '.$payment->paid_at?->timezone(config('app.schedule_timezone', 'Africa/Kigali'))->format('j M Y, H:i'))
             ->line($payment->method === 'momo_pay'
                 ? 'Please compare it with the MoMo Pay statement, then approve or reject it.'
                 : 'Please check the attached proof and approve or reject it.')

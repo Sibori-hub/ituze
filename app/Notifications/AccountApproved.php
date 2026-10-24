@@ -53,7 +53,14 @@ class AccountApproved extends Notification implements ShouldQueue
     /** One SMS (about 160 characters). */
     public function toSms(object $notifiable): string
     {
-        return 'ITUZE: Hello '.str($notifiable->first_name ?: $notifiable->name)->limit(20, '').', your account is approved. '
-            .$this->nextStep($notifiable).' '.route('login');
+        // Short next step so it fits one SMS even with a long name and the full link.
+        $next = match (true) {
+            $notifiable->paysSubscription() => 'Pay for your houses (100,000 RWF/house a month) to add them:',
+            $notifiable->isAdvertiser() => 'Log in to publish your first building:',
+            default => 'Log in:',
+        };
+
+        return 'ITUZE: Hello '.str($notifiable->first_name ?: $notifiable->name)->limit(15, '').', your account is approved. '
+            .$next.' '.route('login');
     }
 }

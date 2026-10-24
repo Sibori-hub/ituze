@@ -103,7 +103,7 @@ class SubscriptionPaymentTest extends TestCase
         config(['services.momo_pay.code' => '123456']);
         $form = fn (array $overrides = []) => [
             'months' => 1, 'houses' => 1, 'amount' => 100000, 'sender_name' => 'Jean Bosco', 'sender_phone' => '+250 788 123 456',
-            'paid_at' => '2026-10-19 09:30', 'transaction_id' => '12345 67890', ...$overrides,
+            'paid_at' => '2026-10-19T12:00', 'transaction_id' => '12345 67890', ...$overrides,
         ];
 
         $this->actingAs($this->owner)->get(route('subscription.show'))
@@ -116,7 +116,9 @@ class SubscriptionPaymentTest extends TestCase
         $this->post(route('subscription.momopay'), $form())->assertSessionHasNoErrors()->assertSessionHas('success');
         $payment = SubscriptionPayment::query()->firstOrFail();
         $this->assertSame(['momo_pay', 'pending', '1234567890', '0788123456', 'Jean Bosco'], [$payment->method, $payment->status, $payment->reference, $payment->sender_phone, $payment->sender_name]);
-        $this->assertSame('2026-10-19 09:30', $payment->paid_at->format('Y-m-d H:i'));
+        // 12:00 typed in Kigali is right now (10:00 UTC): accepted, and kept as the same moment.
+        $this->assertSame('2026-10-19 10:00', $payment->paid_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame('2026-10-19 12:00', $payment->paid_at->timezone('Africa/Kigali')->format('Y-m-d H:i'));
         // The admins are told at once by email and SMS, with the MoMo details.
         Notification::assertSentTo($this->admin, SubscriptionPaymentSubmitted::class, function ($notification, array $channels) {
             $mail = implode(' ', $notification->toMail($this->admin)->introLines);

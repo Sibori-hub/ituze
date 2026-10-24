@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lease;
+use Closure;
 use App\Models\MobileMoneyRequest;
 use App\Models\MoveOutInspection;
 use App\Models\Property;
@@ -372,7 +373,9 @@ class TenancyController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
             'method' => ['required', 'in:cash,bank_transfer,mobile_money,cheque,other'],
-            'paid_at' => ['required', 'date', 'before_or_equal:now'],
+            // Typed in Kigali time; the site runs on UTC. A phone clock a few minutes fast is fine.
+            'paid_at' => ['required', 'date', fn (string $attribute, mixed $value, Closure $fail) => SubscriptionController::kigaliTime((string) $value)->isAfter(now()->addMinutes(10))
+                ? $fail('The payment date cannot be in the future.') : null],
             'reference' => [
                 'required_if:method,bank_transfer,mobile_money,cheque',
                 'nullable',
@@ -421,7 +424,7 @@ class TenancyController extends Controller
                 'method' => $data['method'],
                 'reference' => $data['reference'] ?? null,
                 'notes' => $data['notes'] ?? null,
-                'paid_at' => $data['paid_at'],
+                'paid_at' => SubscriptionController::kigaliTime($data['paid_at'])->utc(),
             ]);
             $payment->update([
                 'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $payment->id),
@@ -446,7 +449,9 @@ class TenancyController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
             'method' => ['required', 'in:cash,bank_transfer,mobile_money,cheque,other'],
-            'paid_at' => ['required', 'date', 'before_or_equal:now'],
+            // Typed in Kigali time; the site runs on UTC. A phone clock a few minutes fast is fine.
+            'paid_at' => ['required', 'date', fn (string $attribute, mixed $value, Closure $fail) => SubscriptionController::kigaliTime((string) $value)->isAfter(now()->addMinutes(10))
+                ? $fail('The payment date cannot be in the future.') : null],
             'reference' => [
                 'required_if:method,bank_transfer,mobile_money,cheque',
                 'nullable',
@@ -515,7 +520,7 @@ class TenancyController extends Controller
                     'method' => $data['method'],
                     'reference' => $data['reference'] ?? null,
                     'notes' => $data['notes'] ?? null,
-                    'paid_at' => $data['paid_at'],
+                    'paid_at' => SubscriptionController::kigaliTime($data['paid_at'])->utc(),
                 ]);
                 $paymentIds[] = $payment->id;
             }
