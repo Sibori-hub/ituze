@@ -1,4 +1,5 @@
 import BrandLockup from '@/Components/BrandLockup';
+import ChatWidget from '@/Components/ChatWidget';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
 import InstallAppBanner, { isStandalone, promptInstall } from '@/Components/InstallAppBanner';
@@ -28,6 +29,7 @@ import {
     Wallet,
     Newspaper,
     Inbox,
+    MessagesSquare,
     AlertTriangle,
     Leaf,
 } from 'lucide-react';
@@ -54,6 +56,7 @@ const adminNavigation = [
     { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
     { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck },
     { name: 'Subscriptions', href: 'admin.subscriptions', icon: Wallet },
+    { name: 'Chats', href: 'admin.chats', icon: MessagesSquare, badge: 'unreadChats' },
     { name: 'Messages', href: 'admin.messages', icon: Inbox, badge: 'newMessages' },
     { name: 'Newsletter', href: 'admin.newsletter', icon: Newspaper },
     { name: 'All Users', href: 'admin.users', icon: UsersIcon },
@@ -357,9 +360,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </nav>
                             </div>
                         </footer>
+                        {/* Room so the chat button never covers the footer links. */}
+                        {user.role !== 'admin' && <div className="h-20 shrink-0" aria-hidden="true" />}
                     </main>
                 </div>
             </div>
+            {user.role !== 'admin' && <ChatWidget />}
         </div>
     );
 }

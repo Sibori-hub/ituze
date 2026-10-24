@@ -38,6 +38,15 @@ class HandleInertiaRequests extends Middleware
                 // Self-registered owners can add managers; a manager sees who they work for.
                 'canHireManagers' => (bool) $request->user()?->canHireManagers(),
                 'employer' => $request->user()?->isManager() ? $request->user()->employer?->only(['id', 'name']) : null,
+                // Chats with unread messages: for admins, how many people wrote;
+                // for everyone else, how many support replies they have not seen.
+                'unreadChats' => $request->user()?->isAdmin()
+                    ? \App\Models\ChatConversation::query()->whereHas('messages', fn ($query) => $query->where('from_support', false)->whereNull('read_at'))->count()
+                    : null,
+                'chatUnread' => $request->user() && ! $request->user()->isAdmin()
+                    ? \App\Models\ChatMessage::query()->where('from_support', true)->whereNull('read_at')
+                        ->whereHas('conversation', fn ($query) => $query->where('user_id', $request->user()->id))->count()
+                    : null,
                 // Admin menu badge: website messages not answered yet.
                 'newMessages' => $request->user()?->isAdmin()
                     ? \App\Models\ContactMessage::query()->whereNull('read_at')->count()

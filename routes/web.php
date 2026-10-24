@@ -506,6 +506,13 @@ Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete', 'ow
     Route::post('/properties/{property}/publish', [\App\Http\Controllers\AdvertiserController::class, 'publish'])->middleware('throttle:20,1')->name('publish');
 });
 
+// Chat with ITUZE support: open to every signed-in user, also while paused.
+Route::middleware(['auth'])->group(function () {
+    Route::get('/chat', [\App\Http\Controllers\ChatController::class, 'index'])->middleware('throttle:120,1,chat-read')->name('chat.index');
+    Route::post('/chat', [\App\Http\Controllers\ChatController::class, 'store'])->middleware('throttle:30,1,chat-send')->name('chat.store');
+    Route::get('/chat/files/{message}', [\App\Http\Controllers\ChatController::class, 'attachment'])->name('chat.attachment');
+});
+
 // Self-registered owners pay here; open even while the account is paused for non-payment.
 Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete'])->group(function () {
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'show'])->name('subscription.show');
@@ -520,6 +527,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/subscriptions', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'index'])->name('subscriptions');
     Route::post('/subscriptions/{payment}/approve', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'approve'])->name('subscriptions.approve');
     Route::post('/subscriptions/{payment}/reject', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'reject'])->name('subscriptions.reject');
+    Route::get('/chats', [\App\Http\Controllers\Admin\ChatController::class, 'index'])->name('chats');
+    Route::get('/chats/list', [\App\Http\Controllers\Admin\ChatController::class, 'list'])->middleware('throttle:120,1,admin-chat-list')->name('chats.list');
+    Route::get('/chats/{conversation}', [\App\Http\Controllers\Admin\ChatController::class, 'show'])->middleware('throttle:120,1,admin-chat-show')->name('chats.show');
+    Route::post('/chats/{conversation}', [\App\Http\Controllers\Admin\ChatController::class, 'store'])->middleware('throttle:60,1,admin-chat-send')->name('chats.store');
     Route::get('/messages', [\App\Http\Controllers\Admin\ContactMessageController::class, 'index'])->name('messages');
     Route::patch('/messages/{message}', [\App\Http\Controllers\Admin\ContactMessageController::class, 'update'])->name('messages.update');
     Route::delete('/messages/{message}', [\App\Http\Controllers\Admin\ContactMessageController::class, 'destroy'])->name('messages.destroy');

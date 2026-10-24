@@ -17,7 +17,7 @@ class PublicPropertyInquiryTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'property_inquiries', 'unit_images', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'users'] as $table) {
+        foreach (['chat_messages', 'chat_conversations', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'property_inquiries', 'unit_images', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'users'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -45,6 +45,22 @@ class PublicPropertyInquiryTest extends TestCase
             $table->timestamps();
         });
 
+        // The menu counts unread support chats.
+        Schema::create('chat_conversations', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->timestamp('last_message_at')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('chat_messages', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('conversation_id');
+            $table->unsignedBigInteger('sender_id')->nullable();
+            $table->boolean('from_support')->default(false);
+            $table->text('body')->nullable();
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
+        });
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
             $table->boolean('requires_listing')->default(false);

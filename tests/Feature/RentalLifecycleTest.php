@@ -31,7 +31,7 @@ class RentalLifecycleTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-01-01 10:00:00');
 
-        foreach (['contact_messages', 'ad_purchases', 'activity_logs', 'subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
+        foreach (['chat_messages', 'chat_conversations', 'contact_messages', 'ad_purchases', 'activity_logs', 'subscription_payments', 'move_out_inspections', 'rent_payments', 'rent_charges', 'leases', 'tenancies', 'tenants', 'units', 'property_units', 'unit_types', 'properties', 'property_inquiries', 'cells', 'users', 'sectors', 'districts', 'provinces'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -76,6 +76,22 @@ class RentalLifecycleTest extends TestCase
             $table->id();
             $table->string('name');
             $table->unsignedBigInteger('sector_id')->nullable();
+            $table->timestamps();
+        });
+        // The menu counts unread support chats.
+        Schema::create('chat_conversations', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->timestamp('last_message_at')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('chat_messages', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('conversation_id');
+            $table->unsignedBigInteger('sender_id')->nullable();
+            $table->boolean('from_support')->default(false);
+            $table->text('body')->nullable();
+            $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });
         Schema::create('properties', function (Blueprint $table) {
