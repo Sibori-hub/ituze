@@ -26,6 +26,7 @@ import {
     UserCog,
     Briefcase,
     Wallet,
+    Newspaper,
     AlertTriangle,
     Leaf,
 } from 'lucide-react';
@@ -52,6 +53,7 @@ const adminNavigation = [
     { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
     { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck },
     { name: 'Subscriptions', href: 'admin.subscriptions', icon: Wallet },
+    { name: 'Newsletter', href: 'admin.newsletter', icon: Newspaper },
     { name: 'All Users', href: 'admin.users', icon: UsersIcon },
     { name: 'Properties', href: 'properties.index', icon: Building2 },
     { name: 'Tenants', href: 'tenants.index', icon: UsersIcon },

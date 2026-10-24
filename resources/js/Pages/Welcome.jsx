@@ -1,6 +1,7 @@
 import { Head, InfiniteScroll, Link, router } from '@inertiajs/react';
 import BrandLockup from '@/Components/BrandLockup';
 import ContactSection from '@/Components/ContactSection';
+import NewsletterSection from '@/Components/NewsletterSection';
 import InstallAppBanner from '@/Components/InstallAppBanner';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import LegalModal from '@/Components/LegalModal';
@@ -162,6 +163,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     const [menuOpen, setMenuOpen] = useState(false);
     const [inquiryOpen, setInquiryOpen] = useState(false);
     const [legalDoc, setLegalDoc] = useState(null);
+    const [creditsOpen, setCreditsOpen] = useState(false);
     const [searchForm, setSearchForm] = useState({
         search: searchFilters.search || '',
         category: searchFilters.category || '',
@@ -418,15 +420,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     </button>
                                 ))}
                             </div>
-                            <p className="mt-4 text-center text-[11px] text-slate-500">
-                                {t('City photos from Wikimedia Commons:')}{' '}
-                                {cities.map((city, index) => (
-                                    <span key={city.name}>
-                                        {index > 0 && ' · '}
-                                        <a href={city.source} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">{city.name}</a> ({city.credit})
-                                    </span>
-                                ))}
-                            </p>
                         </div>
                     </section>
 
@@ -458,6 +451,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </div>
                     </section>
                     <ContactSection phone={companyPhone} phoneDisplay={companyPhoneDisplay} email={companyEmail} address={companyAddress} mapUrl={companyMapUrl} whatsappUrl={whatsappUrl} />
+                    <NewsletterSection />
                 </main>
 
                 <footer className="relative bg-[#063f67] text-white">
@@ -480,7 +474,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('For owners')}</h3><div className="mt-5 space-y-3 text-sm text-white/70"><button type="button" className="block transition hover:text-white" onClick={() => setInquiryOpen(true)}>{t('Inquiry')}</button>{canLogin && <Link href={route('login')} className="block transition hover:text-white">{t('Owner login')}</Link>}</div></div>
                             <div><h3 className="text-sm font-bold uppercase tracking-wider text-[#f0a052]">{t('Contact us')}</h3><div className="mt-5 space-y-4 text-sm text-white/70"><a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex gap-3 transition hover:text-white"><MapPin size={17} className="mt-0.5 shrink-0 text-[#f0a052]" /><span>{companyAddress}</span></a><a href={`tel:${companyPhone}`} className="flex items-center gap-3 transition hover:text-white"><Phone size={17} className="text-[#f0a052]" /> {companyPhoneDisplay}</a><a href={`mailto:info@qraltd.com`} className="flex items-center gap-3 transition hover:text-white"><Mail size={17} className="text-[#f0a052]" /> {companyEmail}</a></div></div>
                         </div>
-                        <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
+                        <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row"><span>© {new Date().getFullYear()} ITUZE GREEN PLATFORM. {t('All rights reserved.')}</span><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><button type="button" onClick={() => setLegalDoc('terms')} className="transition hover:text-white">{t('Terms and Conditions')}</button><button type="button" onClick={() => setLegalDoc('privacy')} className="transition hover:text-white">{t('Privacy Policy')}</button><button type="button" onClick={() => setCreditsOpen(true)} className="transition hover:text-white">{t('Photo credits')}</button><span>{t('Trusted property listings in Rwanda.')}</span></div></div>
                     </div>
                     <a href={whatsappUrl} target="_blank" rel="noreferrer" aria-label={t('Chat with Ituze on WhatsApp')} className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-xl shadow-black/20 transition hover:scale-105 hover:bg-[#1fba59] sm:bottom-8 sm:right-10">
                         <MessageCircle size={27} />
@@ -489,6 +483,22 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
             </div>
             {inquiryOpen && <InquiryPanel onClose={() => setInquiryOpen(false)} />}
             {legalDoc && <LegalModal document={legalDoc} onClose={() => setLegalDoc(null)} />}
+            {creditsOpen && (
+                <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="credits-title" onClick={() => setCreditsOpen(false)} onKeyDown={(e) => e.key === 'Escape' && setCreditsOpen(false)}>
+                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h2 id="credits-title" className="text-lg font-bold text-slate-900">{t('Photo credits')}</h2>
+                        <p className="mt-1 text-sm text-slate-600">{t('City photos from Wikimedia Commons:')}</p>
+                        <ul className="mt-4 space-y-2 text-sm text-slate-700">
+                            {cities.map((city) => (
+                                <li key={city.name}>
+                                    <a href={city.source} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0E3B2E] underline underline-offset-2">{city.name}</a> — {city.credit}
+                                </li>
+                            ))}
+                        </ul>
+                        <button type="button" autoFocus onClick={() => setCreditsOpen(false)} className="mt-6 min-h-11 w-full rounded-xl bg-[#0E3B2E] text-sm font-semibold text-white hover:bg-[#124B3A] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/30">{t('Close')}</button>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

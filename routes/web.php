@@ -129,6 +129,15 @@ Route::post('/spaces/{property}/inquiries', [PublicPropertyController::class, 'i
 Route::post('/contact', [\App\Http\Controllers\ContactMessageController::class, 'store'])
     ->middleware('throttle:10,10,contact-form')
     ->name('contact.store');
+Route::post('/newsletter', [\App\Http\Controllers\NewsletterController::class, 'subscribe'])
+    ->middleware('throttle:10,10,newsletter-form')
+    ->name('newsletter.subscribe');
+Route::get('/newsletter/confirm/{token}', [\App\Http\Controllers\NewsletterController::class, 'confirm'])
+    ->middleware('throttle:20,1,newsletter-link')
+    ->name('newsletter.confirm');
+Route::get('/newsletter/unsubscribe/{token}', [\App\Http\Controllers\NewsletterController::class, 'unsubscribe'])
+    ->middleware('throttle:20,1,newsletter-link')
+    ->name('newsletter.unsubscribe');
 Route::post('/inquiries/{inquiry}/read', [PublicPropertyController::class, 'markRead'])
     ->middleware(['auth', 'verified', 'profile.complete', 'owner.approved:owner,advertiser'])
     ->name('inquiries.read');
@@ -507,6 +516,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/subscriptions', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'index'])->name('subscriptions');
     Route::post('/subscriptions/{payment}/approve', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'approve'])->name('subscriptions.approve');
     Route::post('/subscriptions/{payment}/reject', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'reject'])->name('subscriptions.reject');
+    Route::get('/newsletter', [\App\Http\Controllers\Admin\NewsletterController::class, 'index'])->name('newsletter');
+    Route::post('/newsletter/send', [\App\Http\Controllers\Admin\NewsletterController::class, 'send'])->middleware('throttle:5,1,newsletter-send')->name('newsletter.send');
+    Route::get('/newsletter/export', [\App\Http\Controllers\Admin\NewsletterController::class, 'export'])->name('newsletter.export');
+    Route::delete('/newsletter/subscribers/{subscriber}', [\App\Http\Controllers\Admin\NewsletterController::class, 'destroy'])->name('newsletter.destroy');
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals');
     Route::post('/approvals/{user}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{user}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
