@@ -2,7 +2,7 @@ import BrandLockup from '@/Components/BrandLockup';
 import ChatWidget, { openChat } from '@/Components/ChatWidget';
 import Dropdown from '@/Components/Dropdown';
 import FlashToast from '@/Components/FlashToast';
-import InstallAppBanner, { isStandalone, promptInstall } from '@/Components/InstallAppBanner';
+import InstallAppBanner, { INSTALL_APP_ENABLED, isStandalone, promptInstall } from '@/Components/InstallAppBanner';
 import InlineAlert from '@/Components/InlineAlert';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import SuccessModal from '@/Components/SuccessModal';
@@ -281,7 +281,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     >
                                         {t('Profile')}
                                     </Dropdown.Link>
-                                    {!isStandalone() && (
+                                    {INSTALL_APP_ENABLED && !isStandalone() && (
                                         <button type="button" onClick={async () => { if (!(await promptInstall())) window.dispatchEvent(new Event('ituze:show-install')); }}
                                             className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition hover:bg-gray-100 focus:bg-gray-100 focus:outline-none">
                                             {t('Install app')}

@@ -33,7 +33,17 @@ export async function promptInstall() {
  * offers one-tap install, the button installs; otherwise the banner shows
  * the menu steps for that browser. Hidden once installed or dismissed.
  */
-export default function InstallAppBanner({ className = '', force = false }) {
+/**
+ * Switch for every "Install the ITUZE app" offer (this banner and the menu item).
+ * Off for now, until the app is presented; set to true to show them again.
+ */
+export const INSTALL_APP_ENABLED = false;
+
+export default function InstallAppBanner(props) {
+    return INSTALL_APP_ENABLED ? <InstallAppOffer {...props} /> : null;
+}
+
+function InstallAppOffer({ className = '', force = false }) {
     const { t } = useTranslation();
     const [canInstall, setCanInstall] = useState(Boolean(installOffer()));
     const [hidden, setHidden] = useState(true);
