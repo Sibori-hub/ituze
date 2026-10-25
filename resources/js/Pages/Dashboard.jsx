@@ -556,37 +556,8 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-5">
-                    {/* Activity */}
-                    <section aria-labelledby="admin-activity-title" className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04] lg:col-span-3">
-                        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
-                            <h2 id="admin-activity-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900">
-                                <span className="relative flex h-2.5 w-2.5" aria-hidden="true"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>
-                                {t('Latest activity')}
-                            </h2>
-                            <span className="text-xs text-gray-500">{t('Across all buildings')}</span>
-                        </div>
-                        {(overview.recentActivity || []).length ? (
-                            <ol className="divide-y divide-gray-100">
-                                {overview.recentActivity.map((item) => (
-                                    <li key={item.id} className="flex gap-3 px-5 py-3 transition hover:bg-gray-50/70">
-                                        <span className={`mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full text-[11px] font-bold ${item.role === 'manager' ? 'bg-sky-100 text-sky-900' : item.role === 'admin' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}`} aria-hidden="true">
-                                            {(item.actor || '?').split(' ').map((part) => part[0]).slice(0, 2).join('')}
-                                        </span>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm text-gray-800"><span className="font-semibold text-gray-900">{item.actor || t('Someone')}</span> · {item.description}</p>
-                                            <p className="text-xs text-gray-500">{when(item.at)}</p>
-                                        </div>
-                                        {item.amount !== null && item.amount !== undefined && <span className="shrink-0 self-center text-sm font-semibold tabular-nums text-emerald-800">{money(item.amount)}</span>}
-                                    </li>
-                                ))}
-                            </ol>
-                        ) : (
-                            <p className="px-5 py-10 text-center text-sm text-gray-500">{t('Activity will appear here as owners, managers and admins work.')}</p>
-                        )}
-                    </section>
-
                     {/* Occupancy and shortcuts */}
-                    <div className="space-y-5 lg:col-span-2">
+                    <div className="grid items-start gap-5 lg:col-span-5 lg:grid-cols-2">
                         <UtilityCard snapshot={overview.utilitySnapshot} locale={locale} />
                         <section aria-labelledby="admin-occupancy-title" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6">
                             <div className="flex items-start justify-between gap-3">

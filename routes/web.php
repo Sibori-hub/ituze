@@ -269,20 +269,6 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                     'pending' => $pendingApprovals->count(),
                     'managers' => \App\Models\User::query()->where('role', 'manager')->count(),
                 ],
-                'recentActivity' => \App\Models\ActivityLog::query()
-                    ->with(['actor:id,name,role', 'property:id,name'])
-                    ->latest('created_at')
-                    ->latest('id')
-                    ->take(8)
-                    ->get()
-                    ->map(fn ($log) => [
-                        'id' => $log->id,
-                        'at' => $log->created_at?->toIso8601String(),
-                        'actor' => $log->actor?->name,
-                        'role' => $log->actor?->role,
-                        'description' => $log->description,
-                        'amount' => $log->amount,
-                    ]),
                 'subscriptionMoney' => [
                     'month' => (float) (clone $approvedSubscriptionPayments)->where('reviewed_at', '>=', now()->startOfMonth())->sum('amount'),
                     'total' => (float) (clone $approvedSubscriptionPayments)->sum('amount'),
