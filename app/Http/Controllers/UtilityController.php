@@ -57,8 +57,12 @@ class UtilityController extends Controller
         $recorded = WasteCollection::query()->whereIn('property_id', $ids)
             ->whereBetween('scheduled_on', [now()->subDays(45)->toDateString(), now()->addDays(31)->toDateString()])
             ->get()->keyBy(fn ($collection) => $collection->property_id.'@'.$collection->scheduled_on->toDateString());
+        // The bins of the last collection of each building, to fill in the next one.
+        $lastBins = WasteCollection::query()->whereIn('property_id', $ids)->where('status', 'collected')
+            ->where(fn ($query) => $query->where('biodegradable_bins', '>', 0)->orWhere('non_biodegradable_bins', '>', 0))
+            ->orderByDesc('scheduled_on')->get()->unique('property_id')->keyBy('property_id');
         $planned = $schedules->flatMap(fn (WasteSchedule $schedule) => collect($schedule->datesBetween(CarbonImmutable::today()->subDays(30), CarbonImmutable::today()->addDays(30)))
-            ->map(function (CarbonImmutable $date) use ($schedule, $recorded) {
+            ->map(function (CarbonImmutable $date) use ($schedule, $recorded, $lastBins) {
                 $done = $recorded->get($schedule->property_id.'@'.$date->toDateString());
 
                 return [
@@ -69,6 +73,8 @@ class UtilityController extends Controller
                     'cost' => (float) $schedule->cost_per_collection,
                     'status' => $done?->status,
                     'collection_id' => $done?->id,
+                    'bins' => $done?->status === 'collected' ? $done->bins() : null,
+                    'last_bins' => $lastBins->get($schedule->property_id)?->bins(),
                     'is_past' => $date->lte(CarbonImmutable::today()),
                 ];
             }))->sortBy('date')->values();
@@ -251,9 +257,20 @@ class UtilityController extends Controller
             'status' => ['required', Rule::in(['collected', 'missed'])],
             'cost' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'notes' => ['nullable', 'string', 'max:500'],
+            // Bins taken: ibibora (biodegradable) and ibitabora (non-biodegradable), each with its size.
+            'biodegradable_bins' => ['nullable', 'integer', 'min:0', 'max:500'],
+            'biodegradable_bin_kg' => ['nullable', 'numeric', 'min:1', 'max:5000', 'required_unless:biodegradable_bins,0,null'],
+            'non_biodegradable_bins' => ['nullable', 'integer', 'min:0', 'max:500'],
+            'non_biodegradable_bin_kg' => ['nullable', 'numeric', 'min:1', 'max:5000', 'required_unless:non_biodegradable_bins,0,null'],
         ], [
             'scheduled_on.before_or_equal' => 'A collection can only be marked on or after its day.',
+            'biodegradable_bin_kg.required_unless' => 'Enter the size of one biodegradable bin in kg.',
+            'non_biodegradable_bin_kg.required_unless' => 'Enter the size of one non-biodegradable bin in kg.',
         ]);
+        $collected = $data['status'] === 'collected';
+        if ($collected && (int) ($data['biodegradable_bins'] ?? 0) + (int) ($data['non_biodegradable_bins'] ?? 0) === 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['biodegradable_bins' => 'Enter how many bins were taken (biodegradable, non-biodegradable or both).']);
+        }
         $property = $this->writableProperty($request, (int) $data['property_id']);
 
         WasteCollection::updateOrCreate(
@@ -264,6 +281,10 @@ class UtilityController extends Controller
                 'cost' => $data['status'] === 'collected' ? (float) ($data['cost'] ?? 0) : 0,
                 'notes' => $data['notes'] ?? null,
                 'recorded_by' => $request->user()->id,
+                'biodegradable_bins' => $collected ? (int) ($data['biodegradable_bins'] ?? 0) : 0,
+                'biodegradable_bin_kg' => $collected && ($data['biodegradable_bins'] ?? 0) ? $data['biodegradable_bin_kg'] : null,
+                'non_biodegradable_bins' => $collected ? (int) ($data['non_biodegradable_bins'] ?? 0) : 0,
+                'non_biodegradable_bin_kg' => $collected && ($data['non_biodegradable_bins'] ?? 0) ? $data['non_biodegradable_bin_kg'] : null,
             ],
         );
         ActivityLogger::record(

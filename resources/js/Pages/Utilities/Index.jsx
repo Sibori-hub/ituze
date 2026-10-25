@@ -313,7 +313,15 @@ function CollectionForm({ item, onClose, money, formatDate, t }) {
         status: 'collected',
         cost: item?.cost ?? '',
         notes: '',
+        // Bins taken; filled in from the last collection, which is usually the same.
+        biodegradable_bins: item?.last_bins?.biodegradable_bins ?? '',
+        biodegradable_bin_kg: item?.last_bins?.biodegradable_bin_kg ?? 50,
+        non_biodegradable_bins: item?.last_bins?.non_biodegradable_bins ?? '',
+        non_biodegradable_bin_kg: item?.last_bins?.non_biodegradable_bin_kg ?? 50,
     });
+    const kgOf = (bins, size) => (Number(bins) || 0) * (Number(size) || 0);
+    const bioKg = kgOf(form.data.biodegradable_bins, form.data.biodegradable_bin_kg);
+    const otherKg = kgOf(form.data.non_biodegradable_bins, form.data.non_biodegradable_bin_kg);
     const submit = event => {
         event.preventDefault();
         form.post(route('utilities.collections.store'), { preserveScroll: true, onSuccess: onClose });
@@ -336,6 +344,37 @@ function CollectionForm({ item, onClose, money, formatDate, t }) {
                             ))}
                         </div>
                     </fieldset>
+                    {form.data.status === 'collected' && (
+                        <fieldset className="mt-4">
+                            <legend className="text-sm font-semibold text-gray-800">{t('Bins taken')}</legend>
+                            <div className="mt-2 space-y-2">
+                                {[
+                                    ['biodegradable', t('Biodegradable (ibibora)'), t('Food, peelings, leaves, garden waste'), 'bg-emerald-50 ring-emerald-200 text-emerald-900', bioKg],
+                                    ['non_biodegradable', t('Non-biodegradable (ibitabora)'), t('Plastic, glass, metal, nylon'), 'bg-sky-50 ring-sky-200 text-sky-900', otherKg],
+                                ].map(([key, label, hint, tone, kg]) => (
+                                    <div key={key} className={`rounded-xl p-3 ring-1 ${tone}`}>
+                                        <p className="text-sm font-semibold">{label}</p>
+                                        <p className="text-xs opacity-80">{hint}</p>
+                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                                            <label className="sr-only" htmlFor={`${key}-bins`}>{t('Number of bins')}</label>
+                                            <input id={`${key}-bins`} type="number" inputMode="numeric" min="0" max="500" step="1" placeholder="0"
+                                                value={form.data[`${key}_bins`]} onChange={event => form.setData(`${key}_bins`, event.target.value)}
+                                                className="w-20 rounded-lg border-gray-300 bg-white text-center text-sm font-semibold text-gray-900 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]" />
+                                            <span className="text-gray-700">{t('bins of')}</span>
+                                            <label className="sr-only" htmlFor={`${key}-kg`}>{t('Size of one bin (kg)')}</label>
+                                            <input id={`${key}-kg`} type="number" inputMode="decimal" min="1" max="5000" step="0.5"
+                                                value={form.data[`${key}_bin_kg`]} onChange={event => form.setData(`${key}_bin_kg`, event.target.value)}
+                                                className="w-20 rounded-lg border-gray-300 bg-white text-center text-sm font-semibold text-gray-900 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]" />
+                                            <span className="text-gray-700">kg</span>
+                                            <span className="ml-auto text-xs font-semibold tabular-nums">= {kg.toLocaleString()} kg</span>
+                                        </div>
+                                        <InputError message={form.errors[`${key}_bins`] || form.errors[`${key}_bin_kg`]} className="mt-1" />
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="mt-2 text-right text-sm font-bold text-gray-900">{t('Total: :kg kg', { kg: (bioKg + otherKg).toLocaleString() })}</p>
+                        </fieldset>
+                    )}
                     {form.data.status === 'collected' && (
                         <div className="mt-4">
                             <label htmlFor="collection-cost" className="text-sm font-semibold text-gray-800">{t('Amount paid (RWF)')}</label>
@@ -568,7 +607,17 @@ export default function UtilitiesIndex({
                                         <ul className="mt-2 divide-y divide-gray-100">
                                             {doneCollections.map(item => (
                                                 <li key={`${item.property.id}-${item.date}`} className="flex items-center justify-between gap-2 py-2 text-sm">
-                                                    <span className="text-gray-800">{formatDate(item.date)} · {item.property.name}</span>
+                                                    <span className="min-w-0 text-gray-800">
+                                                        {formatDate(item.date)} · {item.property.name}
+                                                        {item.bins && item.bins.total_kg > 0 && (
+                                                            <span className="block text-xs text-gray-600">
+                                                                {[
+                                                                    item.bins.biodegradable_bins ? t(':count × :kg kg ibibora', { count: item.bins.biodegradable_bins, kg: item.bins.biodegradable_bin_kg }) : null,
+                                                                    item.bins.non_biodegradable_bins ? t(':count × :kg kg ibitabora', { count: item.bins.non_biodegradable_bins, kg: item.bins.non_biodegradable_bin_kg }) : null,
+                                                                ].filter(Boolean).join(' · ')} · <span className="font-semibold">{t('Total: :kg kg', { kg: item.bins.total_kg.toLocaleString() })}</span>
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                     <span className="flex items-center gap-2">
                                                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.status === 'collected' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{item.status === 'collected' ? t('Collected') : t('Missed')}</span>
                                                         {canEdit && item.collection_id && (

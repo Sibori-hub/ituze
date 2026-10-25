@@ -112,9 +112,15 @@ class UtilityManagementTest extends TestCase
         $dates = collect($schedule->datesBetween(CarbonImmutable::parse('2026-10-01'), CarbonImmutable::parse('2026-10-31')))->map->toDateString();
         $this->assertSame(['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'], $dates->all());
 
-        $this->actingAs($this->owner)->post(route('utilities.collections.store'), [
-            'property_id' => $this->property->id, 'waste_schedule_id' => $schedule->id, 'scheduled_on' => '2026-10-05', 'status' => 'collected', 'cost' => 5000,
+        // A collection records the bins taken: ibibora (biodegradable) and ibitabora (non-biodegradable).
+        $collection = ['property_id' => $this->property->id, 'waste_schedule_id' => $schedule->id, 'scheduled_on' => '2026-10-05', 'status' => 'collected', 'cost' => 5000];
+        $this->actingAs($this->owner)->post(route('utilities.collections.store'), $collection)->assertSessionHasErrors('biodegradable_bins');
+        $this->post(route('utilities.collections.store'), [...$collection, 'biodegradable_bins' => 2])->assertSessionHasErrors('biodegradable_bin_kg');
+        $this->post(route('utilities.collections.store'), [
+            ...$collection, 'biodegradable_bins' => 2, 'biodegradable_bin_kg' => 50, 'non_biodegradable_bins' => 1, 'non_biodegradable_bin_kg' => 50,
         ])->assertSessionHasNoErrors();
+        $done = WasteCollection::query()->whereDate('scheduled_on', '2026-10-05')->firstOrFail();
+        $this->assertSame([100.0, 50.0, 150.0], [$done->biodegradableKg(), $done->nonBiodegradableKg(), $done->bins()['total_kg']]);
         $this->actingAs($this->owner)->post(route('utilities.collections.store'), [
             'property_id' => $this->property->id, 'scheduled_on' => '2026-10-12', 'status' => 'missed', 'cost' => 5000,
         ])->assertSessionHasNoErrors();
