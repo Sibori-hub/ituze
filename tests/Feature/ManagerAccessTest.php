@@ -240,6 +240,15 @@ class ManagerAccessTest extends TestCase
             ->where('managers.0.assignments.1.property_unit_id', $this->offices->id)
             ->where('activity.data.0.actor.name', 'Jean Manager'));
 
+        // Utilities of a building given whole to a manager are the manager's job: the owner no longer sees it there.
+        $this->get(route('utilities.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('properties', fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === collect([$this->partial->id, $this->other->id])->sort()->values()->all()));
+        $this->actingAs($manager)->get(route('utilities.index'))->assertInertia(fn (Assert $page) => $page
+            ->has('properties', 1)->where('properties.0.id', $this->whole->id));
+        $manager->forceFill(['disabled_at' => now()])->save();
+        $this->actingAs($this->owner)->get(route('utilities.index'))->assertInertia(fn (Assert $page) => $page->has('properties', 3));
+        $manager->forceFill(['disabled_at' => null])->save();
+
         // The owner's own actions are not listed: the history is about the managers.
         ActivityLog::query()->whereKey($log->id)->update(['actor_id' => $this->owner->id]);
         $this->get(route('managers.index'))->assertInertia(fn (Assert $page) => $page
