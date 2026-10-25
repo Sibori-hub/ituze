@@ -167,9 +167,13 @@ class RentalLifecycleTest extends TestCase
             $table->string('name');
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
+            $table->string('gender', 10)->nullable();
+            $table->string('marital_status', 20)->nullable();
+            $table->string('photo')->nullable();
             $table->string('company_name')->nullable();
             $table->string('identity_type')->nullable();
             $table->string('identity_number')->nullable();
+            $table->string('identity_document')->nullable();
             $table->string('tax_identification_number')->nullable();
             $table->string('registration_number')->nullable();
             $table->string('contact_person')->nullable();
@@ -994,6 +998,7 @@ class RentalLifecycleTest extends TestCase
 
     public function test_tenant_creation_validates_identity_phone_and_location_hierarchy(): void
     {
+        Storage::fake('local');
         [$property, $owner] = $this->makeUnitAndTenant();
         $location = $this->tenantLocationData();
         $otherProvince = Province::create(['name' => 'Eastern Province']);
@@ -1003,6 +1008,10 @@ class RentalLifecycleTest extends TestCase
             'type' => 'individual',
             'first_name' => 'Aline',
             'last_name' => 'Tenant',
+            'gender' => 'female',
+            'marital_status' => 'single',
+            'photo' => UploadedFile::fake()->image('aline.jpg'),
+            'identity_document' => UploadedFile::fake()->create('id.pdf', 100, 'application/pdf'),
             'identity_type' => 'national_id',
             'identity_number' => '123456789012345',
             'email' => 'aline-new@example.com',
@@ -1037,7 +1046,23 @@ class RentalLifecycleTest extends TestCase
             'district_id' => $location['district_id'],
             'sector_id' => $location['sector_id'],
             'address' => 'Kigali City, Nyarugenge, Nyarugenge',
+            'gender' => 'female',
+            'marital_status' => 'single',
         ]);
+        // The photo and the ID copy are private files, opened only through a checked link.
+        $created = Tenant::query()->where('email', 'aline-new@example.com')->firstOrFail();
+        Storage::disk('local')->assertExists([$created->photo, $created->identity_document]);
+        $this->assertArrayNotHasKey('identity_document', $created->toArray());
+        $this->get($created->identity_document_url)->assertOk();
+        $this->actingAs(User::factory()->create(['role' => 'owner', 'status' => 'approved', 'profile_completed' => true]))
+            ->get($created->identity_document_url)->assertNotFound();
+        $this->actingAs($owner);
+
+        // The photo, gender, marital status and ID copy are required for a new tenant.
+        $this->post(route('tenants.store'), array_diff_key($payload, array_flip(['photo', 'identity_document', 'gender', 'marital_status'])))
+            ->assertSessionHasErrors(['photo', 'identity_document', 'gender', 'marital_status']);
+        $payload['photo'] = UploadedFile::fake()->image('aline.jpg');
+        $payload['identity_document'] = UploadedFile::fake()->create('id.pdf', 100, 'application/pdf');
 
         $payload['email'] = 'property-tenant@example.com';
         $payload['identity_number'] = '2234567890123456';
@@ -1827,6 +1852,10 @@ class RentalLifecycleTest extends TestCase
             'type' => 'individual',
             'first_name' => 'Eric',
             'last_name' => 'Habimana',
+            'gender' => 'male',
+            'marital_status' => 'married',
+            'photo' => UploadedFile::fake()->image('eric.jpg'),
+            'identity_document' => UploadedFile::fake()->image('eric-id.jpg'),
             'identity_type' => 'national_id',
             'identity_number' => '1199080012345678',
             'email' => 'eric.tenant@example.com',

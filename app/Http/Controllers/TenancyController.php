@@ -14,6 +14,7 @@ use App\Models\Tenant;
 use App\Models\Unit;
 use App\Services\RentScheduleService;
 use App\Services\TenantLocationService;
+use App\Support\TenantProfile;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -63,10 +64,13 @@ class TenancyController extends Controller
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['required', 'regex:/^(078|079|072|073)[0-9]{7}$/'],
-        ]);
+            ...TenantProfile::rules(creating: true),
+        ], TenantProfile::messages());
+        unset($data['photo'], $data['identity_document']);
 
-        Tenant::create([
+        $tenant = Tenant::create([
             ...$data,
+            ...TenantProfile::details($data),
             'name' => $data['type'] === 'company'
                 ? $data['company_name']
                 : trim($data['first_name'].' '.$data['last_name']),
@@ -76,6 +80,7 @@ class TenancyController extends Controller
             'created_by' => $request->user()->id,
             'status' => 'active',
         ]);
+        TenantProfile::storeFiles($request, $tenant);
 
         return back()->with('success', 'Tenant created successfully.');
     }

@@ -15,6 +15,8 @@ class Tenant extends Model
         'name',
         'first_name',
         'last_name',
+        'gender',
+        'marital_status',
         'company_name',
         'identity_type',
         'identity_number',
@@ -30,6 +32,21 @@ class Tenant extends Model
         'sector_id',
         'status',
     ];
+
+    // File paths stay on the server; pages get links that check access.
+    protected $hidden = ['photo', 'identity_document'];
+
+    protected $appends = ['photo_url', 'identity_document_url'];
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        return $this->photo ? route('tenants.files', [$this->id, 'photo']).'?v='.substr(md5($this->photo), 0, 8) : null;
+    }
+
+    public function getIdentityDocumentUrlAttribute(): ?string
+    {
+        return $this->identity_document ? route('tenants.files', [$this->id, 'identity-document']) : null;
+    }
 
     public function province()
     {

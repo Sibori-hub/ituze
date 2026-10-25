@@ -5,6 +5,7 @@ import { ArrowLeft, Building2, CalendarDays, Edit2, FileText, KeyRound, Mail, Ma
 import { useState } from 'react';
 import { useTranslation } from '@/localization';
 import TenantLocationFields from '@/Components/TenantLocationFields';
+import { TenantDocumentPicker, TenantPhotoPicker } from '@/Components/TenantUploads';
 import AssignUnitForm from '@/Components/AssignUnitForm';
 import PaymentRecordDetails from '@/Components/PaymentRecordDetails';
 
@@ -31,6 +32,10 @@ export default function TenantShow({ tenant, availableUnits }) {
         type: tenant.type,
         first_name: tenant.first_name || (tenant.type === 'individual' ? nameParts[0] || '' : ''),
         last_name: tenant.last_name || (tenant.type === 'individual' ? nameParts.slice(1).join(' ') : ''),
+        gender: tenant.gender || '',
+        marital_status: tenant.marital_status || '',
+        photo: null,
+        identity_document: null,
         company_name: tenant.company_name || (tenant.type === 'company' ? tenant.name : ''),
         tax_identification_number: tenant.tax_identification_number || '',
         contact_person: tenant.contact_person || '',
@@ -44,7 +49,8 @@ export default function TenantShow({ tenant, availableUnits }) {
     });
     const updateTenant = (event) => {
         event.preventDefault();
-        profile.put(route('tenants.update', tenant.id), {
+        profile.transform((data) => ({ ...data, _method: 'put' }));
+        profile.post(route('tenants.update', tenant.id), {
             preserveScroll: true,
             onSuccess: () => setEditing(false),
         });
@@ -61,9 +67,15 @@ export default function TenantShow({ tenant, availableUnits }) {
                 <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                     <div className="flex flex-col gap-5 border-b border-gray-100 bg-gradient-to-r from-[#0E3B2E]/5 to-white p-6 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0E3B2E]/10 text-[#0E3B2E]">
-                                {tenant.type === 'company' ? <Building2 size={25} /> : <UserRound size={25} />}
-                            </div>
+                            {tenant.photo_url ? (
+                                <a href={tenant.photo_url} target="_blank" rel="noreferrer" className="flex-none rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/25">
+                                    <img src={tenant.photo_url} alt={t('Profile photo')} className="h-16 w-16 rounded-full object-cover ring-4 ring-white shadow-md" />
+                                </a>
+                            ) : (
+                                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0E3B2E]/10 text-[#0E3B2E]">
+                                    {tenant.type === 'company' ? <Building2 size={25} /> : <UserRound size={25} />}
+                                </div>
+                            )}
                             <div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h1 className="font-[Sora] text-2xl font-bold text-gray-900">{tenant.name}</h1>
@@ -90,6 +102,12 @@ export default function TenantShow({ tenant, availableUnits }) {
                             {profile.data.type === 'individual' ? <>
                                 <label className="text-sm font-medium text-gray-700">{t('First name')}<input required value={profile.data.first_name} onChange={event => profile.setData('first_name', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                                 <label className="text-sm font-medium text-gray-700">{t('Last name')}<input required value={profile.data.last_name} onChange={event => profile.setData('last_name', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
+                                <label className="text-sm font-medium text-gray-700">{t('Gender')}
+                                    <select value={profile.data.gender} onChange={event => profile.setData('gender', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200"><option value="">—</option><option value="female">{t('Female')}</option><option value="male">{t('Male')}</option></select>
+                                </label>
+                                <label className="text-sm font-medium text-gray-700">{t('Marital status')}
+                                    <select value={profile.data.marital_status} onChange={event => profile.setData('marital_status', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200"><option value="">—</option>{['single', 'married', 'divorced', 'widowed'].map((status) => <option key={status} value={status}>{t(status.charAt(0).toUpperCase() + status.slice(1))}</option>)}</select>
+                                </label>
                             </> : <>
                                 <label className="text-sm font-medium text-gray-700">{t('Company name')}<input required value={profile.data.company_name} onChange={event => profile.setData('company_name', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                                 <label className="text-sm font-medium text-gray-700">{t('Company TIN')}<input required value={profile.data.tax_identification_number} onChange={event => profile.setData('tax_identification_number', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
@@ -102,6 +120,15 @@ export default function TenantShow({ tenant, availableUnits }) {
                             <label className="text-sm font-medium text-gray-700">{t('Email')}<input type="email" required value={profile.data.email} onChange={event => profile.setData('email', event.target.value)} className="mt-1.5 w-full rounded-xl border-gray-200" /></label>
                             <label className="text-sm font-medium text-gray-700">{t('Phone')}<input required type="tel" value={profile.data.phone} maxLength={10} inputMode="numeric" pattern="(078|079|072|073)[0-9]{7}" onChange={event => profile.setData('phone', event.target.value.replace(/\D/g, '').slice(0, 10))} className="mt-1.5 w-full rounded-xl border-gray-200" /><span className="mt-1 block text-xs font-normal text-gray-500">{t('Enter 10 digits starting with 078, 079, 072, or 073.')}</span></label>
                             <TenantLocationFields data={profile.data} setData={profile.setData} errors={profile.errors} t={t} />
+                            <div className="grid gap-5 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 sm:col-span-2 sm:grid-cols-[9rem_1fr] lg:col-span-3">
+                                <TenantPhotoPicker id="edit-tenant-photo" file={profile.data.photo} onChange={(file) => profile.setData('photo', file)} error={profile.errors.photo} />
+                                <div>
+                                    <TenantDocumentPicker id="edit-tenant-identity-document"
+                                        label={profile.data.identity_type === 'passport' ? t('Passport photo page') : t('Photo or scan of the ID card')}
+                                        file={profile.data.identity_document} onChange={(file) => profile.setData('identity_document', file)} error={profile.errors.identity_document} />
+                                    <p className="mt-2 text-xs text-gray-500">{t('Leave empty to keep the current files.')}</p>
+                                </div>
+                            </div>
                             {Object.values(profile.errors).length > 0 && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 sm:col-span-2 lg:col-span-3">{Object.values(profile.errors)[0]}</p>}
                             <div className="flex justify-end gap-2 sm:col-span-2 lg:col-span-3">
                                 <button type="button" onClick={() => setEditing(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700">{t('Cancel')}</button>
@@ -111,7 +138,11 @@ export default function TenantShow({ tenant, availableUnits }) {
                     ) : (
                         <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
                             {tenant.type === 'individual' ? (
-                                <Detail label={t('Full name')} value={[tenant.first_name, tenant.last_name].filter(Boolean).join(' ') || tenant.name} />
+                                <>
+                                    <Detail label={t('Full name')} value={[tenant.first_name, tenant.last_name].filter(Boolean).join(' ') || tenant.name} />
+                                    <Detail label={t('Gender')} value={tenant.gender ? t(tenant.gender === 'female' ? 'Female' : 'Male') : t('Not added yet')} />
+                                    <Detail label={t('Marital status')} value={tenant.marital_status ? t(tenant.marital_status.charAt(0).toUpperCase() + tenant.marital_status.slice(1)) : t('Not added yet')} />
+                                </>
                             ) : (
                                 <>
                                     <Detail label={t('Company name')} value={tenant.company_name || tenant.name} />
@@ -120,6 +151,9 @@ export default function TenantShow({ tenant, availableUnits }) {
                                 </>
                             )}
                             <Detail label={t(tenant.identity_type === 'passport' ? 'Passport number' : 'National ID')} value={tenant.identity_number || tenant.national_id} />
+                            <Detail label={t('ID document')} icon={<FileText size={15} />} value={tenant.identity_document_url
+                                ? <a href={tenant.identity_document_url} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] underline underline-offset-2">{t('View ID document')}</a>
+                                : t('Not added yet')} />
                             <Detail label={t('Email')} value={tenant.email} icon={<Mail size={15} />} />
                             <Detail label={t('Phone')} value={tenant.phone} icon={<Phone size={15} />} />
                             <Detail label={t('Address')} value={tenant.address} icon={<MapPin size={15} />} />

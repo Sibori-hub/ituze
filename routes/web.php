@@ -472,6 +472,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->put('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
+    Route::middleware(['verified', 'profile.complete'])->get('/tenants/{tenant}/files/{file}', [TenantController::class, 'file'])->whereIn('file', ['photo', 'identity-document'])->name('tenants.files');
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->group(function () {
         Route::get('/leases', [ManagementController::class, 'leases'])->name('leases.index');
         Route::get('/payments', [ManagementController::class, 'payments'])->name('payments.index');

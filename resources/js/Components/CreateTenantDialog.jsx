@@ -1,5 +1,6 @@
 import RwandaFlag from '@/Components/RwandaFlag';
 import TenantLocationFields from '@/Components/TenantLocationFields';
+import { TenantDocumentPicker, TenantPhotoPicker } from '@/Components/TenantUploads';
 import usePresence from '@/hooks/usePresence';
 import { formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/lib/rwanda';
 import { useTranslation } from '@/localization';
@@ -44,7 +45,11 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
     } else {
         if (!filled(data.first_name)) clientErrors.first_name = t('Enter the first name.');
         if (!filled(data.last_name)) clientErrors.last_name = t('Enter the last name.');
+        if (!data.gender) clientErrors.gender = t('Choose the tenant’s gender.');
+        if (!data.marital_status) clientErrors.marital_status = t('Choose the tenant’s marital status.');
     }
+    if (!data.photo) clientErrors.photo = t('Add a profile photo of the tenant.');
+    if (!data.identity_document) clientErrors.identity_document = t('Upload a photo or scan of the tenant’s ID or passport.');
     if (isNationalId ? !/^\d{16}$/.test(data.identity_number) : !filled(data.identity_number)) {
         clientErrors.identity_number = isNationalId ? t('The National ID number has 16 digits.') : t('Enter the passport number.');
     }
@@ -56,8 +61,8 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
 
     const shownError = (field) => errors[field] || ((touched[field] || submitted) ? clientErrors[field] : undefined);
     const sectionFields = {
-        who: isCompany ? ['company_name', 'tax_identification_number', 'contact_person'] : ['first_name', 'last_name'],
-        identity: ['identity_number'],
+        who: isCompany ? ['photo', 'company_name', 'tax_identification_number', 'contact_person'] : ['photo', 'first_name', 'last_name', 'gender', 'marital_status'],
+        identity: ['identity_number', 'identity_document'],
         contact: ['email', 'phone'],
         location: ['province_id', 'district_id', 'sector_id'],
     };
@@ -91,7 +96,7 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
     const errorText = (field) => shownError(field) && (
         <span className="mt-1 flex items-center gap-1 text-xs font-normal text-red-600"><AlertCircle size={12} aria-hidden="true" />{shownError(field)}</span>
     );
-    const otherErrors = Object.entries(errors).filter(([field]) => !['first_name', 'last_name', 'company_name', 'tax_identification_number', 'contact_person', 'identity_number', 'email', 'phone', 'province_id', 'district_id', 'sector_id'].includes(field));
+    const otherErrors = Object.entries(errors).filter(([field]) => !['photo', 'gender', 'marital_status', 'identity_document', 'first_name', 'last_name', 'company_name', 'tax_identification_number', 'contact_person', 'identity_number', 'email', 'phone', 'province_id', 'district_id', 'sector_id'].includes(field));
 
     return createPortal(
         <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-6 ${closing ? 'pointer-events-none animate-fade-out' : 'animate-fade-in'}`}>
@@ -114,7 +119,25 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                             <p className="mt-1 text-sm text-gray-600">{t('Identity and contact details are required for all tenants.')}</p>
                         </div>
                     </div>
-                    <div className="mt-4" aria-live="polite">
+                    <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label={t('Sections')}>
+                        {[
+                            ['who', isCompany ? t('Company') : t('Person')],
+                            ['identity', t('Identity')],
+                            ['contact', t('Contact')],
+                            ['location', t('Location')],
+                        ].map(([key, label], index) => (
+                            <li key={key}>
+                                <button type="button" onClick={() => document.getElementById(`tenant-section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                    className={`flex w-full items-center gap-1.5 rounded-xl border px-2 py-1.5 text-left text-[11px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/30 sm:text-xs ${done[key] ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-200 bg-white/80 text-gray-600 hover:border-gray-300'}`}>
+                                    <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[10px] ${done[key] ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                        {done[key] ? <CheckCircle2 size={12} aria-hidden="true" /> : index + 1}
+                                    </span>
+                                    <span className="truncate">{label}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ol>
+                    <div className="mt-3" aria-live="polite">
                         <div className="flex items-center justify-between text-xs font-medium text-gray-600">
                             <span>{t(':done of :total sections complete', { done: doneCount, total: 4 })}</span>
                             {doneCount === 4 && <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 size={13} aria-hidden="true" />{t('Ready to save')}</span>}
@@ -154,7 +177,12 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                     </fieldset>
 
                     {/* Who */}
-                    <Section id="who" done={done.who} icon={isCompany ? Building2 : User} title={isCompany ? t('Company details') : t('Full name')}>
+                    <Section id="who" done={done.who} icon={isCompany ? Building2 : User} title={isCompany ? t('Company details') : t('Personal details')}>
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                        <div className="sm:w-36 sm:flex-none">
+                            <TenantPhotoPicker id="tenant-photo" file={data.photo} onChange={(file) => { setData('photo', file); touch('photo'); }} error={shownError('photo')} />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-4">
                         {!isCompany ? (
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <label className="text-sm font-medium text-gray-800">{t('First name')}
@@ -165,6 +193,10 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                     <input required value={data.last_name} onChange={event => setData('last_name', event.target.value)} autoComplete="family-name" onBlur={() => touch('last_name')} className={fieldClass(shownError('last_name'))} />
                                     {errorText('last_name')}
                                 </label>
+                                <ChoiceChips legend={t('Gender')} name="tenant-gender" value={data.gender} error={shownError('gender')} className="sm:col-span-2"
+                                    options={[['female', t('Female')], ['male', t('Male')]]} onChange={(value) => setData('gender', value)} />
+                                <ChoiceChips legend={t('Marital status')} name="tenant-marital-status" value={data.marital_status} error={shownError('marital_status')} className="sm:col-span-2"
+                                    options={[['single', t('Single')], ['married', t('Married')], ['divorced', t('Divorced')], ['widowed', t('Widowed')]]} onChange={(value) => setData('marital_status', value)} />
                             </div>
                         ) : (
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -182,6 +214,8 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                 </label>
                             </div>
                         )}
+                        </div>
+                        </div>
                     </Section>
 
                     {/* Identity */}
@@ -216,6 +250,14 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                 onBlur={() => touch('identity_number')} className={`${fieldClass(shownError('identity_number'))} font-mono tracking-wider`} />
                             {errorText('identity_number')}
                         </label>
+                        <div className="mt-4">
+                            <TenantDocumentPicker id="tenant-identity-document"
+                                label={isNationalId ? t('Photo or scan of the ID card') : t('Passport photo page')}
+                                file={data.identity_document}
+                                onChange={(file) => { setData('identity_document', file); touch('identity_document'); }}
+                                error={shownError('identity_document')} />
+                            <p className="mt-2 text-xs text-gray-500">{t('Kept private: only you and the ITUZE team can open it.')}</p>
+                        </div>
                     </Section>
 
                     {/* Contact */}
@@ -302,6 +344,29 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
             </form>
         </div>,
         document.body,
+    );
+}
+
+/** Single choice shown as tap-friendly chips (radio buttons underneath). */
+function ChoiceChips({ legend, name, value, options, onChange, error, className = '' }) {
+    return (
+        <fieldset className={className}>
+            <legend className="text-sm font-medium text-gray-800">{legend}</legend>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+                {options.map(([option, label]) => {
+                    const selected = value === option;
+                    return (
+                        <label key={option}
+                            className={`inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E] text-white shadow-sm' : error ? 'border-red-300 bg-white text-gray-700 hover:border-red-400' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'}`}>
+                            <input type="radio" name={name} value={option} checked={selected} onChange={() => onChange(option)} className="sr-only" />
+                            {selected && <CheckCircle2 size={14} aria-hidden="true" />}
+                            {label}
+                        </label>
+                    );
+                })}
+            </div>
+            {error && <span className="mt-1 flex items-center gap-1 text-xs font-normal text-red-600"><AlertCircle size={12} aria-hidden="true" />{error}</span>}
+        </fieldset>
     );
 }
 

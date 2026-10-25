@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use App\Models\Unit;
 use App\Services\TenantLocationService;
+use App\Support\TenantProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TenantController extends Controller
 {
@@ -30,9 +33,12 @@ class TenantController extends Controller
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['required', 'regex:/^(078|079|072|073)[0-9]{7}$/'],
-        ]);
+            // The phone app cannot send the photo and ID copy yet; the website always does.
+            ...TenantProfile::rules(creating: ! $request->is('api/*')),
+        ], TenantProfile::messages());
+        unset($data['photo'], $data['identity_document']);
 
-        $tenant = Tenant::create($data + [
+        $tenant = Tenant::create(TenantProfile::details($data) + $data + [
             'name' => $data['company_name'] ?? trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? '')),
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
             'registration_number' => null,
@@ -42,6 +48,8 @@ class TenantController extends Controller
             'created_by' => $user->id,
             'status' => 'active',
         ]);
+
+        TenantProfile::storeFiles($request, $tenant);
 
         if ($request->expectsJson()) {
             return response()->json(['tenant' => $tenant], 201);
@@ -68,10 +76,18 @@ class TenantController extends Controller
             'contact_person' => ['required_if:type,company', 'nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['required', 'regex:/^(078|079|072|073)[0-9]{7}$/'],
-        ]);
+            ...TenantProfile::rules(creating: false),
+        ], TenantProfile::messages());
+        unset($data['photo'], $data['identity_document']);
+        // Gender and marital status stay as they are when the edit form leaves them out.
+        $profile = $data['type'] === 'company'
+            ? ['gender' => null, 'marital_status' => null]
+            : array_filter(TenantProfile::details($data));
+        unset($data['gender'], $data['marital_status']);
 
         $tenant->update([
             ...$data,
+            ...$profile,
             'address' => app(TenantLocationService::class)->address($data),
             'name' => $data['type'] === 'company'
                 ? $data['company_name']
@@ -85,11 +101,29 @@ class TenantController extends Controller
             'national_id' => $data['identity_type'] === 'national_id' ? $data['identity_number'] : null,
         ]);
 
+        TenantProfile::storeFiles($request, $tenant);
+
         if ($request->expectsJson()) {
             return response()->json(['tenant' => $tenant->fresh()]);
         }
 
         return back()->with('success', 'Tenant details updated successfully.');
+    }
+
+    /**
+     * Streams a tenant's private profile photo or ID document to accounts that can see the tenant.
+     */
+    public function file(Request $request, Tenant $tenant, string $file): StreamedResponse
+    {
+        $user = $request->user();
+        abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
+        $this->authorizeTenantAccess($user, $tenant);
+        $path = $file === 'photo' ? $tenant->photo : $tenant->identity_document;
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, ($file === 'photo' ? 'tenant-photo-' : 'tenant-id-').$tenant->id.'.'.pathinfo($path, PATHINFO_EXTENSION), [
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
     }
 
     public function index(Request $request): Response
