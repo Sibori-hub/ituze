@@ -37,7 +37,7 @@ class ManagerController extends Controller
         $days = (int) ($filters['days'] ?? 30);
 
         $managers = $owner->managers()
-            ->with(['managerAssignments.property:id,name', 'managerAssignments.propertyUnit.unitType:id,name'])
+            ->with(['managerAssignments.property:id,name', 'managerAssignments.propertyUnit.unitType:id,name', 'sector.district:id,name'])
             ->orderBy('name')
             ->get();
         $monthStart = now()->startOfMonth();
@@ -79,6 +79,12 @@ class ManagerController extends Controller
                 'last_name' => $manager->last_name,
                 'username' => $manager->username,
                 'email' => $manager->email,
+                'profile_completed' => (bool) $manager->profile_completed,
+                'identity_type' => $manager->identity_document_type,
+                'national_id' => $manager->national_id,
+                'photo_url' => $manager->profile_photo ? \Illuminate\Support\Facades\Storage::disk('public')->url($manager->profile_photo) : null,
+                'location' => $manager->sector?->district?->name ? $manager->sector->district->name.' · '.$manager->sector->name : null,
+                'identity_document_url' => $manager->identity_document ? route('managers.identity-document', $manager) : null,
                 'phone' => $manager->phone,
                 'disabled' => $manager->isDisabled(),
                 'must_change_password' => (bool) $manager->must_change_password,
@@ -116,15 +122,14 @@ class ManagerController extends Controller
         $request->merge([
             'phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone')),
             'username' => Str::lower(trim((string) $request->input('username'))),
-            'email' => filled($request->input('email')) ? $request->input('email') : null,
         ]);
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            // Managers sign in with this username (or their phone); email is optional.
+            // Managers sign in with this username (or their phone).
             'username' => ['required', 'regex:/^[a-z0-9][a-z0-9._-]{2,29}$/', 'unique:'.User::class],
-            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Password::defaults()],
             ...$this->assignmentRules(),
@@ -146,17 +151,18 @@ class ManagerController extends Controller
                 'phone' => $data['phone'],
                 'role' => 'manager',
                 'status' => 'approved',
-                'profile_completed' => true,
+                // Like an owner's registration: ID, ID copy, photo, location and the terms at first sign-in.
+                'profile_completed' => false,
                 'password' => $data['password'],
             ]);
-            // The owner vouches for the contacts; the temporary password must
-            // be replaced at first sign-in.
+            // At first sign-in the manager replaces the temporary password, then
+            // confirms the email and the phone with a code, like an owner.
             $manager->forceFill([
                 'employer_id' => $owner->id,
                 'login_enabled' => true,
                 'must_change_password' => true,
-                'email_verified_at' => now(),
-                'phone_verified_at' => now(),
+                'email_verified_at' => null,
+                'phone_verified_at' => null,
             ])->save();
             $this->syncAssignments($manager, $assignments);
 
@@ -173,14 +179,13 @@ class ManagerController extends Controller
         $request->merge([
             'phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone')),
             'username' => Str::lower(trim((string) $request->input('username'))),
-            'email' => filled($request->input('email')) ? $request->input('email') : null,
         ]);
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'username' => ['required', 'regex:/^[a-z0-9][a-z0-9._-]{2,29}$/', Rule::unique(User::class)->ignore($manager->id)],
-            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($manager->id)],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($manager->id)],
             'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', Rule::unique(User::class)->ignore($manager->id)],
             ...$this->assignmentRules(),
         ], [
@@ -192,6 +197,10 @@ class ManagerController extends Controller
         // Buildings the manager already runs stay, even if their payment has since ended.
         $assignments = $this->checkedAssignments($owner, $data['assignments'], $manager->managerAssignments()->pluck('property_id')->map(fn ($id) => (int) $id)->all());
 
+        $contactChanged = [
+            'email_verified_at' => $data['email'] !== $manager->email,
+            'phone_verified_at' => $data['phone'] !== $manager->phone,
+        ];
         DB::transaction(function () use ($manager, $data, $assignments) {
             $manager->update([
                 'first_name' => $data['first_name'],
@@ -202,6 +211,11 @@ class ManagerController extends Controller
                 'phone' => $data['phone'],
             ]);
             $this->syncAssignments($manager, $assignments);
+            // A new email or phone is confirmed again with a code at the next sign-in.
+            $reset = array_keys(array_filter($contactChanged));
+            if ($reset) {
+                $manager->forceFill(array_fill_keys($reset, null))->save();
+            }
         });
 
         return back()->with('success', $manager->name.'’s details and buildings were saved.');
@@ -305,6 +319,17 @@ class ManagerController extends Controller
      *
      * @return Collection<int, array{property_id: int, property_unit_id: int|null}>
      */
+    /** The manager's ID copy, for the owner they work for (private file). */
+    public function identityDocument(Request $request, User $manager): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $owner = $this->workspaceOwner($request);
+        $this->ensureTeamMember($owner, $manager);
+        $path = $manager->identity_document;
+        abort_unless($path && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
+
+        return \Illuminate\Support\Facades\Storage::disk('local')->response($path, 'manager-id-'.$manager->id.'.'.pathinfo($path, PATHINFO_EXTENSION));
+    }
+
     private function checkedAssignments(User $owner, array $rows, array $alreadyRunning = []): Collection
     {
         $properties = Property::query()->where('owner_id', $owner->id)->get()->each->setRelation('owner', $owner)->keyBy('id');

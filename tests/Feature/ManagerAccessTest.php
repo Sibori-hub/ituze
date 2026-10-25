@@ -66,7 +66,7 @@ class ManagerAccessTest extends TestCase
         ]);
     }
 
-    /** Owner adds a manager through the page, then the manager has changed the temporary password. */
+    /** Owner adds a manager through the page; the manager then finishes the first sign-in steps. */
     private function hireManager(): User
     {
         $this->actingAs($this->owner)->post(route('managers.store'), [
@@ -82,7 +82,11 @@ class ManagerAccessTest extends TestCase
         $this->assertSame('manager', $manager->role);
         $this->assertSame($this->owner->id, $manager->employer_id);
         $this->assertTrue($manager->must_change_password);
-        $manager->forceFill(['must_change_password' => false])->save();
+        // New password, email and phone confirmed, terms accepted and profile completed.
+        $manager->forceFill([
+            'must_change_password' => false, 'email_verified_at' => now(), 'phone_verified_at' => now(),
+            'profile_completed' => true, 'terms_accepted_at' => now(),
+        ])->save();
 
         return $manager->fresh();
     }
@@ -90,18 +94,60 @@ class ManagerAccessTest extends TestCase
     public function test_owner_adds_a_manager_who_must_change_the_temporary_password(): void
     {
         $this->actingAs($this->owner)->post(route('managers.store'), [
-            // A username to sign in with; the email is optional.
+            // A username to sign in with, and an email like an owner's.
             'first_name' => 'Jean', 'last_name' => 'Manager', 'username' => 'Jean.Ikaze', 'email' => '', 'phone' => '0788555444',
+            'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
+            'assignments' => [['property_id' => $this->whole->id]],
+        ])->assertSessionHasErrors('email');
+        $this->post(route('managers.store'), [
+            'first_name' => 'Jean', 'last_name' => 'Manager', 'username' => 'Jean.Ikaze', 'email' => 'jean.ikaze@example.com', 'phone' => '0788555444',
             'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
             'assignments' => [['property_id' => $this->whole->id]],
         ])->assertSessionHasNoErrors();
 
         $manager = User::query()->where('username', 'jean.ikaze')->firstOrFail();
-        $this->assertNull($manager->email);
+        $this->assertSame([false, null, null], [$manager->profile_completed, $manager->email_verified_at, $manager->phone_verified_at]);
+        // Email codes are on for the live site, as for owners.
+        config(['auth.email_otp_enabled' => true]);
         \Illuminate\Support\Facades\Auth::logout();
         $this->post(route('login'), ['email' => 'jean.ikaze', 'password' => 'Temp-Pass#2026'])->assertSessionHasNoErrors();
         $this->assertAuthenticatedAs($manager);
+
+        // First sign-in, like an owner: new password, email code, phone code, then the full profile.
         $this->get(route('dashboard'))->assertRedirect(route('password.change'));
+        $this->post(route('password.change.update'), ['current_password' => 'Temp-Pass#2026', 'password' => 'Own-Pass#2026x', 'password_confirmation' => 'Own-Pass#2026x'])->assertSessionHasNoErrors();
+        $this->assertNotNull($manager->fresh()->phone_otp, 'The phone code is sent after the new password.');
+        $this->actingAs($manager->refresh());
+        $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));
+        $manager->forceFill(['email_verified_at' => now()])->save();
+        $this->actingAs($manager);
+        $this->get(route('dashboard'))->assertRedirect(route('phone.notice'));
+        $manager->forceFill(['phone_verified_at' => now()])->save();
+        $this->actingAs($manager);
+        $this->get(route('dashboard'))->assertRedirect(route('profile.complete'));
+        $this->get(route('profile.complete'))->assertInertia(fn (Assert $page) => $page->where('needsTerms', true));
+
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $sector = \App\Models\Sector::create(['name' => 'Remera', 'district_id' => \App\Models\District::create(['name' => 'Gasabo', 'province_id' => \App\Models\Province::create(['name' => 'Kigali City'])->id])->id]);
+        $profile = [
+            'identity_document_type' => 'nida', 'national_id' => '1199080012345678', 'sector_id' => $sector->id,
+            'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'), 'identity_document' => \Illuminate\Http\UploadedFile::fake()->image('id.jpg'),
+        ];
+        $this->post(route('profile.complete.store'), $profile)->assertSessionHasErrors('terms');
+        $this->post(route('profile.complete.store'), [...$profile, 'terms' => '1'])->assertSessionHasNoErrors();
+        $manager->refresh();
+        $this->assertTrue($manager->profile_completed);
+        $this->assertNotNull($manager->terms_accepted_at);
+        $this->assertSame('approved', $manager->status);
+        $this->get(route('dashboard'))->assertOk();
+
+        // The owner sees the manager's ID and can open the ID copy; nobody else can.
+        $this->actingAs($this->owner)->get(route('managers.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('managers.0.national_id', '1199080012345678')->where('managers.0.profile_completed', true));
+        $this->get(route('managers.identity-document', $manager))->assertOk();
+        $this->actingAs($this->makeOwner('nosy@example.com', '0788000099'))->get(route('managers.identity-document', $manager))->assertNotFound();
+        $this->actingAs($this->owner);
 
         // The username is taken once only.
         $this->actingAs($this->owner)->post(route('managers.store'), [
@@ -122,7 +168,7 @@ class ManagerAccessTest extends TestCase
         // No payment, no manager: an unpaid building is locked until its payment is approved.
         $unpaid = Property::create(['owner_id' => $this->owner->id, 'name' => 'Unpaid House', 'total_floors' => 1]);
         $this->post(route('managers.store'), [
-            'first_name' => 'Too', 'last_name' => 'Soon', 'username' => 'too.soon', 'phone' => '0788555447',
+            'first_name' => 'Too', 'last_name' => 'Soon', 'username' => 'too.soon', 'email' => 'too.soon@example.com', 'phone' => '0788555447',
             'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
             'assignments' => [['property_id' => $unpaid->id]],
         ])->assertSessionHasErrors(['assignments' => '“Unpaid House” is not paid yet. Pay for it and wait for the approval, then give it to a manager.']);

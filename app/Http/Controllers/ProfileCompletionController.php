@@ -15,7 +15,8 @@ class ProfileCompletionController extends Controller
 {
     public function store(Request $request)
     {
-        abort_unless($request->user()->isAccountHolder(), 403);
+        // Owners and advertisers after registering; managers at their first sign-in.
+        abort_unless($request->user()->isAccountHolder() || $request->user()->isManager(), 403);
         abort_if($request->user()->status === 'rejected', 403, 'This account has been rejected.');
         abort_unless($request->user()->hasVerifiedEmail(), 403, 'Verify your email before completing your profile.');
 
@@ -35,6 +36,8 @@ class ProfileCompletionController extends Controller
                     // One photo or PDF of the whole ID card, or of the passport photo page.
                     'identity_document' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
                     'sector_id'     => 'required|exists:sectors,id',
+                    // Accounts created for someone (managers) accept the terms here.
+                    'terms'         => $request->user()->isManager() && ! $request->user()->terms_accepted_at ? 'accepted' : 'nullable',
                 ],
                 // Custom user-friendly error messages instead of Laravel defaults:
                 [
@@ -50,6 +53,7 @@ class ProfileCompletionController extends Controller
 
                     'sector_id.required'     => '📍 Please select your location (Province → District → Sector).',
                     'sector_id.exists'       => '📍 The selected sector is not valid. Please select a sector from the dropdown list.',
+                    'terms.accepted'         => 'You must accept the Terms and Conditions and the Privacy Policy to continue.',
                 ]
             );
 
@@ -65,6 +69,11 @@ class ProfileCompletionController extends Controller
                 'profile_photo'     => $path,
                 'sector_id'         => $validated['sector_id'],
                 'profile_completed' => true,
+                ...(! $user->isManager() || $user->terms_accepted_at ? [] : [
+                    'terms_accepted_at' => now(),
+                    'terms_version' => config('legal.terms_version'),
+                    'terms_accepted_ip' => $request->ip(),
+                ]),
             ]);
 
             if (!$updated) {

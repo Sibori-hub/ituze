@@ -182,7 +182,7 @@ function IdDocumentUpload({ id, label, file, onChange, error }) {
     );
 }
 
-export default function Complete({ registrationDetails, locations }) {
+export default function Complete({ registrationDetails, locations, needsTerms = false }) {
     const { t } = useTranslation();
     const { auth } = usePage().props;
     const registration = registrationDetails ?? auth.user;
@@ -196,6 +196,7 @@ export default function Complete({ registrationDetails, locations }) {
         profile_photo: null,
         identity_document: null,
         sector_id: '',
+        terms: false,
     });
 
     const fileInput = useRef(null);
@@ -223,7 +224,7 @@ export default function Complete({ registrationDetails, locations }) {
     const photoDone = Boolean(data.profile_photo);
     const locationDone = Boolean(data.sector_id);
     const doneCount = [photoDone, idDone, locationDone].filter(Boolean).length;
-    const isFormValid = doneCount === 3;
+    const isFormValid = doneCount === 3 && (!needsTerms || data.terms);
 
     const initials = `${registration.first_name?.[0] ?? ''}${registration.last_name?.[0] ?? ''}`.toUpperCase();
 
@@ -513,6 +514,20 @@ export default function Complete({ registrationDetails, locations }) {
                     <InputError message={errors.sector_id} className="mt-1" />
                 </Section>
 
+                {needsTerms && (
+                    <label htmlFor="terms" className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${data.terms ? 'border-[#0E3B2E]/30 bg-[#0E3B2E]/[0.03]' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <input id="terms" type="checkbox" checked={data.terms} disabled={processing} onChange={(e) => setData('terms', e.target.checked)}
+                            className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded-md border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]/30" />
+                        <span className="text-xs leading-5 text-gray-600">
+                            {t('I have read and agree to the')}{' '}
+                            <a href={route('legal.terms')} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] decoration-2 underline-offset-2">{t('Terms and Conditions')}</a>{' '}
+                            {t('and the')}{' '}
+                            <a href={route('legal.privacy')} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] decoration-2 underline-offset-2">{t('Privacy Policy')}</a>
+                        </span>
+                    </label>
+                )}
+                <InputError message={errors.terms} className="-mt-2" />
+
                 <div className="pt-1">
                     <button
                         type="submit"
@@ -526,7 +541,7 @@ export default function Complete({ registrationDetails, locations }) {
                             </>
                         ) : (
                             <>
-                                {t('Submit for approval')}
+                                {t(auth.user?.role === 'manager' ? 'Save and continue' : 'Submit for approval')}
                                 <ArrowRight size={17} className="transition-transform group-enabled:group-hover:translate-x-1" />
                             </>
                         )}

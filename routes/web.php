@@ -379,6 +379,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/complete-profile', function (\Illuminate\Http\Request $request) {
         return Inertia::render('Profile/Complete', [
             'registrationDetails' => $request->user()->only(['first_name', 'last_name', 'email', 'phone']),
+            'needsTerms' => $request->user()->isManager() && ! $request->user()->terms_accepted_at,
             'locations' => [
                 'provinces' => \App\Models\Province::query()->orderBy('name')->get(['id', 'name']),
                 'districts' => \App\Models\District::query()->orderBy('name')->get(['id', 'name', 'province_id']),
@@ -487,6 +488,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/managers/{manager}/disable', [\App\Http\Controllers\ManagerController::class, 'disable'])->name('managers.disable');
         Route::post('/managers/{manager}/enable', [\App\Http\Controllers\ManagerController::class, 'enable'])->name('managers.enable');
         Route::delete('/managers/{manager}', [\App\Http\Controllers\ManagerController::class, 'destroy'])->name('managers.destroy');
+        Route::get('/managers/{manager}/identity', [\App\Http\Controllers\ManagerController::class, 'identityDocument'])->name('managers.identity-document');
     });
 
     Route::post('/api/ai/generate-property-description', [\App\Http\Controllers\AIDescriptionController::class, 'generatePropertyDescription'])

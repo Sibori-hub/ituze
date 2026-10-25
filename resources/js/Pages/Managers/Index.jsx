@@ -5,7 +5,7 @@ import usePresence from '@/hooks/usePresence';
 import { displayPhone, formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/lib/rwanda';
 import { useTranslation } from '@/localization';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Lock, AtSign, Activity, AlertCircle, Building2, CheckCircle2, ChevronDown, Clock3, CreditCard, Eye, EyeOff, KeyRound, Layers,
+import { MapPin, IdCard, Lock, AtSign, Activity, AlertCircle, Building2, CheckCircle2, ChevronDown, Clock3, CreditCard, Eye, EyeOff, KeyRound, Layers,
     Loader2, Mail, Pencil, Phone, Power, RefreshCw, ShieldCheck, Trash2, UserCog, UserPlus, Users, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -100,9 +100,13 @@ export default function ManagersIndex({ owner, canManage, adminView = false, man
                             {managers.map((manager) => (
                                 <article key={manager.id} className={`rounded-2xl bg-white p-5 shadow-sm ring-1 transition ${manager.disabled ? 'ring-gray-200 opacity-80' : 'ring-black/[0.04] hover:shadow-md'}`}>
                                     <div className="flex items-start gap-3">
-                                        <span className={`flex h-12 w-12 flex-none items-center justify-center rounded-2xl font-[Sora] text-base font-bold ${manager.disabled ? 'bg-gray-100 text-gray-500' : 'bg-gradient-to-br from-[#0E3B2E] to-[#1F7A5A] text-white'}`} aria-hidden="true">
-                                            {(manager.first_name?.[0] || '') + (manager.last_name?.[0] || '')}
-                                        </span>
+                                        {manager.photo_url ? (
+                                            <img src={manager.photo_url} alt="" className={`h-12 w-12 flex-none rounded-2xl object-cover ${manager.disabled ? 'opacity-60 grayscale' : ''}`} />
+                                        ) : (
+                                            <span className={`flex h-12 w-12 flex-none items-center justify-center rounded-2xl font-[Sora] text-base font-bold ${manager.disabled ? 'bg-gray-100 text-gray-500' : 'bg-gradient-to-br from-[#0E3B2E] to-[#1F7A5A] text-white'}`} aria-hidden="true">
+                                                {(manager.first_name?.[0] || '') + (manager.last_name?.[0] || '')}
+                                            </span>
+                                        )}
                                         <div className="min-w-0 flex-1">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <h3 className="truncate font-semibold text-gray-900">{manager.name}</h3>
@@ -117,6 +121,15 @@ export default function ManagersIndex({ owner, canManage, adminView = false, man
                                                 {manager.email && <a href={`mailto:${manager.email}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E]"><Mail size={12} aria-hidden="true" />{manager.email}</a>}
                                                 <a href={`tel:${manager.phone}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E]"><Phone size={12} aria-hidden="true" />{displayPhone(manager.phone)}</a>
                                             </p>
+                                            {manager.profile_completed ? (
+                                                <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+                                                    <span className="inline-flex items-center gap-1"><IdCard size={12} aria-hidden="true" />{manager.identity_type === 'passport' ? t('Passport') : t('National ID')} <span className="font-mono">{manager.national_id}</span></span>
+                                                    {manager.location && <span className="inline-flex items-center gap-1"><MapPin size={12} aria-hidden="true" />{manager.location}</span>}
+                                                    {manager.identity_document_url && <a href={manager.identity_document_url} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] underline underline-offset-2">{t('View ID document')}</a>}
+                                                </p>
+                                            ) : (
+                                                <p className="mt-1 inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200"><IdCard size={12} aria-hidden="true" />{t('ID, photo and location not added yet')}</p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -297,7 +310,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
         if (!data.first_name.trim()) found.first_name = t('Enter the first name.');
         if (!data.last_name.trim()) found.last_name = t('Enter the last name.');
         if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(data.username)) found.username = t('Use 3 to 30 letters or numbers; dots, dashes and underscores are allowed (e.g. jean.ikaze).');
-        if (data.email.trim() && !/^\S+@\S+\.\S+$/.test(data.email.trim())) found.email = t('Enter a valid email address.');
+        if (!/^\S+@\S+\.\S+$/.test(data.email.trim())) found.email = t('Enter a valid email address.');
         if (!phoneValid) found.phone = t('Enter 10 digits starting with 078, 079, 072, or 073.');
         if (isNew && !(data.password.length >= 10 && /[a-z]/.test(data.password) && /[A-Z]/.test(data.password) && /\d/.test(data.password) && /[^A-Za-z0-9]/.test(data.password))) found.password = t('Use at least 10 characters with upper and lower case letters, a number and a symbol.');
         if (isNew && data.password !== data.password_confirmation) found.password_confirmation = t('The two passwords do not match.');
@@ -328,7 +341,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
                         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-[#0E3B2E] text-white shadow-md" aria-hidden="true">{isNew ? <UserPlus size={22} /> : <Pencil size={20} />}</span>
                         <div>
                             <h2 id="manager-dialog-title" className="font-[Sora] text-xl font-bold text-gray-900">{isNew ? t('Add manager') : t('Edit :name', { name: manager.name })}</h2>
-                            <p className="mt-1 text-sm text-gray-600">{isNew ? t('They sign in with their username and the temporary password, then choose their own password.') : t('Change their details or the buildings they run.')}</p>
+                            <p className="mt-1 text-sm text-gray-600">{isNew ? t('They sign in with their username and the temporary password, choose their own password, confirm their email and phone with a code, then add their ID, ID copy, photo and location.') : t('Change their details or the buildings they run.')}</p>
                         </div>
                     </div>
                     <button type="button" onClick={onClose} aria-label={t('Close')} className="absolute right-4 top-4 rounded-xl p-2 text-gray-500 hover:bg-white hover:text-gray-800"><X size={20} aria-hidden="true" /></button>
@@ -354,7 +367,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
                             <span id="manager-username-help" className="mt-1 block text-xs font-normal text-gray-500">{t('Letters, numbers, dots, dashes or underscores. They can also sign in with their phone.')}</span>
                             {error('username')}
                         </label>
-                        <label className="text-sm font-medium text-gray-800">{t('Email')} <span className="font-normal text-gray-500">({t('optional')})</span>
+                        <label className="text-sm font-medium text-gray-800">{t('Email')}
                             <input type="email" value={data.email} onChange={(e) => setData('email', e.target.value.toLowerCase())} autoComplete="off" className={fieldClass(errorFor('email'))} aria-invalid={errorFor('email') ? 'true' : undefined} />
                             {error('email')}
                         </label>
