@@ -5,7 +5,7 @@ import usePresence from '@/hooks/usePresence';
 import { displayPhone, formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/lib/rwanda';
 import { useTranslation } from '@/localization';
 import { Head, router, useForm } from '@inertiajs/react';
-import { AtSign, Activity, AlertCircle, Building2, CheckCircle2, ChevronDown, Clock3, CreditCard, Eye, EyeOff, KeyRound, Layers,
+import { Lock, AtSign, Activity, AlertCircle, Building2, CheckCircle2, ChevronDown, Clock3, CreditCard, Eye, EyeOff, KeyRound, Layers,
     Loader2, Mail, Pencil, Phone, Power, RefreshCw, ShieldCheck, Trash2, UserCog, UserPlus, Users, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -394,11 +394,30 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
                             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chosenCount ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>{t(':count chosen', { count: chosenCount })}</span>
                         </legend>
                         <p className="mt-1 text-xs text-gray-600">{t('Tick a whole building, or open it and tick only some units.')}</p>
+                        {properties.some((property) => !property.paid) && (
+                            <p className="mt-2 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-950 ring-1 ring-amber-200">
+                                <Lock size={14} className="mt-0.5 flex-none" aria-hidden="true" />{t('A building can be given to a manager only after its payment is approved. Unpaid buildings are locked.')}
+                            </p>
+                        )}
                         <ul className="mt-3 space-y-2">
                             {properties.map((property) => {
                                 const whole = has(property.id);
                                 const someUnits = data.assignments.filter((a) => a.property_id === property.id && a.property_unit_id).length;
                                 const isOpen = expanded[property.id];
+                                // Kept when the manager already runs it, so an ended payment does not take it away by surprise.
+                                const locked = !property.paid && !whole && !someUnits;
+                                if (locked) {
+                                    return (
+                                        <li key={property.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-3 py-2.5">
+                                            <Lock size={16} className="flex-none text-gray-400" aria-hidden="true" />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-sm font-semibold text-gray-500">{property.name}</span>
+                                                <span className="block text-xs text-amber-800">{property.state === 'unpaid' ? t('Not paid yet') : t('Payment ended')} · {t('locked until the payment is approved')}</span>
+                                            </span>
+                                            <a href={route('properties.pay', property.id)} className="rounded-lg bg-[#0E3B2E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#124B3A]">{t('Pay now')}</a>
+                                        </li>
+                                    );
+                                }
                                 return (
                                     <li key={property.id} className={`rounded-xl border transition ${whole || someUnits ? 'border-emerald-300 bg-emerald-50/40' : 'border-gray-200'}`}>
                                         <div className="flex items-center gap-3 px-3 py-2.5">

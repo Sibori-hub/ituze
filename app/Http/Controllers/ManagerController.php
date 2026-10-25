@@ -189,7 +189,8 @@ class ManagerController extends Controller
             'username.unique' => 'This username is already taken. Choose another one.',
             'assignments.required' => 'Give the manager at least one property or unit.',
         ]);
-        $assignments = $this->checkedAssignments($owner, $data['assignments']);
+        // Buildings the manager already runs stay, even if their payment has since ended.
+        $assignments = $this->checkedAssignments($owner, $data['assignments'], $manager->managerAssignments()->pluck('property_id')->map(fn ($id) => (int) $id)->all());
 
         DB::transaction(function () use ($manager, $data, $assignments) {
             $manager->update([
@@ -304,9 +305,10 @@ class ManagerController extends Controller
      *
      * @return Collection<int, array{property_id: int, property_unit_id: int|null}>
      */
-    private function checkedAssignments(User $owner, array $rows): Collection
+    private function checkedAssignments(User $owner, array $rows, array $alreadyRunning = []): Collection
     {
-        $propertyIds = Property::query()->where('owner_id', $owner->id)->pluck('id')->all();
+        $properties = Property::query()->where('owner_id', $owner->id)->get()->each->setRelation('owner', $owner)->keyBy('id');
+        $propertyIds = $properties->keys()->all();
         $units = PropertyUnit::query()->whereIn('property_id', $propertyIds)->pluck('property_id', 'id');
         $rows = collect($rows)->map(fn ($row) => [
             'property_id' => (int) $row['property_id'],
@@ -318,6 +320,11 @@ class ManagerController extends Controller
             $unitMatches = $row['property_unit_id'] === null || (int) ($units[$row['property_unit_id']] ?? 0) === $row['property_id'];
             if (! $ownsProperty || ! $unitMatches) {
                 throw ValidationException::withMessages(['assignments' => 'Choose only your own properties and units.']);
+            }
+            // No payment, no work: a building is given to a manager only once its payment is approved.
+            $property = $properties->get($row['property_id']);
+            if (! $property->subscriptionIsActive() && ! in_array($property->id, $alreadyRunning, true)) {
+                throw ValidationException::withMessages(['assignments' => '“'.$property->name.'” is not paid yet. Pay for it and wait for the approval, then give it to a manager.']);
             }
         }
 
@@ -346,10 +353,14 @@ class ManagerController extends Controller
             ->with(['propertyUnits' => fn ($query) => $query->with('unitType:id,name')->withCount('rooms')])
             ->withCount('units')
             ->orderBy('name')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'owner_id', 'paid_until'])
+            ->each->setRelation('owner', $owner)
             ->map(fn (Property $property) => [
                 'id' => $property->id,
                 'name' => $property->name,
+                // Only paid (approved) buildings can be given to a manager.
+                'paid' => $property->subscriptionIsActive(),
+                'state' => $property->subscriptionState(),
                 'rooms' => $property->units_count,
                 'units' => $property->propertyUnits->map(fn (PropertyUnit $unit) => [
                     'id' => $unit->id,

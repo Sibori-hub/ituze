@@ -612,6 +612,10 @@ export default {
         'Reference number': 'Numéro de référence',
         'Cheque date': 'Date du chèque',
         'Transfer date': 'Date du virement',
+        'A building can be given to a manager only after its payment is approved. Unpaid buildings are locked.': 'Un bâtiment ne peut être confié à un gestionnaire qu’après l’approbation de son paiement. Les bâtiments non payés sont verrouillés.',
+        'Payment ended': 'Paiement expiré',
+        'locked until the payment is approved': 'verrouillé jusqu’à l’approbation du paiement',
+        'Pay now': 'Payer maintenant',
     },
     rw: {
         'Lease documents': 'Inyandiko z’amasezerano',
@@ -1217,5 +1221,9 @@ export default {
         'Reference number': 'Nimero y\'indango',
         'Cheque date': 'Itariki ya sheki',
         'Transfer date': 'Itariki y\'ubwishyu',
+        'A building can be given to a manager only after its payment is approved. Unpaid buildings are locked.': 'Inyubako ihabwa umucunga ari uko ubwishyu bwayo bwemejwe. Inyubako zitishyuwe zirafunze.',
+        'Payment ended': 'Ubwishyu bwarangiye',
+        'locked until the payment is approved': 'birafunze kugeza ubwishyu bwemejwe',
+        'Pay now': 'Ishyura ubu',
     },
 };

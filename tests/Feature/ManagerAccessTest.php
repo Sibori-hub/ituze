@@ -118,6 +118,17 @@ class ManagerAccessTest extends TestCase
             'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
             'assignments' => [['property_id' => $foreign->id]],
         ])->assertSessionHasErrors('assignments');
+
+        // No payment, no manager: an unpaid building is locked until its payment is approved.
+        $unpaid = Property::create(['owner_id' => $this->owner->id, 'name' => 'Unpaid House', 'total_floors' => 1]);
+        $this->post(route('managers.store'), [
+            'first_name' => 'Too', 'last_name' => 'Soon', 'username' => 'too.soon', 'phone' => '0788555447',
+            'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
+            'assignments' => [['property_id' => $unpaid->id]],
+        ])->assertSessionHasErrors(['assignments' => '“Unpaid House” is not paid yet. Pay for it and wait for the approval, then give it to a manager.']);
+        $this->get(route('managers.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('properties', fn ($rows) => collect($rows)->firstWhere('name', 'Unpaid House')['paid'] === false
+                && collect($rows)->firstWhere('name', 'Whole Plaza')['paid'] === true));
     }
 
     public function test_manager_sees_and_changes_only_what_was_assigned(): void
