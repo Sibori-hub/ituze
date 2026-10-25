@@ -19,7 +19,7 @@ class SubscriptionPayment extends Model
     public const ADD_HOUSES = 'add_houses';
 
     protected $fillable = [
-        'owner_id', 'property_id', 'months', 'houses', 'purpose', 'amount', 'method', 'reference', 'sender_name', 'sender_phone', 'paid_at', 'proof_path', 'proof_name', 'status',
+        'owner_id', 'property_id', 'months', 'houses', 'purpose', 'amount', 'method', 'reference', 'bank_name', 'account_number', 'sender_name', 'sender_phone', 'paid_at', 'proof_path', 'proof_name', 'status',
         'mobile_money_request_id', 'period_start', 'period_end', 'receipt_number', 'submitted_by',
         'reviewed_by', 'reviewed_at', 'rejection_reason',
     ];

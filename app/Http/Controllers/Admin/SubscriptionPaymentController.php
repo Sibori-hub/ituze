@@ -57,6 +57,8 @@ class SubscriptionPaymentController extends Controller
                 'amount' => (float) $payment->amount,
                 'method' => $payment->method,
                 'reference' => $payment->reference,
+                'bank_name' => $payment->bank_name,
+                'account_number' => $payment->account_number,
                 'sender_name' => $payment->sender_name,
                 'sender_phone' => $payment->sender_phone,
                 'paid_at' => $payment->paid_at?->toIso8601String(),

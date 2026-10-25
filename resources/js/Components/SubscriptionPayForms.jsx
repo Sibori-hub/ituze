@@ -231,17 +231,41 @@ export function MomoPayForm({ plan, propertyName, total, money, momoPay, default
 }
 
 /** Bank transfer or cheque: reference plus a photo / PDF of the slip or cheque. */
+// Banks in Rwanda, for the payer's bank (transfer) or the bank a cheque is drawn on.
+export const RWANDA_BANKS = [
+    'Bank of Kigali', 'BPR Bank Rwanda', 'I&M Bank Rwanda', 'Equity Bank Rwanda', 'Access Bank Rwanda', 'Ecobank Rwanda',
+    'NCBA Bank Rwanda', 'Bank of Africa Rwanda', 'GT Bank Rwanda', 'Cogebanque', 'Zigama CSS', 'Development Bank of Rwanda (BRD)',
+    'Urwego Bank', 'Unguka Bank', 'AB Bank Rwanda',
+];
+
+/** Bank transfer or cheque: the payer's bank details, the slip or cheque number, its date and a copy. */
 export function TransferPay({ plan, method, total, money, bank }) {
     const { t } = useTranslation();
-    const form = useForm({ ...plan, method, reference: '', proof: null });
-    const [submitted, setSubmitted] = useState(false);
-    useEffect(() => { form.setData((current) => ({ ...current, ...plan, method })); }, [plan.property_id, plan.months, method]);
-
     const isCheque = method === 'cheque';
+    const today = localDateTime(new Date()).slice(0, 10);
+    const form = useForm({ ...plan, method, bank_name: '', account_number: '', sender_name: '', reference: '', paid_at: today, proof: null });
+    const [otherBank, setOtherBank] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [preview, setPreview] = useState(null);
+    useEffect(() => { form.setData((current) => ({ ...current, ...plan, method })); }, [plan.property_id, plan.months, method]);
+    useEffect(() => {
+        const file = form.data.proof;
+        if (!file || !(file.type || '').startsWith('image/')) { setPreview(null); return undefined; }
+        const url = URL.createObjectURL(file);
+        setPreview(url);
+        return () => URL.revokeObjectURL(url);
+    }, [form.data.proof]);
+
     const clientErrors = {};
-    if (!form.data.reference.trim()) clientErrors.reference = isCheque ? t('Enter the cheque number.') : t('Enter the bank slip reference.');
-    if (!form.data.proof) clientErrors.proof = isCheque ? t('Attach a photo of the cheque.') : t('Attach a photo or PDF of the bank slip.');
+    if (!form.data.bank_name.trim()) clientErrors.bank_name = isCheque ? t('Choose the bank the cheque is drawn on.') : t('Choose the bank you paid from.');
+    if (!/^[0-9A-Za-z]{5,30}$/.test(form.data.account_number.replace(/[\s-]+/g, ''))) clientErrors.account_number = t('Enter the account number: letters and numbers only.');
+    if (!form.data.sender_name.trim()) clientErrors.sender_name = isCheque ? t('Enter the name written on the cheque.') : t('Enter the name on the account (a person or a company).');
+    if (isCheque ? !/^[0-9]{4,20}$/.test(form.data.reference.replace(/\s+/g, '')) : !form.data.reference.trim()) clientErrors.reference = isCheque ? t('Enter the cheque number: numbers only.') : t('Enter the reference number on the bank receipt.');
+    if (!form.data.paid_at) clientErrors.paid_at = isCheque ? t('Enter the date written on the cheque.') : t('Enter the date of the transfer.');
+    if (!form.data.proof) clientErrors.proof = isCheque ? t('Attach a copy (photo or scan) of the cheque.') : t('Attach the bank receipt (photo or PDF).');
     const errorFor = (field) => form.errors[field] || (submitted ? clientErrors[field] : null);
+    const fieldClass = (field) => `mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 ${errorFor(field) ? 'border-red-400 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
+    const errorLine = (field) => errorFor(field) && <span className="mt-1 flex items-center gap-1 text-xs font-normal text-red-600"><AlertCircle size={12} aria-hidden="true" />{t(errorFor(field))}</span>;
 
     const submit = (event) => {
         event.preventDefault();
@@ -255,50 +279,112 @@ export function TransferPay({ plan, method, total, money, bank }) {
     };
 
     return (
-        <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl border border-gray-200 p-4">
-            <p className="rounded-xl bg-sky-50 px-3 py-2 text-xs text-sky-950 ring-1 ring-sky-100">
-                {isCheque
-                    ? t('Write the cheque to Q.R.A GROUP LTD for :amount, then send its number and a photo here.', { amount: money(total) })
-                    : t('Pay :amount to the Q.R.A GROUP LTD bank account, then send the slip reference and a photo of the slip here.', { amount: money(total) })}
-            </p>
-            {!isCheque && bank && (
-                <dl className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-sm sm:grid-cols-2">
-                    {[[t('Bank'), bank.bank], [t('Account name'), bank.account_name], [t('Account number'), bank.account_number]].filter(([, value]) => value).map(([label, value]) => (
-                        <div key={label}>
-                            <dt className="text-xs font-semibold uppercase tracking-wide text-emerald-800">{label}</dt>
-                            <dd className="mt-0.5 flex items-center justify-between gap-2 font-semibold text-gray-900">
-                                <span className="min-w-0 break-words">{value}</span>
-                                <button type="button" onClick={() => navigator.clipboard?.writeText(value)} className="shrink-0 whitespace-nowrap rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold text-[#0E3B2E] ring-1 ring-emerald-200 hover:bg-emerald-50">{t('Copy')}</button>
-                            </dd>
-                        </div>
-                    ))}
-                    {!bank.account_number && <p className="text-xs text-emerald-900 sm:col-span-2">{t('Ask ITUZE GREEN PLATFORM for the account number before paying.')}</p>}
-                </dl>
-            )}
-            <label className="block text-sm font-medium text-gray-800">
-                {isCheque ? t('Cheque number') : t('Bank slip reference')}
-                <input value={form.data.reference} onChange={(event) => form.setData('reference', event.target.value)}
-                    className={`mt-1.5 w-full rounded-xl border px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${errorFor('reference') ? 'border-red-400 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`}
-                    aria-invalid={errorFor('reference') ? 'true' : undefined} />
-                {errorFor('reference') && <span className="mt-1 block text-xs text-red-600">{errorFor('reference')}</span>}
-                {(form.errors.property_id || form.errors.months) && <span className="mt-1 block text-xs text-red-600">{t(form.errors.property_id || form.errors.months)}</span>}
-            </label>
-            <div>
-                <p className="text-sm font-medium text-gray-800">{isCheque ? t('Photo of the cheque') : t('Photo or PDF of the slip')}</p>
-                <label className={`mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-4 text-sm transition ${form.data.proof ? 'border-emerald-300 bg-emerald-50/50' : errorFor('proof') ? 'border-red-300 bg-red-50/40' : 'border-gray-300 hover:border-[#0E3B2E]/40 hover:bg-gray-50'}`}>
-                    <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={(event) => form.setData('proof', event.target.files?.[0] || null)} />
-                    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-white text-[#0E3B2E] ring-1 ring-gray-200" aria-hidden="true">{form.data.proof ? <FileCheck2 size={18} /> : <Upload size={18} />}</span>
+        <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl bg-gray-50/70 p-3 ring-1 ring-gray-200 sm:p-4">
+            <Step number={1} title={isCheque ? t('Write the cheque') : t('Pay to Q.R.A GROUP LTD')}>
+                {isCheque ? (
+                    <ul className="space-y-1.5 text-sm text-gray-800">
+                        <li className="flex gap-2"><CheckCircle2 size={16} className="mt-0.5 flex-none text-emerald-600" aria-hidden="true" />{t('Pay to the order of')} <strong>Q.R.A GROUP LTD</strong></li>
+                        <li className="flex gap-2"><CheckCircle2 size={16} className="mt-0.5 flex-none text-emerald-600" aria-hidden="true" />{t('Amount')}: <strong className="tabular-nums">{money(total)}</strong></li>
+                        <li className="flex gap-2"><CheckCircle2 size={16} className="mt-0.5 flex-none text-emerald-600" aria-hidden="true" />{t('Signed and dated, then give it to ITUZE or deposit it on our account.')}</li>
+                    </ul>
+                ) : (
+                    <>
+                        <p className="text-sm text-gray-700">{t('Transfer exactly :amount to this account:', { amount: money(total) })}</p>
+                        {bank && (
+                            <dl className="mt-3 grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-sm sm:grid-cols-3">
+                                {[[t('Bank'), bank.bank], [t('Account name'), bank.account_name], [t('Account number'), bank.account_number]].filter(([, value]) => value).map(([label, value]) => (
+                                    <div key={label} className="min-w-0">
+                                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-emerald-800">{label}</dt>
+                                        <dd className="mt-0.5 flex items-center justify-between gap-2 font-semibold text-gray-900">
+                                            <span className="min-w-0 break-words">{value}</span>
+                                            <button type="button" onClick={() => navigator.clipboard?.writeText(value)} className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold text-[#0E3B2E] ring-1 ring-emerald-200 hover:bg-emerald-50">{t('Copy')}</button>
+                                        </dd>
+                                    </div>
+                                ))}
+                                {!bank.account_number && <p className="text-xs text-emerald-900 sm:col-span-3">{t('Ask ITUZE GREEN PLATFORM for the account number before paying.')}</p>}
+                            </dl>
+                        )}
+                    </>
+                )}
+            </Step>
+
+            <Step number={2} title={isCheque ? t('Cheque details') : t('Your transfer details')}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block text-sm font-medium text-gray-800">
+                        {isCheque ? t('Bank of the cheque') : t('Your bank')}
+                        <select value={otherBank ? '__other' : form.data.bank_name}
+                            onChange={(event) => { const other = event.target.value === '__other'; setOtherBank(other); form.setData('bank_name', other ? '' : event.target.value); }}
+                            className={fieldClass('bank_name')} aria-invalid={errorFor('bank_name') ? 'true' : undefined}>
+                            <option value="">{t('Choose the bank')}</option>
+                            {RWANDA_BANKS.map((name) => <option key={name} value={name}>{name}</option>)}
+                            <option value="__other">{t('Other bank')}</option>
+                        </select>
+                        {otherBank && <input value={form.data.bank_name} onChange={(event) => form.setData('bank_name', event.target.value)} maxLength={80} placeholder={t('Name of the bank')} className={fieldClass('bank_name')} />}
+                        {errorLine('bank_name')}
+                    </label>
+                    <label className="block text-sm font-medium text-gray-800">
+                        {isCheque ? t('Account number on the cheque') : t('Account number you paid from')}
+                        <input value={form.data.account_number} onChange={(event) => form.setData('account_number', event.target.value.replace(/[^0-9A-Za-z\s-]/g, ''))} inputMode="numeric" maxLength={40}
+                            placeholder="00040-0123456-78" className={`${fieldClass('account_number')} font-mono tracking-wide`} aria-invalid={errorFor('account_number') ? 'true' : undefined} />
+                        {errorLine('account_number')}
+                    </label>
+                    <label className="block text-sm font-medium text-gray-800 sm:col-span-2">
+                        {isCheque ? t('Name written on the cheque') : t('Name on the account')}
+                        <input value={form.data.sender_name} onChange={(event) => form.setData('sender_name', event.target.value)} maxLength={150} autoComplete="organization"
+                            placeholder={t('A person or a company, e.g. KAMANZI JEAN or IKAZE LTD')} className={fieldClass('sender_name')} aria-invalid={errorFor('sender_name') ? 'true' : undefined} />
+                        {errorLine('sender_name')}
+                    </label>
+                    <label className="block text-sm font-medium text-gray-800">
+                        {isCheque ? t('Cheque number') : t('Reference number on the receipt')}
+                        <input value={form.data.reference} onChange={(event) => form.setData('reference', isCheque ? event.target.value.replace(/[^\d\s]/g, '') : event.target.value)} maxLength={60}
+                            inputMode={isCheque ? 'numeric' : 'text'} placeholder={isCheque ? '001234' : 'FT26298ABC12'} className={`${fieldClass('reference')} font-mono tracking-wide`} aria-invalid={errorFor('reference') ? 'true' : undefined} />
+                        {!isCheque && <span className="mt-1 block text-xs font-normal text-gray-500">{t('Also called transaction ID or FT number.')}</span>}
+                        {errorLine('reference')}
+                    </label>
+                    <label className="block text-sm font-medium text-gray-800">
+                        {isCheque ? t('Date on the cheque') : t('Date of the transfer')}
+                        <input type="date" value={form.data.paid_at} max={today} onChange={(event) => form.setData('paid_at', event.target.value)} className={fieldClass('paid_at')} aria-invalid={errorFor('paid_at') ? 'true' : undefined} />
+                        {errorLine('paid_at')}
+                    </label>
+                    <div className="sm:col-span-2">
+                        <p className="text-sm font-medium text-gray-800">{t('Amount')}</p>
+                        <p className="mt-1.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-bold tabular-nums text-gray-900">{money(total)}</p>
+                    </div>
+                </div>
+                {(form.errors.property_id || form.errors.months) && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.property_id || form.errors.months)}</p>}
+            </Step>
+
+            <Step number={3} title={isCheque ? t('Copy of the cheque') : t('Bank receipt')}>
+                <label className={`flex cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed p-3 transition focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${form.data.proof ? 'border-emerald-300 bg-emerald-50/50' : errorFor('proof') ? 'border-red-300 bg-red-50/40' : 'border-gray-300 hover:border-[#0E3B2E]/40 hover:bg-gray-50'}`}>
+                    <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={(event) => form.setData('proof', event.target.files?.[0] || null)} />
+                    <span className="flex h-16 w-24 flex-none items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-gray-200" aria-hidden="true">
+                        {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : form.data.proof ? <FileCheck2 size={22} className="text-[#0E3B2E]" /> : <Upload size={22} className="text-gray-400" />}
+                    </span>
                     <span className="min-w-0">
-                        <span className="block truncate font-semibold text-gray-900">{form.data.proof ? form.data.proof.name : t('Choose a file')}</span>
-                        <span className="block text-xs text-gray-600">{t('JPG, PNG or PDF, up to 5 MB')}</span>
+                        <span className="block truncate font-semibold text-gray-900">{form.data.proof ? form.data.proof.name : isCheque ? t('Add a photo or scan of the cheque') : t('Add a photo or PDF of the receipt')}</span>
+                        <span className="block text-xs text-gray-600">{t('JPG, PNG or PDF, up to 5 MB')} · {t('every number must be readable')}</span>
                     </span>
                 </label>
-                {errorFor('proof') && <span className="mt-1 block text-xs text-red-600">{errorFor('proof')}</span>}
-            </div>
-            <button disabled={form.processing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60">
+                {errorLine('proof')}
+            </Step>
+
+            <button disabled={form.processing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-[#124B3A] disabled:opacity-60">
                 {form.processing ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
                 {form.processing ? t('Sending…') : t('Send for checking · :amount', { amount: money(total) })}
             </button>
+            <p className="text-center text-xs text-gray-500">{t('ITUZE checks it with the bank, usually within one working day. You get an SMS and an email.')}</p>
         </form>
+    );
+}
+
+/** A numbered block of the bank or cheque form. */
+function Step({ number, title, children }) {
+    return (
+        <section className="rounded-2xl border border-gray-200 bg-white p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0E3B2E] text-xs text-white" aria-hidden="true">{number}</span>{title}
+            </h3>
+            {children}
+        </section>
     );
 }

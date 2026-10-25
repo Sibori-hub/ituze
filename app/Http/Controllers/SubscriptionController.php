@@ -73,14 +73,45 @@ class SubscriptionController extends Controller
     public function storeTransfer(Request $request): RedirectResponse
     {
         $owner = $this->owner($request);
+        $request->merge([
+            'reference' => preg_replace('/\s+/', '', (string) $request->input('reference')),
+            'account_number' => preg_replace('/[\s-]+/', '', (string) $request->input('account_number')),
+        ]);
+        $cheque = $request->input('method') === 'cheque';
         $data = $request->validate([
             ...$this->planRules(),
             'method' => ['required', Rule::in(['bank_transfer', 'cheque'])],
-            'reference' => ['required', 'string', 'max:120'],
+            'bank_name' => ['required', 'string', 'max:80'],
+            'account_number' => ['required', 'regex:/^[0-9A-Za-z]{5,30}$/'],
+            // Name on the account or on the cheque: a person or a company.
+            'sender_name' => ['required', 'string', 'max:150'],
+            'reference' => [
+                'required', $cheque ? 'regex:/^[0-9]{4,20}$/' : 'regex:/^[0-9A-Za-z\/._-]{4,60}$/',
+                // One slip or cheque pays once: the same number at the same bank is refused.
+                Rule::unique('subscription_payments', 'reference')->where(fn ($query) => $query
+                    ->where('method', $request->input('method'))
+                    ->where('bank_name', $request->input('bank_name'))
+                    ->whereIn('status', [SubscriptionPayment::PENDING, SubscriptionPayment::APPROVED])),
+            ],
+            'paid_at' => ['required', 'date', function (string $attribute, mixed $value, \Closure $fail) use ($cheque) {
+                $day = self::kigaliTime((string) $value)->startOfDay();
+                if ($day->isAfter(now()->addDay())) {
+                    $fail($cheque ? 'The cheque date cannot be in the future.' : 'The transfer date cannot be in the future.');
+                } elseif ($day->isBefore(now()->subDays(60))) {
+                    $fail('This date is more than 60 days ago. Please contact ITUZE.');
+                }
+            }],
             'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
-            'reference.required' => 'Enter the bank slip reference or the cheque number.',
-            'proof.required' => 'Attach a photo or PDF of the bank slip or cheque.',
+            'bank_name.required' => $cheque ? 'Choose the bank the cheque is drawn on.' : 'Choose the bank you paid from.',
+            'account_number.required' => 'Enter the account number.',
+            'account_number.regex' => 'Enter the account number: letters and numbers only.',
+            'sender_name.required' => $cheque ? 'Enter the name written on the cheque.' : 'Enter the name on the account (a person or a company).',
+            'reference.required' => $cheque ? 'Enter the cheque number.' : 'Enter the reference number on the bank receipt.',
+            'reference.regex' => $cheque ? 'Enter the cheque number: numbers only.' : 'Enter the reference as printed on the receipt.',
+            'reference.unique' => $cheque ? 'This cheque was already sent for a payment.' : 'This bank reference was already used for a payment.',
+            'paid_at.required' => $cheque ? 'Enter the date written on the cheque.' : 'Enter the date of the transfer.',
+            'proof.required' => $cheque ? 'Attach a copy (photo or scan) of the cheque.' : 'Attach the bank receipt (photo or PDF).',
         ]);
         $plan = $this->plan($owner, $data);
         $this->ensureNothingWaiting($owner, $plan['property_id']);
@@ -90,7 +121,11 @@ class SubscriptionController extends Controller
             'owner_id' => $owner->id,
             ...$plan,
             'method' => $data['method'],
-            'reference' => trim($data['reference']),
+            'reference' => $data['reference'],
+            'bank_name' => trim($data['bank_name']),
+            'account_number' => $data['account_number'],
+            'sender_name' => trim($data['sender_name']),
+            'paid_at' => self::kigaliTime($data['paid_at'])->startOfDay()->utc(),
             'proof_path' => $file->store('subscription-proofs', 'local'),
             'proof_name' => mb_substr($file->getClientOriginalName(), 0, 200),
             'status' => SubscriptionPayment::PENDING,

@@ -118,6 +118,14 @@ export default function AdminSubscriptions({ payments, filters = {}, counts = {}
                                                 <div><dt className="inline font-semibold">{t('Sender')}: </dt><dd className="inline">{payment.sender_name} · {payment.sender_phone}</dd></div>
                                                 <div><dt className="inline font-semibold">{t('Paid on')}: </dt><dd className="inline">{payment.paid_at ? new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(payment.paid_at)) : '—'}</dd></div>
                                             </dl>
+                                        ) : payment.bank_name ? (
+                                            <dl className="mt-1 space-y-0.5 text-xs text-gray-700">
+                                                <div><dt className="inline font-semibold">{t('Bank')}: </dt><dd className="inline">{payment.bank_name}</dd></div>
+                                                <div><dt className="inline font-semibold">{t('Account number')}: </dt><dd className="inline break-all font-mono">{payment.account_number}</dd></div>
+                                                <div><dt className="inline font-semibold">{payment.method === 'cheque' ? t('Name on the cheque') : t('Account name')}: </dt><dd className="inline">{payment.sender_name}</dd></div>
+                                                <div><dt className="inline font-semibold">{payment.method === 'cheque' ? t('Cheque number') : t('Reference number')}: </dt><dd className="inline break-all font-mono">{payment.reference}</dd></div>
+                                                <div><dt className="inline font-semibold">{payment.method === 'cheque' ? t('Cheque date') : t('Transfer date')}: </dt><dd className="inline">{payment.paid_at ? new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(payment.paid_at)) : '—'}</dd></div>
+                                            </dl>
                                         ) : payment.reference && <p className="break-all font-mono text-xs text-gray-600">{payment.reference}</p>}
                                         {payment.has_proof && (
                                             <a href={route('subscription.proof', payment.id)} target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-[#0E3B2E] hover:underline">

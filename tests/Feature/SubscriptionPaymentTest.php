@@ -46,6 +46,12 @@ class SubscriptionPaymentTest extends TestCase
         return Property::create(['owner_id' => $this->owner->id, 'name' => $name, 'address' => 'KG 1 Ave', 'total_floors' => 1, 'paid_until' => $paidUntil]);
     }
 
+    /** The payer's bank details, as typed on the bank or cheque form. */
+    private function bank(): array
+    {
+        return ['bank_name' => 'Bank of Kigali', 'account_number' => '00040-0123456-78', 'sender_name' => 'IKAZE LTD', 'paid_at' => now('Africa/Kigali')->toDateString()];
+    }
+
     private function slip(): UploadedFile
     {
         return UploadedFile::fake()->create('slip.pdf', 100, 'application/pdf');
@@ -83,27 +89,33 @@ class SubscriptionPaymentTest extends TestCase
 
     public function test_bank_slip_is_checked_by_an_admin_then_approved_or_rejected(): void
     {
+        // Bank, account, account name, receipt reference, date and the receipt are all required.
         $this->actingAs($this->owner)->post(route('subscription.transfer'), [
             'property_id' => $this->house->id, 'months' => 1, 'method' => 'bank_transfer', 'reference' => 'BK-778899', 'proof' => $this->slip(),
+        ])->assertSessionHasErrors(['bank_name', 'account_number', 'sender_name', 'paid_at']);
+        $this->post(route('subscription.transfer'), [
+            'property_id' => $this->house->id, 'months' => 1, 'method' => 'bank_transfer', 'reference' => 'BK-778899', 'proof' => $this->slip(), ...$this->bank(),
         ])->assertSessionHasNoErrors();
         $payment = SubscriptionPayment::query()->firstOrFail();
         $this->assertSame('pending', $payment->status);
+        $this->assertSame(['Bank of Kigali', '00040012345678', 'IKAZE LTD'], [$payment->bank_name, $payment->account_number, $payment->sender_name]);
         Storage::disk('local')->assertExists($payment->proof_path);
         Notification::assertSentTo($this->admin, SubscriptionPaymentSubmitted::class);
 
         // One slip at a time for the same property.
-        $this->post(route('subscription.transfer'), ['property_id' => $this->house->id, 'months' => 1, 'method' => 'cheque', 'reference' => 'CHQ-1', 'proof' => $this->slip()])
+        $this->post(route('subscription.transfer'), ['property_id' => $this->house->id, 'months' => 1, 'method' => 'cheque', 'reference' => '100001', 'proof' => $this->slip(), ...$this->bank()])
             ->assertSessionHasErrors('reference');
 
         // The owner cannot approve; the admin can, and sees the proof and the property.
         $this->post(route('admin.subscriptions.approve', $payment))->assertForbidden();
         $this->actingAs($this->admin)->get(route('subscription.proof', $payment))->assertOk();
-        $this->get(route('admin.subscriptions'))->assertInertia(fn (Assert $page) => $page->where('counts.pending', 1)->where('payments.data.0.property', 'Kigali Heights'));
+        $this->get(route('admin.subscriptions'))->assertInertia(fn (Assert $page) => $page->where('counts.pending', 1)->where('payments.data.0.property', 'Kigali Heights')
+            ->where('payments.data.0.bank_name', 'Bank of Kigali')->where('payments.data.0.account_number', '00040012345678'));
         $this->post(route('admin.subscriptions.approve', $payment))->assertSessionHasNoErrors();
         $this->assertSame('2026-11-25', $this->house->fresh()->paid_until->toDateString());
 
         // A second slip is rejected with a reason the owner is told.
-        $this->actingAs($this->owner)->post(route('subscription.transfer'), ['property_id' => $this->house->id, 'months' => 6, 'method' => 'cheque', 'reference' => 'CHQ-2', 'proof' => $this->slip()]);
+        $this->actingAs($this->owner)->post(route('subscription.transfer'), ['property_id' => $this->house->id, 'months' => 6, 'method' => 'cheque', 'reference' => '100002', 'proof' => $this->slip(), ...$this->bank()])->assertSessionHasNoErrors();
         $second = SubscriptionPayment::query()->latest('id')->firstOrFail();
         $this->actingAs($this->admin)->post(route('admin.subscriptions.reject', $second), ['reason' => ''])->assertSessionHasErrors('reason');
         $this->post(route('admin.subscriptions.reject', $second), ['reason' => 'Cheque not signed'])->assertSessionHasNoErrors();
@@ -183,7 +195,7 @@ class SubscriptionPaymentTest extends TestCase
         $this->assertFalse(\App\Models\Unit::query()->publiclyListed()->whereKey($room->id)->exists());
 
         // 100,000 RWF per month for that property only; the other keeps its own date.
-        $this->post(route('subscription.transfer'), ['property_id' => $new->id, 'months' => 3, 'method' => 'bank_transfer', 'reference' => 'BK-1', 'proof' => $this->slip()])
+        $this->post(route('subscription.transfer'), ['property_id' => $new->id, 'months' => 3, 'method' => 'bank_transfer', 'reference' => 'BK-1001', 'proof' => $this->slip(), ...$this->bank()])
             ->assertSessionHasNoErrors();
         $payment = SubscriptionPayment::query()->latest('id')->firstOrFail();
         $this->assertSame([300000.0, $new->id, 3], [(float) $payment->amount, $payment->property_id, $payment->months]);
@@ -217,7 +229,7 @@ class SubscriptionPaymentTest extends TestCase
         $this->get(route('properties.show', $plaza))->assertInertia(fn (Assert $page) => $page->where('subscription.active', false));
 
         // Step 2: pay. Still locked while ITUZE checks it.
-        $this->post(route('subscription.transfer'), ['property_id' => $plaza->id, 'months' => 1, 'method' => 'bank_transfer', 'reference' => 'BK-77', 'proof' => $this->slip()])
+        $this->post(route('subscription.transfer'), ['property_id' => $plaza->id, 'months' => 1, 'method' => 'bank_transfer', 'reference' => 'BK-7700', 'proof' => $this->slip(), ...$this->bank()])
             ->assertSessionHasNoErrors();
         $this->get(route('properties.pay', $plaza))->assertInertia(fn (Assert $page) => $page->where('subscription.pending.amount', 100000));
         $this->get(route('properties.units.create', $plaza))->assertRedirect(route('properties.pay', $plaza))
