@@ -98,6 +98,8 @@ class LeaseManagementTest extends TestCase
         Notification::assertSentTo($this->owner, LeaseEndingReminder::class, fn ($notification) => $notification->kind === 'expired');
         Notification::assertSentOnDemandTimes(LeaseEndingReminder::class, 0);
 
+        // Admin work lists show the owners Q.R.A manages.
+        $this->owner->update(['created_by' => $this->admin->id]);
         $this->actingAs($this->admin)->get(route('leases.index', ['status' => 'expired']))
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Leases/Index')
@@ -158,12 +160,15 @@ class LeaseManagementTest extends TestCase
             ]);
         }
 
-        // Self-registered owner: no commission.
-        $this->actingAs($this->admin)->get(route('payments.index'))
+        // Self-registered owner: their payments are theirs, with no commission. The admin's
+        // Payments page leaves them out (they are followed on Admin > Owners).
+        $this->actingAs($this->owner)->get(route('payments.index'))
             ->assertInertia(fn (Assert $page) => $page
                 ->where('reportTotals.commission', 0)
                 ->where('reportTotals.paid', 600000)
                 ->where('reportTotals.deposits_received', 300000));
+        $this->actingAs($this->admin)->get(route('payments.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('reportTotals.paid', 0)->has('payments.data', 0));
 
         // Managed owner at 10%: 10% of the rent, nothing on the deposit.
         $this->owner->update(['created_by' => $this->admin->id, 'management_fee_percent' => 10]);
@@ -254,6 +259,7 @@ class LeaseManagementTest extends TestCase
 
     public function test_ending_soon_tab_and_search(): void
     {
+        $this->owner->update(['created_by' => $this->admin->id]);
         $this->actingAs($this->admin)->get(route('leases.index', ['status' => 'ending_soon', 'search' => 'Lease Tenant']))
             ->assertInertia(fn (Assert $page) => $page
                 ->where('counts.ending_soon', 1)

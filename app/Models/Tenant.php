@@ -82,6 +82,23 @@ class Tenant extends Model
             ->orWhereHas('tenancies.unit', fn ($room) => $room->visibleTo($user)));
     }
 
+    /**
+     * Work lists: like visibleTo, but an admin does not see the tenants of
+     * self-registered owners (added by them or their managers, or renting from them).
+     */
+    public function scopeInWorkspaceOf($query, User $user)
+    {
+        if (! $user->isAdmin()) {
+            return $query->visibleTo($user);
+        }
+        $saas = User::selfRegisteredOwnerIds();
+        $saasTeam = User::query()->select('id')->whereIn('id', $saas)->orWhereIn('employer_id', User::selfRegisteredOwnerIds());
+
+        return $query
+            ->where(fn ($inner) => $inner->whereNull($query->qualifyColumn('created_by'))->orWhereNotIn($query->qualifyColumn('created_by'), $saasTeam))
+            ->whereDoesntHave('tenancies.unit.property', fn ($property) => $property->whereIn('owner_id', User::selfRegisteredOwnerIds()));
+    }
+
     public function tenancies()
     {
         return $this->hasMany(Tenancy::class);

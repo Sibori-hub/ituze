@@ -104,6 +104,16 @@ class Property extends Model
         return $query->where($query->qualifyColumn('owner_id'), $user->id);
     }
 
+    /**
+     * Work lists (properties, tenants, leases, payments, reports, utilities):
+     * like visibleTo, but an admin only sees the owners Q.R.A manages.
+     */
+    public function scopeInWorkspaceOf($query, User $user)
+    {
+        return $query->visibleTo($user)->when($user->isAdmin(), fn ($inner) => $inner
+            ->whereNotIn($query->qualifyColumn('owner_id'), User::selfRegisteredOwnerIds()));
+    }
+
     public function cell()
     {
         return $this->belongsTo(Cell::class);

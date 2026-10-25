@@ -33,7 +33,7 @@ class UtilityReport
     public static function propertiesFor(User $user): Collection
     {
         return Property::query()
-            ->visibleTo($user)
+            ->inWorkspaceOf($user)
             ->orderBy('name')
             ->get(['id', 'name', 'owner_id'])
             ->filter(fn (Property $property) => ! $user->isManager() || $user->canManageWholeProperty($property))

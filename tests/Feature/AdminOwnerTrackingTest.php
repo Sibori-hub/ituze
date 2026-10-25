@@ -57,6 +57,16 @@ class AdminOwnerTrackingTest extends TestCase
             ->where('properties.0.name', 'Ikaze Building')
             ->where('units.0.number', '001'));
 
+        // The admin's work lists show only owners Q.R.A manages; the SaaS owner still sees their own.
+        Property::create(['owner_id' => $managed->id, 'name' => 'Managed House', 'address' => 'KG 2 Ave', 'total_floors' => 1]);
+        \App\Models\Tenant::create(['type' => 'individual', 'name' => 'SaaS Tenant', 'status' => 'active', 'created_by' => $owner->id]);
+        $this->get(route('properties.index'))->assertInertia(fn (Assert $page) => $page
+            ->has('properties.data', 1)->where('properties.data.0.name', 'Managed House'));
+        $this->get(route('tenants.index'))->assertInertia(fn (Assert $page) => $page->has('tenants.data', 0));
+        $this->actingAs($owner)->get(route('properties.index'))->assertInertia(fn (Assert $page) => $page
+            ->has('properties.data', 1)->where('properties.data.0.name', 'Ikaze Building'));
+        $this->actingAs($admin);
+
         // Owners managed by Q.R.A are not SaaS customers; owners never see this area.
         $this->get(route('admin.owners.show', $managed))->assertNotFound();
         $this->actingAs($owner)->get(route('admin.owners'))->assertForbidden();

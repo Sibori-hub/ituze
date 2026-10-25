@@ -32,7 +32,7 @@ class PropertyController extends Controller
                 'owner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))],
             ]);
             $ownerId = isset($filters['owner_id']) ? (int) $filters['owner_id'] : null;
-            $owners = User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name']);
+            $owners = User::query()->where('role', 'owner')->whereNotNull('created_by')->orderBy('name')->get(['id', 'name']);
         }
 
         // A manager given single units only counts the rooms in those units.
@@ -46,7 +46,7 @@ class PropertyController extends Controller
             ])
             ->withSum(['units as units_monthly_rent_sum' => $rooms], 'rent_amount')
             // Admins see every property, owners their own, managers the ones assigned to them.
-            ->visibleTo($user)
+            ->inWorkspaceOf($user)
             ->when($ownerId, fn ($query) => $query->where('owner_id', $ownerId))
             ->when($request->search, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {

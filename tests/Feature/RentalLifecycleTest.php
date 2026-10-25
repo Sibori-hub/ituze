@@ -517,6 +517,12 @@ class RentalLifecycleTest extends TestCase
             'size' => 100,
         ]);
 
+        // A self-registered owner runs their own reports; the admin's lists leave them out.
+        $this->actingAs($admin)->get(route('reports.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('summary.properties', 0)->has('owners', 0));
+        // Both owners are managed by Q.R.A: the admin reports on them.
+        User::query()->whereKey([$owner->id, $otherOwner->id])->update(['created_by' => $admin->id]);
+
         $this->actingAs($admin)
             ->get(route('reports.index'))
             ->assertOk()

@@ -57,6 +57,13 @@ class Unit extends Model
     /**
      * The unit (category on a floor) this room belongs to.
      */
+    /** Work lists: like visibleTo, but an admin only sees the owners Q.R.A manages. */
+    public function scopeInWorkspaceOf($query, User $user)
+    {
+        return $query->visibleTo($user)->when($user->isAdmin(), fn ($inner) => $inner
+            ->whereNotIn($query->qualifyColumn('property_id'), Property::query()->select('id')->whereIn('owner_id', User::selfRegisteredOwnerIds())));
+    }
+
     public function propertyUnit()
     {
         return $this->belongsTo(PropertyUnit::class);

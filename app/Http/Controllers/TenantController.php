@@ -149,12 +149,12 @@ class TenantController extends Controller
                 'owner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'owner'))],
             ]);
             $ownerId = isset($filters['owner_id']) ? (int) $filters['owner_id'] : null;
-            $owners = \App\Models\User::query()->where('role', 'owner')->orderBy('name')->get(['id', 'name']);
+            $owners = \App\Models\User::query()->where('role', 'owner')->whereNotNull('created_by')->orderBy('name')->get(['id', 'name']);
         }
         $query = Tenant::query()
             ->with(['activeTenancies.unit.property'])
             ->withCount('activeTenancies')
-            ->visibleTo($user)
+            ->inWorkspaceOf($user)
             ->when($ownerId, function ($query, $ownerId) {
                 $query->where(function ($query) use ($ownerId) {
                     $query->where('created_by', $ownerId)

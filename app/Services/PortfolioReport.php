@@ -65,7 +65,8 @@ class PortfolioReport
     private function limitToViewer($query)
     {
         if ($this->user->isAdmin()) {
-            return $query;
+            // Self-registered owners run their own buildings; admins follow them on Admin > Owners.
+            return $query->whereNotIn('properties.owner_id', User::selfRegisteredOwnerIds());
         }
         if ($this->user->isManager()) {
             $scope = $this->user->managerScope();
@@ -253,6 +254,7 @@ class PortfolioReport
         $received = $this->receivedByOwner($from, $to)->groupBy('owner_id');
         $ownerIds = DB::table('properties')
             ->when(! $this->user->isAdmin(), fn ($query) => $query->where('owner_id', $this->user->workspaceOwnerId()))
+            ->when($this->user->isAdmin(), fn ($query) => $query->whereNotIn('owner_id', User::selfRegisteredOwnerIds()))
             ->when($this->ownerId, fn ($query) => $query->where('owner_id', $this->ownerId))
             ->distinct()
             ->pluck('owner_id');

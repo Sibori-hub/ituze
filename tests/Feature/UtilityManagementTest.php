@@ -150,8 +150,9 @@ class UtilityManagementTest extends TestCase
         ])->assertRedirect();
         $this->assertSame(0, UtilityReading::query()->where('property_id', $theirs->id)->count());
 
-        // Admins see and record for every building.
-        $this->actingAs($admin)->get(route('utilities.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('properties', 2)->where('canEdit', true));
+        // Admins work on the buildings of owners Q.R.A manages; self-registered owners run their own.
+        $this->actingAs($admin)->get(route('utilities.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('properties', 1)->where('properties.0.id', $theirs->id)->where('canEdit', true));
         $this->actingAs($admin)->post(route('utilities.readings.store'), [
             'property_id' => $theirs->id, 'type' => 'electricity', 'month' => '2026-10', 'reading' => 10,
         ])->assertSessionHasNoErrors();

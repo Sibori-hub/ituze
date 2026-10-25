@@ -326,6 +326,15 @@ class User extends Authenticatable implements MustVerifyEmail
             && \App\Models\AdPurchase::query()->where('advertiser_id', $this->id)->where('status', \App\Models\AdPurchase::APPROVED)->exists();
     }
 
+    /**
+     * Ids of self-registered (SaaS) owners. They run their own buildings: an
+     * admin's work lists leave them out and follows them on Admin > Owners.
+     */
+    public static function selfRegisteredOwnerIds()
+    {
+        return self::query()->select('id')->where('role', 'owner')->whereNull('created_by');
+    }
+
     /** Self-registered owners pay a monthly subscription. */
     public function paysSubscription(): bool
     {
