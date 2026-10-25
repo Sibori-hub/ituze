@@ -93,6 +93,7 @@ class ManagerAccessTest extends TestCase
 
     public function test_owner_adds_a_manager_who_must_change_the_temporary_password(): void
     {
+        \Illuminate\Support\Facades\Notification::fake();
         $this->actingAs($this->owner)->post(route('managers.store'), [
             // A username to sign in with, and an email like an owner's.
             'first_name' => 'Jean', 'last_name' => 'Manager', 'username' => 'Jean.Ikaze', 'email' => '', 'phone' => '0788555444',
@@ -107,6 +108,20 @@ class ManagerAccessTest extends TestCase
 
         $manager = User::query()->where('username', 'jean.ikaze')->firstOrFail();
         $this->assertSame([false, null, null], [$manager->profile_completed, $manager->email_verified_at, $manager->phone_verified_at]);
+
+        // The manager is told by email and SMS: who added them, the username, never the password.
+        \Illuminate\Support\Facades\Notification::assertSentTo($manager, \App\Notifications\ManagerAccountCreated::class, function ($notification, $channels) use ($manager) {
+            $sms = $notification->toSms($manager);
+
+            return in_array('mail', $channels, true) && in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true)
+                && str_contains($sms, 'jean.ikaze') && ! str_contains($sms, 'Temp-Pass#2026')
+                && $notification->buildings === ['Whole Plaza'];
+        });
+
+        // The owner resets the password: the manager is told again.
+        $this->post(route('managers.password', $manager), ['password' => 'Temp-Pass#2027', 'password_confirmation' => 'Temp-Pass#2027'])->assertSessionHasNoErrors();
+        \Illuminate\Support\Facades\Notification::assertSentTo($manager, \App\Notifications\ManagerPasswordChanged::class, fn ($notification) => $notification->byOwner === $this->owner->name);
+        $manager->forceFill(['password' => 'Temp-Pass#2026'])->save();
         // Email codes are on for the live site, as for owners.
         config(['auth.email_otp_enabled' => true]);
         \Illuminate\Support\Facades\Auth::logout();
@@ -116,6 +131,8 @@ class ManagerAccessTest extends TestCase
         // First sign-in, like an owner: new password, email code, phone code, then the full profile.
         $this->get(route('dashboard'))->assertRedirect(route('password.change'));
         $this->post(route('password.change.update'), ['current_password' => 'Temp-Pass#2026', 'password' => 'Own-Pass#2026x', 'password_confirmation' => 'Own-Pass#2026x'])->assertSessionHasNoErrors();
+        // Changing it themselves sends a security notice too.
+        \Illuminate\Support\Facades\Notification::assertSentTo($manager, \App\Notifications\ManagerPasswordChanged::class, fn ($notification) => $notification->byOwner === null);
         $this->assertNotNull($manager->fresh()->phone_otp, 'The phone code is sent after the new password.');
         $this->actingAs($manager->refresh());
         $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));

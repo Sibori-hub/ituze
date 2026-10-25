@@ -168,8 +168,10 @@ class ManagerController extends Controller
 
             return $manager;
         });
+        // Tell the manager by email and SMS (username and how to sign in; never the password).
+        $manager->notify(\App\Notifications\ManagerAccountCreated::for($owner, $manager));
 
-        return back()->with('success', $manager->name.' was added as a manager. Give them their email and temporary password; they must change the password at first sign-in.');
+        return back()->with('success', $manager->name.' was added as a manager and was told by email and SMS. Give them the temporary password; they must change it at first sign-in.');
     }
 
     public function update(Request $request, User $manager): RedirectResponse
@@ -229,6 +231,7 @@ class ManagerController extends Controller
 
         $manager->forceFill(['password' => $data['password'], 'must_change_password' => true])->save();
         $manager->endAllSessions();
+        $manager->notify(new \App\Notifications\ManagerPasswordChanged(byOwner: $owner->name));
 
         return back()->with('success', 'A new temporary password was set for '.$manager->name.'. They must change it at their next sign-in.');
     }

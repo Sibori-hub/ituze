@@ -40,6 +40,10 @@ class ForcedPasswordController extends Controller
             'must_change_password' => false,
         ])->save();
 
+        if ($user->isManager()) {
+            $user->notify(new \App\Notifications\ManagerPasswordChanged());
+        }
+
         // A new manager then confirms the phone with a code, like an owner at registration
         // (the email code is sent when the email page opens).
         if ($user->isManager() && ! $user->isPhoneVerified()) {

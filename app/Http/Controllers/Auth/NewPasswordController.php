@@ -52,6 +52,9 @@ class NewPasswordController extends Controller
                 ])->save();
 
                 event(new PasswordReset($user));
+                if ($user->isManager()) {
+                    $user->notify(new \App\Notifications\ManagerPasswordChanged());
+                }
             }
         );
 

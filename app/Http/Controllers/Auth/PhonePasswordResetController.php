@@ -108,6 +108,9 @@ class PhonePasswordResetController extends Controller
         ])->save();
 
         event(new PasswordReset($user));
+        if ($user->isManager()) {
+            $user->notify(new \App\Notifications\ManagerPasswordChanged());
+        }
         $this->forget($request);
 
         return redirect()->route('login')->with('status', __('passwords.reset'));
