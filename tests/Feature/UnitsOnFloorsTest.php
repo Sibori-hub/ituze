@@ -110,6 +110,40 @@ class UnitsOnFloorsTest extends TestCase
         $assign($space('002'), [...$sms, 'payment_proof' => null])->assertSessionHasErrors('payment_reference');
     }
 
+    public function test_the_owner_is_told_when_a_manager_rents_a_unit_and_the_price_stays_the_owners(): void
+    {
+        Storage::fake('local');
+        Notification::fake();
+        $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'profile_completed' => true, 'phone' => '0788000002']);
+        $owner->forceFill(['email_verified_at' => now(), 'phone_verified_at' => now()])->save();
+        $property = Property::create(['owner_id' => $owner->id, 'name' => 'Ikaze Building', 'address' => 'KG 7 Ave', 'total_floors' => 1, 'paid_until' => now()->addMonth()]);
+        $space = Unit::create(['property_id' => $property->id, 'unit_type_id' => UnitType::space()->id, 'floor_number' => 0, 'unit_number' => '001', 'rent_amount' => 200000, 'rent_frequency' => 'monthly', 'status' => 'available']);
+        $manager = User::factory()->create(['role' => 'manager', 'status' => 'approved', 'profile_completed' => true, 'phone' => '0788000003']);
+        $manager->forceFill(['employer_id' => $owner->id, 'email_verified_at' => now(), 'phone_verified_at' => now(), 'terms_accepted_at' => now()])->save();
+        \App\Models\ManagerAssignment::create(['manager_id' => $manager->id, 'property_id' => $property->id]);
+
+        $this->actingAs($manager)->post(route('properties.units.tenancy.store', [$property, $space]), [
+            'business_use' => 'Shop', 'tenant_type' => 'individual', 'first_name' => 'Eric', 'last_name' => 'Mugisha',
+            'email' => 'eric@example.com', 'phone' => '0788123456', 'identity_type' => 'passport', 'identity_number' => 'PC765432',
+            'start_date' => now()->toDateString(), 'end_date' => now()->addMonths(12)->subDay()->toDateString(),
+            // A lower rent typed by the manager is ignored: the owner sets the price.
+            'monthly_rent' => 1000, 'rent_frequency' => 'monthly',
+            'payment_method' => 'cash', 'lease' => UploadedFile::fake()->create('lease.pdf', 50, 'application/pdf'),
+            ...$this->location(),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertEquals(200000, Tenancy::query()->where('unit_id', $space->id)->value('monthly_rent'));
+        Notification::assertSentTo($owner, \App\Notifications\ManagerAssignedTenant::class, fn ($notification, $channels) => $notification->rentReceived === 400000.0
+            && $notification->depositReceived === 200000.0
+            && in_array('mail', $channels, true) && in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true));
+
+        // The owner's dashboard lists the payment with rent and deposit apart.
+        $this->actingAs($owner)->get(route('dashboard'))->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->where('ownerReport.recent_payments.0.rent', fn ($rent) => (float) $rent === 400000.0)
+            ->where('ownerReport.recent_payments.0.deposit', fn ($deposit) => (float) $deposit === 200000.0)
+            ->where('ownerReport.recent_payments.0.amount', fn ($amount) => (float) $amount === 600000.0));
+    }
+
     /** A valid Rwandan address for a new tenant. */
     private function location(int $n = 0): array
     {

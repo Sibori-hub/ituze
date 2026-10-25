@@ -1534,6 +1534,11 @@ export default {
         'Collections': 'Collectes',
         'Paid': 'Payé',
         'Last 6 months': '6 derniers mois',
+        'Rent': 'Loyer',
+        'The deposit is the tenant’s money, held until move-out: it is not part of your income.': 'La caution appartient au locataire et est gardée jusqu’à son départ : elle ne fait pas partie de vos revenus.',
+        'Deposits received': 'Cautions reçues',
+        'In :month · refundable at move-out': 'En :month · remboursable au départ',
+        'In :month · refundable, not your income': 'En :month · remboursable, pas vos revenus',
     },
     rw: {
         'Log in': 'Injira',
@@ -3070,5 +3075,10 @@ export default {
         'Collections': 'Inshuro zatwawe',
         'Paid': 'Byishyuwe',
         'Last 6 months': 'Amezi 6 ashize',
+        'Rent': 'Ubukode',
+        'The deposit is the tenant’s money, held until move-out: it is not part of your income.': 'Ingwate ni amafaranga y’umukodesha abikwa kugeza avuye mu nzu: si inyungu yawe.',
+        'Deposits received': 'Ingwate zakiriwe',
+        'In :month · refundable at move-out': 'Muri :month · isubizwa umukodesha avuye',
+        'In :month · refundable, not your income': 'Muri :month · irasubizwa, si inyungu yawe',
     },
 };

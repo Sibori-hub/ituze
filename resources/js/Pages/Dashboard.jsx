@@ -650,13 +650,13 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
     const isManager = !!report.is_manager;
     const moneyCards = isManager ? [
         { label: 'Rent collected', value: month.rent_collected, note: t('Received in :month', { month: thisMonth }), icon: CreditCard, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100', highlight: true },
-        { label: 'Deposits held for tenants', value: month.deposits_received, note: t('Refundable at move-out'), icon: ShieldCheck, tone: 'bg-violet-50 text-violet-800 ring-violet-100' },
+        { label: 'Deposits received', value: month.deposits_received, note: t('In :month · refundable at move-out', { month: thisMonth }), icon: ShieldCheck, tone: 'bg-violet-50 text-violet-800 ring-violet-100' },
         { label: 'Overdue rent', value: report.arrears.total, note: Number(report.arrears.total) > 0 ? t(':count tenants late', { count: report.arrears.tenants }) : t('Nobody is late with rent'), icon: Clock3, tone: 'bg-red-50 text-red-700 ring-red-100' },
     ] : [
         { label: 'Rent collected', value: month.rent_collected, note: t('Received in :month', { month: thisMonth }), icon: CreditCard, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100' },
         ...(report.managed ? [{ label: 'Q.R.A management fee', value: month.commission, note: t(':rate% of rent collected', { rate: Number(report.fee_rate) }), icon: BadgeCheck, tone: 'bg-amber-50 text-amber-800 ring-amber-100' }] : []),
         { label: report.managed ? 'Your payout' : 'Your income', value: month.payout, note: report.managed ? t('Rent collected less the management fee') : t('Rent collected this month'), icon: TrendingUp, tone: 'bg-[#0E3B2E] text-white ring-[#0E3B2E]', highlight: true },
-        { label: 'Deposits held for tenants', value: month.deposits_received, note: t('Refundable — not part of your payout'), icon: ShieldCheck, tone: 'bg-violet-50 text-violet-800 ring-violet-100' },
+        { label: 'Deposits received', value: month.deposits_received, note: t('In :month · refundable, not your income', { month: thisMonth }), icon: ShieldCheck, tone: 'bg-violet-50 text-violet-800 ring-violet-100' },
     ];
 
     return (
@@ -873,7 +873,9 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Date paid')}</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Tenant')}</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Months covered')}</th>
-                                        <th scope="col" className="px-5 py-3 text-right font-semibold">{t('Amount')}</th>
+                                        <th scope="col" className="px-5 py-3 text-right font-semibold">{t('Rent')}</th>
+                                        <th scope="col" className="px-5 py-3 text-right font-semibold">{t('Deposit')}</th>
+                                        <th scope="col" className="px-5 py-3 text-right font-semibold">{t('Total')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -881,7 +883,9 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                                         <tr key={payment.id}>
                                             <td className="px-5 py-3"><p className="text-gray-900">{formatDate(payment.paid_at, language)}</p>{payment.receipt_number && <p className="font-mono text-[11px] text-gray-500">{payment.receipt_number}</p>}</td>
                                             <td className="px-5 py-3"><p className="font-semibold text-gray-900">{payment.tenant}</p><p className="text-xs text-gray-600">{payment.property} · {t('Room :number', { number: payment.unit })}</p></td>
-                                            <td className="px-5 py-3 text-gray-700">{t(payment.months === 1 ? '1 month' : ':count months', { count: payment.months })}</td>
+                                            <td className="px-5 py-3 text-gray-700">{payment.months ? t(payment.months === 1 ? '1 month' : ':count months', { count: payment.months }) : '—'}</td>
+                                            <td className="px-5 py-3 text-right tabular-nums text-emerald-800">{payment.rent ? money(payment.rent) : '—'}</td>
+                                            <td className="px-5 py-3 text-right tabular-nums text-violet-800">{payment.deposit ? money(payment.deposit) : '—'}</td>
                                             <td className="px-5 py-3 text-right font-semibold tabular-nums text-gray-900">{money(payment.amount)}</td>
                                         </tr>
                                     ))}
@@ -889,6 +893,7 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                             </table>
                         </div>
                     ) : <p className="px-5 py-6 text-sm text-gray-700">{t('No rent payments in the last three months.')}</p>}
+                    {report.recent_payments.length > 0 && <p className="border-t border-gray-100 px-5 py-2.5 text-xs text-gray-600">{t('The deposit is the tenant’s money, held until move-out: it is not part of your income.')}</p>}
                 </section>
 
                 {/* Buildings */}

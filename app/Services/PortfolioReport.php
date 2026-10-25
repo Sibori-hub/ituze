@@ -329,4 +329,46 @@ class PortfolioReport
             ->values()
             ->all();
     }
+
+    /**
+     * The latest payments, one row per transaction, with the rent and the
+     * security deposit kept apart (a first payment holds both).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function recentPayments(int $limit = 5): array
+    {
+        return $this->paymentsQuery()
+            ->join('tenants', 'tenants.id', '=', 'tenancies.tenant_id')
+            ->whereIn('rent_charges.charge_type', ['rent', 'deposit'])
+            ->where('rent_payments.paid_at', '>=', now()->subMonthsNoOverflow(3)->startOfDay())
+            ->orderByDesc('rent_payments.paid_at')
+            ->orderByDesc('rent_payments.id')
+            ->get([
+                'rent_payments.id', 'rent_payments.transaction_id', 'rent_payments.receipt_number', 'rent_payments.paid_at',
+                'rent_payments.amount', 'rent_charges.charge_type', 'tenants.name as tenant_name', 'properties.name as property_name', 'units.unit_number',
+            ])
+            ->groupBy(fn ($row) => $row->transaction_id ?: 'payment-'.$row->id)
+            ->take($limit)
+            ->map(function (Collection $items) {
+                $first = $items->first();
+                $rent = $items->where('charge_type', 'rent');
+                $deposit = round((float) $items->where('charge_type', 'deposit')->sum(fn ($row) => (float) $row->amount), 2);
+
+                return [
+                    'id' => $first->id,
+                    'paid_at' => CarbonImmutable::parse($first->paid_at)->toDateString(),
+                    'receipt_number' => $items->pluck('receipt_number')->filter()->first(),
+                    'tenant' => $first->tenant_name,
+                    'property' => $first->property_name,
+                    'unit' => $first->unit_number,
+                    'months' => $rent->count(),
+                    'rent' => round((float) $rent->sum(fn ($row) => (float) $row->amount), 2),
+                    'deposit' => $deposit,
+                    'amount' => round((float) $items->sum(fn ($row) => (float) $row->amount), 2),
+                ];
+            })
+            ->values()
+            ->all();
+    }
 }

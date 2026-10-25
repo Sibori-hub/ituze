@@ -201,7 +201,7 @@ class TenancyController extends Controller
             $data['deposit_amount'] = $data['monthly_rent'];
         }
 
-        DB::transaction(function () use ($data, $request, $unit, $tenantType, $isApartment, $payment) {
+        $tenancy = DB::transaction(function () use ($data, $request, $unit, $tenantType, $isApartment, $payment) {
             $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->firstOrFail();
 
             if (! $isApartment && ($lockedUnit->status !== 'available' ||
@@ -407,7 +407,17 @@ class TenancyController extends Controller
                     $availableDepositCents -= $rentCents;
                 }
             }
+
+            return $tenancy;
         });
+
+        // The owner hears at once when a manager rents a unit, with rent and deposit apart.
+        if ($request->user()->isManager() && $property->owner) {
+            $paid = RentPayment::query()->whereHas('charge', fn ($query) => $query->where('tenancy_id', $tenancy->id))
+                ->with('charge:id,charge_type')->get();
+            $sum = fn (string $type) => (float) $paid->filter(fn ($row) => $row->charge?->charge_type === $type)->sum('amount');
+            $property->owner->notify(\App\Notifications\ManagerAssignedTenant::for($request->user(), $tenancy, $sum('rent'), $sum('deposit'), $data['payment_method']));
+        }
 
         $redirect = ! empty($data['tenant_id'])
             ? redirect()->route('tenants.show', $data['tenant_id'])

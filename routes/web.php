@@ -318,7 +318,6 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $thisMonth = \App\Services\PortfolioReport::period('this_month');
     $overview = $portfolio->overview($thisMonth['from'], $thisMonth['to']);
     $arrears = $portfolio->arrears();
-    $recentPayments = $portfolio->ownerStatements(now()->subMonthsNoOverflow(3)->startOfDay()->toImmutable(), today()->toImmutable())['lines'] ?? [];
 
     return Inertia::render('Dashboard', [
         'utilitySnapshot' => \App\Services\UtilityReport::snapshot($user),
@@ -351,7 +350,8 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                 ->orderBy('end_date')
                 ->take(5)
                 ->get(['id', 'tenant_id', 'unit_id', 'end_date', 'monthly_rent']),
-            'recent_payments' => array_slice(array_reverse($recentPayments), 0, 5),
+            // Rent and the security deposit apart: a first payment holds both.
+            'recent_payments' => $portfolio->recentPayments(5),
         ],
 
         'summary' => [

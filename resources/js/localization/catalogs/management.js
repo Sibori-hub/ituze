@@ -624,6 +624,11 @@ export default {
         'Privacy Policy': 'Politique de confidentialité',
         'You must accept the Terms and Conditions and the Privacy Policy to continue.': 'Vous devez accepter les Conditions générales et la Politique de confidentialité pour continuer.',
         'Choose the floor first, so the description can mention it.': 'Choisissez d’abord l’étage, pour que la description puisse le mentionner.',
+        'Total': 'Total',
+        'The deposit is the tenant’s money, held until move-out: it is not part of your income.': 'La caution appartient au locataire et est gardée jusqu’à son départ : elle ne fait pas partie de vos revenus.',
+        'Deposits received': 'Cautions reçues',
+        'In :month · refundable at move-out': 'En :month · remboursable au départ',
+        'In :month · refundable, not your income': 'En :month · remboursable, pas vos revenus',
     },
     rw: {
         'Lease documents': 'Inyandiko z’amasezerano',
@@ -1241,5 +1246,10 @@ export default {
         'Privacy Policy': 'Politiki y’ibanga',
         'You must accept the Terms and Conditions and the Privacy Policy to continue.': 'Ugomba kwemera Amabwiriza n’amategeko na Politiki y’ibanga kugira ngo ukomeze.',
         'Choose the floor first, so the description can mention it.': 'Banza uhitemo etaje, kugira ngo ibisobanuro biyivuge.',
+        'Total': 'Byose hamwe',
+        'The deposit is the tenant’s money, held until move-out: it is not part of your income.': 'Ingwate ni amafaranga y’umukodesha abikwa kugeza avuye mu nzu: si inyungu yawe.',
+        'Deposits received': 'Ingwate zakiriwe',
+        'In :month · refundable at move-out': 'Muri :month · isubizwa umukodesha avuye',
+        'In :month · refundable, not your income': 'Muri :month · irasubizwa, si inyungu yawe',
     },
 };
