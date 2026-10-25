@@ -544,6 +544,8 @@ export default {
         'Free': 'Gratuit',
         'See it per owner': 'Voir par propriétaire',
         'Open owners': 'Ouvrir les propriétaires',
+        'Rent collected for managed owners': 'Loyers encaissés pour les propriétaires gérés',
+        'Rent (managed owners)': 'Loyers (propriétaires gérés)',
     },
     rw: {
         'Lease documents': 'Inyandiko z’amasezerano',
@@ -1081,5 +1083,7 @@ export default {
         'Free': 'Ubuntu',
         'See it per owner': 'Reba kuri buri nyir\'inzu',
         'Open owners': 'Fungura ba nyir\'inzu',
+        'Rent collected for managed owners': 'Ubukode bwakiriwe ba nyir inzu bacungwa',
+        'Rent (managed owners)': 'Ubukode (ba nyir inzu bacungwa)',
     },
 };

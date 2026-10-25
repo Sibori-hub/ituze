@@ -187,9 +187,12 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
             ->get(['created_at'])
             ->groupBy(fn ($owner) => $owner->created_at->format('Y-m'))
             ->map->count();
+        // Only rent of owners Q.R.A manages (10% fee): a self-registered owner's rent is
+        // their own business and is followed privately on Admin > Owners.
         $rentCollectedByMonth = \App\Models\RentPayment::query()
             ->where('paid_at', '>=', $chartStart)
             ->whereHas('charge', fn ($query) => $query->where('charge_type', 'rent'))
+            ->whereHas('charge.tenancy.unit.property.owner', fn ($query) => $query->whereNotNull('created_by'))
             ->get(['amount', 'paid_at'])
             ->groupBy(fn ($payment) => $payment->paid_at->format('Y-m'))
             ->map(fn ($payments) => $payments->sum(fn ($payment) => (float) $payment->amount));

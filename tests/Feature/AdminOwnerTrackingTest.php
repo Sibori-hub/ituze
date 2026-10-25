@@ -14,6 +14,26 @@ class AdminOwnerTrackingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_the_dashboard_rent_card_counts_only_owners_qra_manages(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'profile_completed' => true]);
+        $selfRegistered = User::factory()->create(['role' => 'owner', 'status' => 'approved']);
+        $managed = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'created_by' => $admin->id]);
+        $rentPaid = function (User $owner, int $amount) use ($admin) {
+            $property = Property::create(['owner_id' => $owner->id, 'name' => 'B'.$owner->id, 'address' => 'KG 1 Ave', 'total_floors' => 1, 'paid_until' => now()->addMonth()]);
+            $unit = Unit::create(['property_id' => $property->id, 'unit_type_id' => UnitType::space()->id, 'floor_number' => 0, 'unit_number' => '001', 'rent_amount' => $amount, 'rent_frequency' => 'monthly', 'status' => 'occupied']);
+            $tenant = \App\Models\Tenant::create(['type' => 'individual', 'name' => 'T'.$owner->id, 'status' => 'active', 'created_by' => $owner->id]);
+            $tenancy = \App\Models\Tenancy::create(['unit_id' => $unit->id, 'tenant_id' => $tenant->id, 'assigned_by' => $admin->id, 'start_date' => today(), 'end_date' => today()->addYear(), 'monthly_rent' => $amount, 'rent_frequency' => 'monthly', 'status' => 'active']);
+            $charge = \App\Models\RentCharge::create(['tenancy_id' => $tenancy->id, 'charge_type' => 'rent', 'period_start' => today(), 'period_end' => today()->addMonth(), 'due_date' => today(), 'amount' => $amount]);
+            \App\Models\RentPayment::create(['rent_charge_id' => $charge->id, 'recorded_by' => $admin->id, 'amount' => $amount, 'method' => 'cash', 'paid_at' => now()]);
+        };
+        $rentPaid($selfRegistered, 700000);
+        $rentPaid($managed, 300000);
+
+        $this->actingAs($admin)->get(route('dashboard'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('adminOverview.rentCollections.5.amount', fn ($amount) => (float) $amount === 300000.0));
+    }
+
     public function test_only_admins_follow_self_registered_owners_and_their_data(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'profile_completed' => true]);

@@ -456,11 +456,9 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                 <section aria-label={t('Key figures')} className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                     {[
                         {
-                            label: t('Rent collected this month'), value: money(rentNow), icon: TrendingUp, tone: 'from-emerald-500/15 to-emerald-500/5 text-emerald-800',
+                            label: t('Rent collected for managed owners'), value: money(rentNow), icon: TrendingUp, tone: 'from-emerald-500/15 to-emerald-500/5 text-emerald-800',
                             note: rentChange === null ? t('No rent last month to compare') : t(':change% vs last month', { change: rentChange > 0 ? `+${rentChange}` : rentChange }),
                             noteTone: rentChange === null ? 'text-gray-500' : rentChange >= 0 ? 'text-emerald-700' : 'text-red-700',
-                            // Where the money comes from, owner by owner.
-                            href: route('admin.owners'), linkLabel: t('See it per owner'),
                         },
                         { label: t('Subscriptions this month'), value: money(subscriptionMoney.month), icon: Wallet, tone: 'from-amber-500/20 to-amber-500/5 text-amber-800', note: owners.paying === 1 ? t('1 paying owner') : t(':count paying owners', { count: owners.paying || 0 }) },
                         { label: t('Occupancy'), value: `${occupancy}%`, icon: Home, tone: 'from-sky-500/15 to-sky-500/5 text-sky-800', note: t(':occupied of :total rooms rented', { occupied: overview.occupancy.occupied, total: units }), bar: occupancy },
@@ -490,7 +488,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                                 <p className="mt-0.5 text-xs text-gray-600">{moneyView === 'ads' ? t(':count advertisers · :listed buildings on the homepage now', { count: overview.advertisers || 0, listed: overview.listedBuildings || 0 }) : t('Last six months')}</p>
                             </div>
                             <div role="tablist" aria-label={t('Money received')} className="flex rounded-xl bg-gray-100 p-1 text-sm">
-                                {[['rent', t('Rent')], ['subscriptions', t('Subscriptions')], ['ads', t('Ads')]].map(([key, label]) => (
+                                {[['rent', t('Rent (managed owners)')], ['subscriptions', t('Subscriptions')], ['ads', t('Ads')]].map(([key, label]) => (
                                     <button key={key} type="button" role="tab" aria-selected={moneyView === key} onClick={() => setMoneyView(key)}
                                         className={`rounded-lg px-3 py-1.5 font-semibold transition ${moneyView === key ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
                                         {label}
