@@ -164,13 +164,13 @@ export default function ManagersIndex({ owner, canManage, adminView = false, man
                     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-100 px-5 py-4">
                         <div>
                             <h2 id="activity-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Clock3 size={17} className="text-[#1F7A5A]" aria-hidden="true" />{t('Activity')}</h2>
-                            <p className="mt-0.5 text-xs text-gray-600">{t('Everything done in your buildings, newest first.')}</p>
+                            <p className="mt-0.5 text-xs text-gray-600">{t('What your managers did in your buildings, newest first.')}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <label className="text-xs font-semibold text-gray-700">
                                 <span className="sr-only">{t('Who')}</span>
                                 <select value={filters.manager_id || ''} onChange={(event) => filter({ manager_id: event.target.value || undefined, page: undefined })} className="rounded-xl border-gray-300 py-2 text-sm">
-                                    <option value="">{t('Everyone')}</option>
+                                    <option value="">{t('All managers')}</option>
                                     {managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.name}</option>)}
                                 </select>
                             </label>

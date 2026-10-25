@@ -556,6 +556,8 @@ export default {
         'Email': 'E-mail',
         'Email, phone number or username': 'E-mail, téléphone ou nom d\'utilisateur',
         'Enter the email address, Rwanda mobile number or username linked to your account.': 'Saisissez l\'e-mail, le numéro mobile rwandais ou le nom d\'utilisateur de votre compte.',
+        'What your managers did in your buildings, newest first.': 'Ce que vos gestionnaires ont fait dans vos bâtiments, du plus récent au plus ancien.',
+        'All managers': 'Tous les gestionnaires',
     },
     rw: {
         'Lease documents': 'Inyandiko z’amasezerano',
@@ -1105,5 +1107,7 @@ export default {
         'Email': 'Imeyili',
         'Email, phone number or username': 'Imeyili, telefoni cyangwa izina ry\'ukoresha',
         'Enter the email address, Rwanda mobile number or username linked to your account.': 'Andika imeyili, nimero ya telefoni yo mu Rwanda cyangwa izina ry\'ukoresha bya konti yawe.',
+        'What your managers did in your buildings, newest first.': 'Ibyo abacunga bawe bakoze mu nyubako zawe, ibya vuba mbere.',
+        'All managers': 'Abacunga bose',
     },
 };

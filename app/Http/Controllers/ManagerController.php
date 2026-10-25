@@ -59,6 +59,8 @@ class ManagerController extends Controller
         $activity = ActivityLog::query()
             ->with('actor:id,name,role', 'property:id,name')
             ->where('owner_id', $owner->id)
+            // Only what the managers did: the owner knows their own actions.
+            ->whereIn('actor_id', User::withTrashed()->select('id')->where('role', 'manager')->where('employer_id', $owner->id))
             ->where('created_at', '>=', now()->subDays($days))
             ->when($filters['manager_id'] ?? null, fn ($query, $managerId) => $query->where('actor_id', $managerId))
             ->latest('created_at')

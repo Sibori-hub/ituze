@@ -164,6 +164,11 @@ class ManagerAccessTest extends TestCase
             ->has('managers', 1)
             ->where('managers.0.assignments.1.property_unit_id', $this->offices->id)
             ->where('activity.data.0.actor.name', 'Jean Manager'));
+
+        // The owner's own actions are not listed: the history is about the managers.
+        ActivityLog::query()->whereKey($log->id)->update(['actor_id' => $this->owner->id]);
+        $this->get(route('managers.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('activity.data', fn ($rows) => collect($rows)->every(fn ($row) => $row['actor']['role'] === 'manager')));
     }
 
     public function test_manager_payments_and_reports_cover_only_their_rooms(): void
