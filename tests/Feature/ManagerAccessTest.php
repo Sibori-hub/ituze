@@ -214,23 +214,24 @@ class ManagerAccessTest extends TestCase
         $this->get(route('properties.units.show', [$this->partial, $this->officeRoom]))->assertOk();
         $this->get(route('properties.units.show', [$this->partial, $this->shopRoom]))->assertForbidden();
 
-        // Whole property: may edit it, but never create or delete properties.
-        $this->get(route('properties.edit', $this->whole))->assertOk();
+        // Buildings, floors, units and prices are the owner's: a manager runs tenants, payments and utilities.
+        $this->get(route('properties.edit', $this->whole))->assertForbidden();
         $this->get(route('properties.edit', $this->partial))->assertForbidden();
         $this->get(route('properties.create'))->assertForbidden();
         $this->delete(route('properties.destroy', $this->whole))->assertForbidden();
-
-        // Rooms: allowed in the assigned unit, refused in another unit.
-        // Every unit needs a photo.
+        $this->get(route('properties.show', $this->whole))->assertInertia(fn (Assert $page) => $page->where('canEdit', false)->where('canEditProperty', false));
         \Illuminate\Support\Facades\Storage::fake('public');
-        $room = ['unit_number' => '102', 'rent_amount' => 250000, 'rent_frequency' => 'monthly', 'images' => [\Illuminate\Http\UploadedFile::fake()->createWithContent('unit.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGn0AAAAASUVORK5CYII='))]];
-        $this->post(route('properties.units.store', $this->partial), [...$room, 'property_unit_id' => $this->offices->id])->assertSessionHasNoErrors();
-        $this->post(route('properties.units.store', $this->partial), [...$room, 'unit_number' => 'S2', 'property_unit_id' => $this->shops->id])->assertSessionHasErrors('property_unit_id');
-        $this->assertDatabaseHas('units', ['property_id' => $this->partial->id, 'unit_number' => '102']);
-        $this->assertDatabaseMissing('units', ['unit_number' => 'S2']);
+        $room = ['unit_number' => '102', 'rent_amount' => 250000, 'rent_frequency' => 'monthly', 'images' => [\Illuminate\Http\UploadedFile::fake()->image('unit.png')]];
+        $this->post(route('properties.units.store', $this->partial), [...$room, 'property_unit_id' => $this->offices->id])->assertForbidden();
+        $this->get(route('properties.units.edit', [$this->partial, $this->officeRoom]))->assertForbidden();
+        $this->put(route('properties.units.update', [$this->partial, $this->officeRoom]), ['rent_amount' => 1])->assertForbidden();
+        $this->delete(route('properties.units.destroy', [$this->partial, $this->officeRoom]))->assertForbidden();
+        $this->post(route('properties.property-units.store', $this->whole), ['floor_number' => 1])->assertForbidden();
+        $this->assertDatabaseMissing('units', ['unit_number' => '102']);
 
-        // Every change shows up in the owner's activity history.
-        $log = ActivityLog::query()->where('action', 'room.created')->firstOrFail();
+        // A tenant the manager adds shows up in the owner's activity history.
+        \App\Models\Tenant::create(['type' => 'individual', 'name' => 'Manager Tenant', 'status' => 'active', 'created_by' => $manager->id]);
+        $log = ActivityLog::query()->where('action', 'tenant.created')->firstOrFail();
         $this->assertSame($manager->id, $log->actor_id);
         $this->assertSame($this->owner->id, $log->owner_id);
         $this->actingAs($this->owner)->get(route('managers.index'))->assertInertia(fn (Assert $page) => $page

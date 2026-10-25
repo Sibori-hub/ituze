@@ -134,7 +134,9 @@ class AIDescriptionController extends Controller
         abort_unless($user->canAccessProperty($property), 403);
 
         $data = $request->validate([
-            'property_unit_id' => ['required', 'integer'],
+            // A unit on a floor (floor_number), or an older room's unit category (property_unit_id).
+            'property_unit_id' => ['nullable', 'integer', 'required_without:floor_number'],
+            'floor_number' => ['nullable', 'integer', 'between:-5,200'],
             'unit_number' => ['nullable', 'string', 'max:50'],
             'size_sqm' => ['nullable', 'numeric', 'min:0'],
             'rent_amount' => ['nullable', 'numeric', 'min:0'],
@@ -143,14 +145,18 @@ class AIDescriptionController extends Controller
             'bathrooms' => ['nullable', 'numeric', 'between:0,30'],
         ]);
 
-        $unit = $property->propertyUnits()->with('unitType:id,name')->findOrFail($data['property_unit_id']);
+        $unit = ! empty($data['property_unit_id'])
+            ? $property->propertyUnits()->with('unitType:id,name')->findOrFail($data['property_unit_id'])
+            : null;
+        $category = $unit?->unitType?->name;
         $property->loadMissing('cell.sector.district');
         $flags = fn ($values) => array_keys(array_filter((array) $values, fn ($on) => in_array($on, [true, 1, '1'], true)));
 
         $result = (new PropertyDescriptionGenerator())->generateRoom([
             'property' => $property->name,
-            'category' => (string) $unit->unitType?->name,
-            'floor' => \App\Models\PropertyUnit::floorLabel($unit->floor_number),
+            // A plain unit has no category: its use is chosen with each client.
+            'category' => $category && $category !== \App\Models\UnitType::SPACE ? $category : 'Space for rent (office, shop, salon, storage…)',
+            'floor' => \App\Models\PropertyUnit::floorLabel((int) ($unit?->floor_number ?? $data['floor_number'])),
             'room_number' => trim((string) ($data['unit_number'] ?? '')) ?: '—',
             'size_sqm' => isset($data['size_sqm']) ? (float) $data['size_sqm'] : null,
             'rent_amount' => isset($data['rent_amount']) ? (float) $data['rent_amount'] : null,

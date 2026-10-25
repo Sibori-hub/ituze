@@ -183,6 +183,11 @@ class TenancyController extends Controller
             'paid_at' => $momoPay ? SubscriptionController::kigaliTime($data['paid_at'])->utc() : now(),
         ];
 
+        // The owner sets prices: a manager rents the unit at its own rent.
+        if ($request->user()->isManager()) {
+            $data['monthly_rent'] = (float) $unit->rent_amount;
+        }
+
         // Monthly rentals: the lease runs at least 2 months, the security deposit is
         // exactly one month's rent, and at assignment the tenant pays 3 months
         // (months 1 and 2 of rent plus the deposit, which is held until move-out).
@@ -617,6 +622,10 @@ class TenancyController extends Controller
             ],
             'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
         ]);
+        // The owner sets prices: a manager renews at the unit's rent.
+        if ($request->user()->isManager()) {
+            $data['monthly_rent'] = (float) $unit->rent_amount;
+        }
         $start = CarbonImmutable::parse($data['start_date'])->startOfDay();
         if ($tenancy->end_date && $start->lessThanOrEqualTo($tenancy->end_date->startOfDay())) {
             throw ValidationException::withMessages([

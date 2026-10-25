@@ -623,6 +623,7 @@ export default {
         'and the': 'et la',
         'Privacy Policy': 'Politique de confidentialité',
         'You must accept the Terms and Conditions and the Privacy Policy to continue.': 'Vous devez accepter les Conditions générales et la Politique de confidentialité pour continuer.',
+        'Choose the floor first, so the description can mention it.': 'Choisissez d’abord l’étage, pour que la description puisse le mentionner.',
     },
     rw: {
         'Lease documents': 'Inyandiko z’amasezerano',
@@ -1239,5 +1240,6 @@ export default {
         'and the': 'na',
         'Privacy Policy': 'Politiki y’ibanga',
         'You must accept the Terms and Conditions and the Privacy Policy to continue.': 'Ugomba kwemera Amabwiriza n’amategeko na Politiki y’ibanga kugira ngo ukomeze.',
+        'Choose the floor first, so the description can mention it.': 'Banza uhitemo etaje, kugira ngo ibisobanuro biyivuge.',
     },
 };

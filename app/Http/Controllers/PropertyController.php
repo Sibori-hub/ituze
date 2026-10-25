@@ -265,9 +265,10 @@ class PropertyController extends Controller
                 : $property->floorNumbers(),
             'isAdmin' => $user->isAdmin(),
             // Rooms (and the units given to a manager) can be changed.
-            'canEdit' => ! $user->isReadOnly(),
+            // Floors, units and prices are the owner's; a manager runs tenants, payments and utilities.
+            'canEdit' => ! $user->isReadOnly() && ! $user->isManager(),
             // The property itself: details, floors and new units.
-            'canEditProperty' => ! $user->isReadOnly() && $user->canManageWholeProperty($property),
+            'canEditProperty' => ! $user->isReadOnly() && ! $user->isManager(),
             'canDeleteProperty' => ! $user->isReadOnly() && ! $user->isManager(),
             // Paid per property: units, rooms and tenants wait for an approved payment.
             'subscription' => $this->propertySubscription($property),
@@ -327,7 +328,7 @@ class PropertyController extends Controller
         return Inertia::render('Properties/Edit', [
             'property' => $property,
             'isAdmin' => $request->user()->isAdmin(),
-            'canEdit' => ! $request->user()->isReadOnly() && $request->user()->canManageWholeProperty($property),
+            'canEdit' => ! $request->user()->isReadOnly() && ! $request->user()->isManager(),
         ]);
     }
 

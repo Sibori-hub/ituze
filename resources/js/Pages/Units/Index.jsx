@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import useCanEdit from '@/hooks/useCanEdit';
+import useCanBuild from '@/hooks/useCanBuild';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Search, Plus, DoorOpen, Edit, Trash2, ArrowLeft, Home } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +23,7 @@ const statusStyles = {
 export default function UnitsIndex({ property, units, unitTypes, filters, tenants = [] }) {
     const { t, language } = useTranslation();
     const canEdit = useCanEdit();
+    const canBuild = useCanBuild();
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
     const [unitToDelete, setUnitToDelete] = useState(null);
@@ -133,7 +135,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         <option value="inactive">{t('Inactive')}</option>
                     </select>
 
-                    {canEdit && <Link
+                    {canBuild && <Link
                         href={route('properties.units.create', property)}
                         className="flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                     >
@@ -151,7 +153,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                         <p className="mt-1 text-sm text-gray-500">
                             {t(search || status ? 'Try adjusting your search filters' : 'Get started by adding your first unit to this property')}
                         </p>
-                        {!search && !status && canEdit && (
+                        {!search && !status && canBuild && (
                             <Link
                                 href={route('properties.units.create', property)}
                                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
@@ -257,6 +259,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                             {t('Assign tenant')}
                                                         </button>
                                                     )}
+                                                    {canBuild && <>
                                                     <Link
                                                         href={route('properties.units.edit', [property, unit])}
                                                         className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
@@ -269,6 +272,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
+                                                    </>}
                                                 </div>}
 
                                                 {unitToAssign && (

@@ -13,9 +13,10 @@ export default function RoomDescriptionField({ property, data, setData, error })
     const [state, setState] = useState({ busy: false, message: '', tone: 'info' });
 
     const generate = async () => {
-        if (!data.property_unit_id) {
-            setState({ busy: false, message: t('Choose the unit first, so the description can mention it.'), tone: 'warning' });
-            (document.getElementById('room-property_unit_id') || document.getElementById('parent-unit'))?.focus();
+        // Units are chosen by floor now; older rooms still name their unit category.
+        if (!data.property_unit_id && (data.floor_number ?? '') === '') {
+            setState({ busy: false, message: t('Choose the floor first, so the description can mention it.'), tone: 'warning' });
+            (document.getElementById('room-floor_number') || document.getElementById('room-property_unit_id') || document.getElementById('parent-unit'))?.focus();
             return;
         }
         setState({ busy: true, message: '', tone: 'info' });
@@ -25,7 +26,8 @@ export default function RoomDescriptionField({ property, data, setData, error })
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify({
-                    property_unit_id: data.property_unit_id,
+                    property_unit_id: data.property_unit_id || null,
+                    floor_number: data.floor_number === '' || data.floor_number === undefined ? null : data.floor_number,
                     unit_number: data.unit_number,
                     size_sqm: data.size_sqm === '' ? null : data.size_sqm,
                     rent_amount: data.rent_amount === '' ? null : data.rent_amount,

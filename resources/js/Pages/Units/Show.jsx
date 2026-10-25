@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import useCanEdit from '@/hooks/useCanEdit';
+import useCanBuild from '@/hooks/useCanBuild';
 import { Head, Link, useForm } from '@inertiajs/react';
 import LeaseNoteField from '@/Components/LeaseNoteField';
 import LeaseRecordFields from '@/Components/LeaseRecordFields';
@@ -59,6 +60,7 @@ const formatDateTime = (value, locale = undefined) => {
 function ChargeRow({ charge, property, unit, tenancy }) {
     const { t, language } = useTranslation();
     const canEdit = useCanEdit();
+    const canBuild = useCanBuild();
     const locale = { en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' }[language];
     const paid = (charge.payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
     const balance = charge.voided_at ? 0 : Math.max(0, Number(charge.amount) - paid);
@@ -132,6 +134,7 @@ function ChargeRow({ charge, property, unit, tenancy }) {
 function TenancyManager({ tenancy, property, unit }) {
     const { t, language } = useTranslation();
     const canEdit = useCanEdit();
+    const canBuild = useCanBuild();
     const locale = { en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' }[language];
     const todayDate = today();
     const apartmentStay = isApartmentUnit(unit);
@@ -445,6 +448,7 @@ export default function UnitShow({ property, unit }) {
     const { t, language } = useTranslation();
     const floorLabel = useFloorLabel();
     const canEdit = useCanEdit();
+    const canBuild = useCanBuild();
     const tenancy = unit.active_tenancy;
     const locale = { en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' }[language];
 
@@ -461,7 +465,7 @@ export default function UnitShow({ property, unit }) {
                     {t('Back to rooms')}
                 </Link>
 
-                {canEdit && <Link
+                {canBuild && <Link
                     href={route('properties.units.edit', [property, unit])}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0a2e23]"
                 >
@@ -653,7 +657,7 @@ export default function UnitShow({ property, unit }) {
                             {t('Quick Actions')}
                         </h3>
                         <div className="space-y-2">
-                            {canEdit && <Link
+                            {canBuild && <Link
                                 href={route('properties.units.edit', [property, unit])}
                                 className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-white/20"
                             >

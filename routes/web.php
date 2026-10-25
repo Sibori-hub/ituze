@@ -407,33 +407,34 @@ Route::middleware('auth')->group(function () {
     // Advertisers manage their buildings and rooms here too; tenancy routes below stay owner-only.
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser', 'advertiser.paid'])->prefix('properties')->name('properties.')->group(function () {
         Route::get('/', [PropertyController::class, 'index'])->name('index');
-        Route::get('/create', [PropertyController::class, 'create'])->name('create');
-        Route::post('/', [PropertyController::class, 'store'])->name('store');
+        // Buildings, floors, units and prices are the owner's: managers only run tenants, payments and utilities.
+        Route::get('/create', [PropertyController::class, 'create'])->middleware('owner.builds')->name('create');
+        Route::post('/', [PropertyController::class, 'store'])->middleware('owner.builds')->name('store');
         Route::get('/{property}', [PropertyController::class, 'show'])->name('show');
-        Route::get('/{property}/edit', [PropertyController::class, 'edit'])->name('edit');
-        Route::put('/{property}', [PropertyController::class, 'update'])->name('update');
-        Route::delete('/{property}', [PropertyController::class, 'destroy'])->name('destroy');
+        Route::get('/{property}/edit', [PropertyController::class, 'edit'])->middleware('owner.builds')->name('edit');
+        Route::put('/{property}', [PropertyController::class, 'update'])->middleware('owner.builds')->name('update');
+        Route::delete('/{property}', [PropertyController::class, 'destroy'])->middleware('owner.builds')->name('destroy');
 
         // Units: a category on one floor of the property; rooms are added inside them.
         // Paying for the property (step 2 of creating it); units, rooms and tenants unlock once approved.
         Route::get('/{property}/pay', [PropertyController::class, 'pay'])->name('pay');
-        Route::post('/{property}/property-units', [\App\Http\Controllers\PropertyUnitController::class, 'store'])->middleware('property.paid')->name('property-units.store');
+        Route::post('/{property}/property-units', [\App\Http\Controllers\PropertyUnitController::class, 'store'])->middleware(['owner.builds', 'property.paid'])->name('property-units.store');
         Route::post('/{property}/property-units/describe', [\App\Http\Controllers\AIDescriptionController::class, 'generateUnitDescription'])
-            ->middleware('throttle:10,1')->name('property-units.describe');
-        Route::put('/{property}/property-units/{propertyUnit}', [\App\Http\Controllers\PropertyUnitController::class, 'update'])->name('property-units.update');
-        Route::delete('/{property}/property-units/{propertyUnit}', [\App\Http\Controllers\PropertyUnitController::class, 'destroy'])->name('property-units.destroy');
+            ->middleware(['owner.builds', 'throttle:10,1'])->name('property-units.describe');
+        Route::put('/{property}/property-units/{propertyUnit}', [\App\Http\Controllers\PropertyUnitController::class, 'update'])->middleware('owner.builds')->name('property-units.update');
+        Route::delete('/{property}/property-units/{propertyUnit}', [\App\Http\Controllers\PropertyUnitController::class, 'destroy'])->middleware('owner.builds')->name('property-units.destroy');
 
         // Rooms (stored as units; nested under properties)
         Route::prefix('{property}/units')->name('units.')->group(function () {
             Route::get('/', [UnitController::class, 'index'])->name('index');
-            Route::get('/create', [UnitController::class, 'create'])->middleware('property.paid')->name('create');
-            Route::post('/', [UnitController::class, 'store'])->middleware('property.paid')->name('store');
+            Route::get('/create', [UnitController::class, 'create'])->middleware(['owner.builds', 'property.paid'])->name('create');
+            Route::post('/', [UnitController::class, 'store'])->middleware(['owner.builds', 'property.paid'])->name('store');
             Route::post('/describe', [\App\Http\Controllers\AIDescriptionController::class, 'generateRoomDescription'])
-                ->middleware('throttle:10,1')->name('describe');
+                ->middleware(['owner.builds', 'throttle:10,1'])->name('describe');
             Route::get('/{unit}', [UnitController::class, 'show'])->name('show');
-            Route::get('/{unit}/edit', [UnitController::class, 'edit'])->name('edit');
-            Route::put('/{unit}', [UnitController::class, 'update'])->name('update');
-            Route::delete('/{unit}', [UnitController::class, 'destroy'])->name('destroy');
+            Route::get('/{unit}/edit', [UnitController::class, 'edit'])->middleware('owner.builds')->name('edit');
+            Route::put('/{unit}', [UnitController::class, 'update'])->middleware('owner.builds')->name('update');
+            Route::delete('/{unit}', [UnitController::class, 'destroy'])->middleware('owner.builds')->name('destroy');
             Route::middleware('owner.approved:owner')->group(function () {
             Route::post('/{unit}/tenancy', [TenancyController::class, 'store'])->middleware('property.paid')->name('tenancy.store');
             Route::post('/{unit}/tenancy/lease-note', [\App\Http\Controllers\LeaseNoteGenerationController::class, 'forAssignment'])->name('tenancy.lease-notes.generate');
