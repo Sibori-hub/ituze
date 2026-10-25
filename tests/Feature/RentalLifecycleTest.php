@@ -49,6 +49,8 @@ class RentalLifecycleTest extends TestCase
             $table->timestamp('email_verified_at')->nullable();
             $table->string('remember_token')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
+            $table->string('momo_pay_code', 20)->nullable();
+            $table->string('momo_pay_name', 120)->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -246,6 +248,10 @@ class RentalLifecycleTest extends TestCase
             $table->string('method');
             $table->string('receipt_number')->nullable()->index();
             $table->string('reference')->nullable();
+            $table->string('payer_name', 120)->nullable();
+            $table->string('payer_phone', 20)->nullable();
+            $table->string('proof_path')->nullable();
+            $table->string('proof_name', 200)->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('paid_at');
             $table->timestamps();
@@ -923,8 +929,13 @@ class RentalLifecycleTest extends TestCase
                 'rent_frequency' => 'monthly',
                 'deposit_amount' => '250.00',
                 'lease_notes' => 'Signed initial agreement for the company tenant.',
+                // MoMo Pay to the owner's code, with the details from the tenant's MoMo SMS.
                 'payment_method' => 'mobile_money',
-                'payment_reference' => 'MOMO-INITIAL-DEPOSIT-REF',
+                'payment_reference' => '1234 567 890',
+                'payer_name' => 'Aline Representative',
+                'payer_phone' => '0780123456',
+                'paid_at' => now('Africa/Kigali')->subHour()->format('Y-m-d\TH:i'),
+                'payment_proof' => UploadedFile::fake()->image('momo-sms.png'),
                 'lease' => UploadedFile::fake()->create('signed-lease.pdf', 30, 'application/pdf'),
             ])
             ->assertRedirect();
@@ -955,7 +966,9 @@ class RentalLifecycleTest extends TestCase
             'recorded_by' => $owner->id,
             'amount' => '600.00',
             'method' => 'mobile_money',
-            'reference' => 'MOMO-INITIAL-DEPOSIT-REF',
+            'reference' => '1234567890',
+            'payer_name' => 'Aline Representative',
+            'payer_phone' => '0780123456',
             'taxable_amount' => null,
             'vat_rate' => null,
             'vat_amount' => null,

@@ -83,6 +83,25 @@ class ProfileController extends Controller
     /**
      * Delete the user's account.
      */
+    /**
+     * The owner's own MoMo Pay code and the name it shows: tenants pay rent there.
+     */
+    public function updateMomoPay(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'owner', 403);
+        $request->merge(['momo_pay_code' => preg_replace('/\s+/', '', (string) $request->input('momo_pay_code'))]);
+        $data = $request->validate([
+            'momo_pay_code' => ['required', 'regex:/^[0-9]{4,12}$/'],
+            'momo_pay_name' => ['required', 'string', 'max:120'],
+        ], [
+            'momo_pay_code.regex' => 'Enter the MoMo Pay code: numbers only, as shown by MTN.',
+            'momo_pay_name.required' => 'Enter the name shown when someone pays this code.',
+        ]);
+        $request->user()->forceFill(['momo_pay_code' => $data['momo_pay_code'], 'momo_pay_name' => trim($data['momo_pay_name'])])->save();
+
+        return back()->with('status', 'momo-pay-updated');
+    }
+
     public function destroy(Request $request): RedirectResponse
     {
         $request->validate([

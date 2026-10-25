@@ -126,6 +126,18 @@ class TenantController extends Controller
         ]);
     }
 
+    /** The MoMo SMS screenshot of a rent payment, for accounts that can work on that unit. */
+    public function paymentProof(Request $request, \App\Models\RentPayment $payment): StreamedResponse
+    {
+        $user = $request->user();
+        abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
+        $unit = $payment->charge?->tenancy?->unit;
+        abort_unless($unit && ($user->isAdmin() || Unit::query()->whereKey($unit->id)->visibleTo($user)->exists()), 404);
+        abort_unless($payment->proof_path && Storage::disk('local')->exists($payment->proof_path), 404);
+
+        return Storage::disk('local')->response($payment->proof_path, $payment->proof_name ?: basename($payment->proof_path));
+    }
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -183,7 +195,8 @@ class TenantController extends Controller
             ->findOrFail($tenant->id);
 
         $availableUnits = Unit::query()
-            ->with(['property:id,name,owner_id', 'unitType:id,name'])
+            // The owner's MoMo Pay code: the tenant pays the first rent and deposit there.
+            ->with(['property:id,name,owner_id', 'property.owner:id,name,momo_pay_code,momo_pay_name', 'unitType:id,name'])
             ->visibleTo($user)
             ->where(function ($query) {
                 $query->where(function ($available) {

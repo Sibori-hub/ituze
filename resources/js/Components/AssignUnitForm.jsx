@@ -1,10 +1,13 @@
 import LeaseNoteField from '@/Components/LeaseNoteField';
 import MobileMoneyRequestPanel from '@/Components/MobileMoneyRequestPanel';
+import RwandaPhoneInput from '@/Components/RwandaPhoneInput';
+import { RWANDA_MOBILE_REGEX } from '@/lib/rwanda';
+import { Link } from '@inertiajs/react';
 import useFloorLabel from '@/hooks/useFloorLabel';
 import { useTranslation } from '@/localization';
 import { countRentPeriods } from '@/utils/rentPeriodCalculator';
 import { isApartmentUnit } from '@/utils/unitType';
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import {
     AlertCircle, Building2, CalendarDays, CheckCircle2, Circle, CreditCard, FileText, HandCoins, Landmark,
     FileCheck, Loader2, Lock, Search, ShieldCheck, Smartphone, Upload, Wallet, X,
@@ -15,6 +18,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 const MINIMUM_MONTHS = 2;
 const LEASE_TYPES = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
 const LEASE_MAX_BYTES = 10 * 1024 * 1024;
+
+/** "2026-10-25T09:30" in the browser's own time, for datetime-local inputs. */
+const localDateTime = (date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
 const today = () => {
     const now = new Date();
@@ -71,6 +77,11 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
         payment_method: '',
         payment_reference: '',
         mobile_money_request_id: '',
+        // MoMo Pay to the owner's code: details from the tenant's MoMo SMS.
+        payer_name: '',
+        payer_phone: '',
+        paid_at: localDateTime(new Date()),
+        payment_proof: null,
     });
     const { data, setData, errors, processing } = form;
     const [submitted, setSubmitted] = useState(false);
@@ -79,7 +90,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
     const [floorKey, setFloorKey] = useState('');
     const [leaseNotice, setLeaseNotice] = useState('');
     // Mobile money: send a request to the tenant's phone, or type the ID of a payment already made.
-    const [momoMode, setMomoMode] = useState('request');
+    const [momoMode, setMomoMode] = useState('momopay');
     const leaseInput = useRef(null);
 
     const selectedUnit = availableUnits.find(unit => String(unit.id) === String(data.unit_id));
@@ -122,6 +133,10 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
 
     // Phone requests are for monthly rentals (rent for 2 months + 1-month deposit).
     const phoneRequest = data.payment_method === 'mobile_money' && monthly && momoMode === 'request';
+    const momoPay = data.payment_method === 'mobile_money' && !phoneRequest;
+    const owner = selectedUnit?.property?.owner;
+    const ownerCode = owner?.momo_pay_code;
+    const isOwner = usePage().props.auth?.user?.id === owner?.id;
 
     // Checks in the browser, mirroring the server.
     const clientErrors = {};
@@ -135,6 +150,11 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
     if (!data.payment_method) clientErrors.payment_method = t('Choose how the money was paid.');
     else if (phoneRequest) {
         if (!data.mobile_money_request_id) clientErrors.mobile_money_request_id = t('Send the payment request and wait for the tenant to approve it.');
+    } else if (momoPay) {
+        if (!data.payer_name.trim()) clientErrors.payer_name = t('Enter the name of the person who paid.');
+        if (!RWANDA_MOBILE_REGEX.test(data.payer_phone)) clientErrors.payer_phone = t('Enter the 9 digits after +250, starting with 72, 73, 78 or 79.');
+        if (!data.paid_at) clientErrors.paid_at = t('Enter the date and time of the payment.');
+        if (!/^[0-9]{6,20}$/.test(data.payment_reference.replace(/\s+/g, ''))) clientErrors.payment_reference = t('Enter the transaction ID from the MoMo SMS: numbers only.');
     } else if (!data.payment_reference.trim()) clientErrors.payment_reference = t(paymentMethod?.missing || 'Enter the transaction reference.');
     if (!data.lease) clientErrors.lease = t('Upload the signed lease.');
 
@@ -143,7 +163,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
         { id: 'unit', title: t('Unit'), fields: ['unit_id', 'business_use'] },
         { id: 'dates', title: t('Lease dates'), fields: ['start_date', 'end_date', 'check_in_time', 'check_out_time'] },
         { id: 'rent', title: t('Rent'), fields: ['monthly_rent', 'rent_frequency'] },
-        { id: 'payment', title: t('Payment at assignment'), fields: ['payment_method', 'payment_reference', 'mobile_money_request_id', 'deposit_amount'] },
+        { id: 'payment', title: t('Payment at assignment'), fields: ['payment_method', 'payment_reference', 'mobile_money_request_id', 'deposit_amount', 'payer_name', 'payer_phone', 'paid_at', 'payment_proof'] },
         { id: 'lease', title: t('Signed lease'), fields: ['lease', 'lease_notes'] },
     ].map(section => ({ ...section, done: section.fields.every(field => !clientErrors[field] && !errors[field]) }));
     const doneCount = sections.filter(s => s.done).length;
@@ -157,8 +177,9 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
             document.getElementById(`assign-${firstOpen.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;
         }
-        form.transform(({ check_in_time, check_out_time, mobile_money_request_id, ...values }) => ({
+        form.transform(({ check_in_time, check_out_time, mobile_money_request_id, payer_name, payer_phone, paid_at, payment_proof, ...values }) => ({
             ...values,
+            ...(momoPay ? { payer_name, payer_phone: `0${payer_phone}`, paid_at, payment_proof } : {}),
             // A confirmed phone payment is its own proof; the server reads its transaction ID.
             ...(phoneRequest ? { mobile_money_request_id, payment_reference: '' } : {}),
             deposit_amount: monthly ? values.monthly_rent : values.deposit_amount,
@@ -172,7 +193,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
             onSuccess: () => {
                 form.reset();
                 setSubmitted(false);
-                setMomoMode('request');
+                setMomoMode('momopay');
                 setUnitSearch('');
                 setFloorKey('');
             },
@@ -471,13 +492,77 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
                         />
                         {errorLine('mobile_money_request_id')}
                         {!data.mobile_money_request_id && (
-                            <button type="button" onClick={() => setMomoMode('manual')} className="mt-2 text-xs font-semibold text-[#0E3B2E] underline underline-offset-2">
-                                {t('Already paid? Enter the transaction ID instead')}
+                            <button type="button" onClick={() => setMomoMode('momopay')} className="mt-2 text-xs font-semibold text-[#0E3B2E] underline underline-offset-2">
+                                {t('Already paid with MoMo Pay? Enter the SMS details instead')}
                             </button>
                         )}
                     </div>
                 )}
-                {paymentMethod && !phoneRequest && (
+                {momoPay && (
+                    <div id="assign-momo-pay" className="mt-4 animate-fade-in space-y-4 rounded-2xl border border-gray-200 p-4">
+                        <div className="rounded-xl bg-[#FFCC00]/15 p-4 ring-1 ring-[#FFCC00]/50">
+                            <p className="text-sm font-bold text-gray-900">{t('The tenant pays the owner with MoMo Pay')}</p>
+                            {ownerCode ? (
+                                <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-gray-800">
+                                    <li>
+                                        {t('The tenant dials')}{' '}
+                                        <a href={`tel:${encodeURIComponent(`*182*8*1*${ownerCode}#`)}`} className="rounded bg-white px-1.5 py-0.5 font-mono font-bold text-gray-900 ring-1 ring-gray-200">{`*182*8*1*${ownerCode}#`}</a>
+                                        <button type="button" onClick={() => navigator.clipboard?.writeText(ownerCode)} className="ml-1.5 rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold text-[#0E3B2E] ring-1 ring-gray-200 hover:bg-gray-50">{t('Copy')}</button>
+                                    </li>
+                                    <li>{t('Pay exactly :amount to :name.', { amount: money(dueNow), name: owner.momo_pay_name || owner.name })}</li>
+                                    <li>{t('Fill in the details below from the MoMo SMS.')}</li>
+                                </ol>
+                            ) : (
+                                <p className="mt-1 text-sm text-gray-800">
+                                    {isOwner
+                                        ? <>{t('Add your MoMo Pay code so tenants can pay you.')}{' '}<Link href={`${route('profile.edit')}#momo-pay`} className="font-semibold text-[#0E3B2E] underline underline-offset-2">{t('Add it in your profile')}</Link></>
+                                        : t('The owner has not added a MoMo Pay code yet. Ask the owner for it, or record the payment details below.')}
+                                </p>
+                            )}
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="block text-sm font-medium text-gray-800">{t('Name of the person who paid')}
+                                <input value={data.payer_name} onChange={e => setData('payer_name', e.target.value)} maxLength={120} className={fieldClass(shownError('payer_name'))} />
+                                {errorLine('payer_name')}
+                            </label>
+                            <div>
+                                <label htmlFor="assign-payer-phone" className="block text-sm font-medium text-gray-800">{t('Phone number that paid')}</label>
+                                <RwandaPhoneInput id="assign-payer-phone" value={data.payer_phone} onChange={(digits) => setData('payer_phone', digits)} error={shownError('payer_phone')} className="mt-1.5" />
+                            </div>
+                            <label className="block text-sm font-medium text-gray-800">{t('Amount paid')}
+                                <input value={money(dueNow)} readOnly className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900" />
+                            </label>
+                            <label className="block text-sm font-medium text-gray-800">{t('Date and time of the payment')}
+                                <input type="datetime-local" value={data.paid_at} max={localDateTime(new Date())} onChange={e => setData('paid_at', e.target.value)} className={fieldClass(shownError('paid_at'))} />
+                                {errorLine('paid_at')}
+                            </label>
+                            <label className="block text-sm font-medium text-gray-800 sm:col-span-2">{t('MoMo transaction ID')}
+                                <input value={data.payment_reference} onChange={e => setData('payment_reference', e.target.value.replace(/[^\d\s]/g, ''))} inputMode="numeric" placeholder="1234567890"
+                                    aria-describedby="assign-momo-txn-help" className={`${fieldClass(shownError('payment_reference'))} font-mono tracking-wide`} />
+                                <span id="assign-momo-txn-help" className="mt-1 block text-xs font-normal text-gray-500">{t('In the MoMo SMS, after "Financial Transaction Id" or "TxId".')}</span>
+                                {errorLine('payment_reference')}
+                            </label>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-800">{t('Screenshot of the MoMo SMS')} <span className="font-normal text-gray-500">({t('optional')})</span></p>
+                            <label className={`mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 text-sm transition focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${data.payment_proof ? 'border-emerald-300 bg-emerald-50/50' : 'border-gray-300 hover:border-[#0E3B2E]/40 hover:bg-gray-50'}`}>
+                                <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={e => setData('payment_proof', e.target.files?.[0] || null)} />
+                                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-white text-[#0E3B2E] ring-1 ring-gray-200" aria-hidden="true">{data.payment_proof ? <FileCheck size={17} /> : <Upload size={17} />}</span>
+                                <span className="min-w-0">
+                                    <span className="block truncate font-semibold text-gray-900">{data.payment_proof ? data.payment_proof.name : t('Choose a file')}</span>
+                                    <span className="block text-xs text-gray-600">{t('JPG, PNG or PDF, up to 5 MB')}</span>
+                                </span>
+                            </label>
+                            {errorLine('payment_proof')}
+                        </div>
+                        {monthly && (
+                            <button type="button" onClick={() => { setMomoMode('request'); setData('payment_reference', ''); }} className="block text-xs font-semibold text-[#0E3B2E] underline underline-offset-2">
+                                {t('Send a payment request to the tenant’s phone instead')}
+                            </button>
+                        )}
+                    </div>
+                )}
+                {paymentMethod && !phoneRequest && !momoPay && (
                     <label className="mt-4 block animate-fade-in text-sm font-medium text-gray-800">
                         {t(paymentMethod.reference)}
                         <span className="relative block">
@@ -487,11 +572,6 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
                         </span>
                         <span id="assign-reference-hint" className="mt-1 block text-xs font-normal text-gray-500">{t(paymentMethod.hint)}</span>
                         {errorLine('payment_reference')}
-                        {data.payment_method === 'mobile_money' && monthly && (
-                            <button type="button" onClick={() => { setMomoMode('request'); setData('payment_reference', ''); }} className="mt-2 block text-xs font-semibold text-[#0E3B2E] underline underline-offset-2">
-                                {t('Send a payment request to the tenant’s phone instead')}
-                            </button>
-                        )}
                     </label>
                 )}
                 <p className="mt-3 text-xs text-gray-500">{t('Agreement reference')}: {t('Generated automatically after saving')}</p>

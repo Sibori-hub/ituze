@@ -382,6 +382,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
 Route::middleware(['auth', 'profile.complete'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/momo-pay', [ProfileController::class, 'updateMomoPay'])->name('profile.momo-pay');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
@@ -473,6 +474,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->put('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
     Route::middleware(['verified', 'profile.complete'])->get('/tenants/{tenant}/files/{file}', [TenantController::class, 'file'])->whereIn('file', ['photo', 'identity-document'])->name('tenants.files');
+    Route::middleware(['verified', 'profile.complete'])->get('/rent-payments/{payment}/proof', [TenantController::class, 'paymentProof'])->name('rent-payments.proof');
     Route::middleware(['verified', 'profile.complete', 'owner.approved:owner'])->group(function () {
         Route::get('/leases', [ManagementController::class, 'leases'])->name('leases.index');
         Route::get('/payments', [ManagementController::class, 'payments'])->name('payments.index');

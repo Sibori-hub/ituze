@@ -104,6 +104,14 @@ class TenancyController extends Controller
         $hasExistingTenant = $request->filled('tenant_id');
         $tenantType = $request->input('tenant_type');
         $requiredForNewTenant = fn (string $type) => $hasExistingTenant ? 'nullable' : "required_if:tenant_type,{$type}";
+        // MoMo Pay to the owner's own code: the details come from the tenant's MoMo SMS.
+        $momoPay = $request->input('payment_method') === 'mobile_money' && ! $request->filled('mobile_money_request_id');
+        if ($momoPay) {
+            $request->merge([
+                'payer_phone' => \App\Http\Controllers\Auth\RegisteredUserController::normalizeRwandaPhone((string) $request->input('payer_phone')),
+                'payment_reference' => preg_replace('/\s+/', '', (string) $request->input('payment_reference')),
+            ]);
+        }
         $data = $request->validate([
             'tenant_id' => ['nullable', 'exists:tenants,id'],
             // What the client will use the unit for (office, salon, warehouse...): it can change with every client.
@@ -142,7 +150,38 @@ class TenancyController extends Controller
             ],
             'lease' => ['required', 'file', 'mimes:'.self::LEASE_MIMES, 'max:'.self::LEASE_MAX_KB],
             ...($hasExistingTenant ? [] : app(TenantLocationService::class)->validationRules($request)),
+            ...($momoPay ? [
+                'payer_name' => ['required', 'string', 'max:120'],
+                'payer_phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/'],
+                'paid_at' => ['required', 'date', function (string $attribute, mixed $value, Closure $fail) {
+                    // Typed in Kigali time; a phone clock a few minutes fast is fine.
+                    $paidAt = SubscriptionController::kigaliTime((string) $value);
+                    if ($paidAt->isAfter(now()->addMinutes(10))) {
+                        $fail('The payment date and time cannot be in the future.');
+                    } elseif ($paidAt->isBefore(now()->subDays(30))) {
+                        $fail('This payment is more than 30 days old. Check the date in the MoMo SMS.');
+                    }
+                }],
+                'payment_reference' => [
+                    'required', 'regex:/^[0-9]{6,20}$/',
+                    // One MoMo payment pays one rental: a used transaction ID is refused.
+                    Rule::unique('rent_payments', 'reference')->where(fn ($query) => $query->where('method', 'mobile_money')),
+                ],
+                'payment_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            ] : []),
+        ], [
+            'payer_name.required' => 'Enter the name of the person who paid.',
+            'payer_phone.required' => 'Enter the phone number that paid.',
+            'payer_phone.regex' => 'Enter the 10-digit MTN or Airtel number that paid (078, 079, 072 or 073).',
+            'paid_at.required' => 'Enter the date and time of the payment.',
+            'payment_reference.regex' => 'Enter the transaction ID from the MoMo SMS: numbers only.',
+            'payment_reference.unique' => 'This transaction ID was already used for a payment.',
         ]);
+        $payment = [
+            'payer_name' => $momoPay ? trim($data['payer_name']) : null,
+            'payer_phone' => $momoPay ? $data['payer_phone'] : null,
+            'paid_at' => $momoPay ? SubscriptionController::kigaliTime($data['paid_at'])->utc() : now(),
+        ];
 
         // Monthly rentals: the lease runs at least 2 months, the security deposit is
         // exactly one month's rent, and at assignment the tenant pays 3 months
@@ -157,7 +196,7 @@ class TenancyController extends Controller
             $data['deposit_amount'] = $data['monthly_rent'];
         }
 
-        DB::transaction(function () use ($data, $request, $unit, $tenantType, $isApartment) {
+        DB::transaction(function () use ($data, $request, $unit, $tenantType, $isApartment, $payment) {
             $lockedUnit = Unit::whereKey($unit->id)->lockForUpdate()->firstOrFail();
 
             if (! $isApartment && ($lockedUnit->status !== 'available' ||
@@ -266,6 +305,12 @@ class TenancyController extends Controller
                 'status' => $this->bookingStartsInFuture($data),
             ]);
 
+            if ($request->hasFile('payment_proof')) {
+                $proof = $request->file('payment_proof');
+                $payment['proof_path'] = $proof->store("rent-payment-proofs/{$tenancy->id}", 'local');
+                $payment['proof_name'] = mb_substr($proof->getClientOriginalName(), 0, 200);
+            }
+
             $this->storeLeaseDocument($tenancy, $request, $data['lease'], $data['lease_notes'] ?? null, $data['payment_method'], $data['payment_reference'] ?? null);
             $phonePayment?->update(['tenancy_id' => $tenancy->id, 'used_at' => now()]);
             $lockedUnit->update([
@@ -292,8 +337,8 @@ class TenancyController extends Controller
                     'amount' => number_format($depositCents / 100, 2, '.', ''),
                     'method' => $data['payment_method'],
                     'reference' => $data['payment_reference'] ?? null,
+                    ...$payment,
                     'notes' => 'Full security deposit received. Rent allocations and VAT are recorded separately against rent charges.',
-                    'paid_at' => now(),
                 ]);
                 $depositPayment->update([
                     'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $depositPayment->id),
@@ -301,7 +346,7 @@ class TenancyController extends Controller
             }
 
             $vatRate = (int) round(config('finance.rwanda_vat_rate') * 100);
-            $recordRentPayment = function (RentCharge $rentCharge, int $cents, string $notes, ?string $transactionId = null) use ($data, $request, $vatRate) {
+            $recordRentPayment = function (RentCharge $rentCharge, int $cents, string $notes, ?string $transactionId = null) use ($data, $request, $vatRate, $payment) {
                 $vatCents = (int) round($cents * $vatRate / 10000);
                 $rentPayment = RentPayment::create([
                     'rent_charge_id' => $rentCharge->id,
@@ -313,8 +358,8 @@ class TenancyController extends Controller
                     'vat_amount' => number_format($vatCents / 100, 2, '.', ''),
                     'method' => $data['payment_method'],
                     'reference' => $data['payment_reference'] ?? null,
+                    ...$payment,
                     'notes' => $notes,
-                    'paid_at' => now(),
                 ]);
                 $rentPayment->update([
                     'receipt_number' => sprintf('ITZ-%s-%06d', now()->format('Y'), $rentPayment->id),

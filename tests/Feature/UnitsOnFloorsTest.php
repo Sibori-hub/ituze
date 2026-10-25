@@ -70,12 +70,52 @@ class UnitsOnFloorsTest extends TestCase
         $this->assertSame('Pharmacy', PropertyInquiry::query()->value('business_use'));
     }
 
-    /** A valid Rwandan address for a new tenant. */
-    private function location(): array
+    public function test_the_tenant_pays_the_first_rent_to_the_owners_own_momo_pay_code(): void
     {
-        $province = \App\Models\Province::create(['name' => 'Kigali City']);
-        $district = \App\Models\District::create(['name' => 'Gasabo', 'province_id' => $province->id]);
-        $sector = \App\Models\Sector::create(['name' => 'Remera', 'district_id' => $district->id]);
+        Storage::fake('local');
+        Notification::fake();
+        $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'profile_completed' => true, 'phone' => '0788000002']);
+        $owner->forceFill(['email_verified_at' => now(), 'phone_verified_at' => now()])->save();
+        $this->actingAs($owner)->patch(route('profile.momo-pay'), ['momo_pay_code' => '55 1234', 'momo_pay_name' => 'KAMANZI JEAN'])->assertSessionHasNoErrors();
+        $this->assertSame(['551234', 'KAMANZI JEAN'], [$owner->fresh()->momo_pay_code, $owner->fresh()->momo_pay_name]);
+
+        $property = Property::create(['owner_id' => $owner->id, 'name' => 'Remera Plaza', 'address' => 'KG 11 Ave', 'total_floors' => 1, 'paid_until' => now()->addMonth()]);
+        $space = fn (string $number) => Unit::create(['property_id' => $property->id, 'unit_type_id' => UnitType::space()->id, 'floor_number' => 0, 'unit_number' => $number, 'rent_amount' => 200000, 'rent_frequency' => 'monthly', 'status' => 'available']);
+        $first = $space('001');
+        $location = $this->location();
+        $assign = fn (Unit $unit, array $payment) => $this->post(route('properties.units.tenancy.store', [$property, $unit]), [
+            'business_use' => 'Office', 'tenant_type' => 'individual', 'first_name' => 'Aline', 'last_name' => 'Uwase',
+            'email' => 'aline'.$unit->id.'@example.com', 'phone' => '0788123456', 'identity_type' => 'passport', 'identity_number' => 'PC12345'.$unit->id,
+            'start_date' => now()->toDateString(), 'end_date' => now()->addMonths(12)->subDay()->toDateString(),
+            'monthly_rent' => 200000, 'rent_frequency' => 'monthly', 'payment_method' => 'mobile_money',
+            'lease' => UploadedFile::fake()->create('lease.pdf', 50, 'application/pdf'),
+            ...$location, ...$payment,
+        ]);
+
+        // The details from the MoMo SMS are required.
+        $assign($first, ['payment_reference' => '1234567890'])->assertSessionHasErrors(['payer_name', 'payer_phone', 'paid_at']);
+        $sms = ['payment_reference' => '1234567890', 'payer_name' => 'Aline Uwase', 'payer_phone' => '0788123456',
+            'paid_at' => now('Africa/Kigali')->subMinutes(20)->format('Y-m-d\TH:i'), 'payment_proof' => $this->photo()];
+        $assign($first, $sms)->assertSessionHasNoErrors();
+
+        $payment = \App\Models\RentPayment::query()->where('reference', '1234567890')->firstOrFail();
+        $this->assertSame(['Aline Uwase', '0788123456'], [$payment->payer_name, $payment->payer_phone]);
+        $this->assertTrue($payment->paid_at->lt(now()->subMinutes(15)), 'The time from the SMS is kept, not the time of saving.');
+        $this->get($payment->proof_url)->assertOk();
+        $this->actingAs(User::factory()->create(['role' => 'owner', 'status' => 'approved', 'profile_completed' => true]))
+            ->get($payment->proof_url)->assertNotFound();
+
+        // One MoMo payment pays one rental.
+        $this->actingAs($owner);
+        $assign($space('002'), [...$sms, 'payment_proof' => null])->assertSessionHasErrors('payment_reference');
+    }
+
+    /** A valid Rwandan address for a new tenant. */
+    private function location(int $n = 0): array
+    {
+        $province = \App\Models\Province::create(['name' => 'Kigali City '.$n]);
+        $district = \App\Models\District::create(['name' => 'Gasabo '.$n, 'province_id' => $province->id]);
+        $sector = \App\Models\Sector::create(['name' => 'Remera '.$n, 'district_id' => $district->id]);
 
         return ['province_id' => $province->id, 'district_id' => $district->id, 'sector_id' => $sector->id];
     }

@@ -47,6 +47,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'disabled_reason',
         'status_before_disabled',
         'management_fee_percent',
+        'momo_pay_code',
+        'momo_pay_name',
     ];
 
     /**

@@ -41,6 +41,14 @@ export default function PaymentRecordDetails({ payment }) {
             <p className="mt-1 break-all text-gray-600">
                 {t('External transaction reference')}: {payment.reference || <span className="italic text-gray-400">{t('No transaction reference recorded')}</span>}
             </p>
+            {payment.payer_name && (
+                <p className="mt-1 break-words text-gray-600">
+                    {t('Paid by')}: <span className="font-medium text-gray-800">{payment.payer_name}</span>{payment.payer_phone ? ` · ${payment.payer_phone}` : ''}
+                </p>
+            )}
+            {payment.proof_url && (
+                <a href={payment.proof_url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-[#0E3B2E] underline underline-offset-2">{t('View MoMo SMS screenshot')}</a>
+            )}
             <p className="mt-1 text-gray-500">{formatDateTime(payment.paid_at, language)}</p>
             {payment.notes && <p className="mt-1 break-words text-gray-600">{payment.notes}</p>}
         </div>

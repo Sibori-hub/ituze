@@ -18,9 +18,23 @@ class RentPayment extends Model
         'method',
         'receipt_number',
         'reference',
+        'payer_name',
+        'payer_phone',
+        'proof_path',
+        'proof_name',
         'notes',
         'paid_at',
     ];
+
+    // The screenshot stays on the server; pages only learn whether there is one.
+    protected $hidden = ['proof_path'];
+
+    protected $appends = ['proof_url'];
+
+    public function getProofUrlAttribute(): ?string
+    {
+        return $this->proof_path ? route('rent-payments.proof', $this->id) : null;
+    }
 
     protected $casts = [
         'amount' => 'decimal:2',
