@@ -70,7 +70,7 @@ class ManagerAccessTest extends TestCase
     private function hireManager(): User
     {
         $this->actingAs($this->owner)->post(route('managers.store'), [
-            'first_name' => 'Jean', 'last_name' => 'Manager', 'email' => 'jean@example.com', 'phone' => '0788 555 444',
+            'first_name' => 'Jean', 'last_name' => 'Manager', 'username' => 'jean.manager', 'email' => 'jean@example.com', 'phone' => '0788 555 444',
             'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
             'assignments' => [
                 ['property_id' => $this->whole->id, 'property_unit_id' => null],
@@ -90,19 +90,31 @@ class ManagerAccessTest extends TestCase
     public function test_owner_adds_a_manager_who_must_change_the_temporary_password(): void
     {
         $this->actingAs($this->owner)->post(route('managers.store'), [
-            'first_name' => 'Jean', 'last_name' => 'Manager', 'email' => 'jean@example.com', 'phone' => '0788555444',
+            // A username to sign in with; the email is optional.
+            'first_name' => 'Jean', 'last_name' => 'Manager', 'username' => 'Jean.Ikaze', 'email' => '', 'phone' => '0788555444',
             'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
             'assignments' => [['property_id' => $this->whole->id]],
         ])->assertSessionHasNoErrors();
 
-        $manager = User::query()->where('email', 'jean@example.com')->firstOrFail();
-        $this->actingAs($manager)->get(route('dashboard'))->assertRedirect(route('password.change'));
+        $manager = User::query()->where('username', 'jean.ikaze')->firstOrFail();
+        $this->assertNull($manager->email);
+        \Illuminate\Support\Facades\Auth::logout();
+        $this->post(route('login'), ['email' => 'jean.ikaze', 'password' => 'Temp-Pass#2026'])->assertSessionHasNoErrors();
+        $this->assertAuthenticatedAs($manager);
+        $this->get(route('dashboard'))->assertRedirect(route('password.change'));
+
+        // The username is taken once only.
+        $this->actingAs($this->owner)->post(route('managers.store'), [
+            'first_name' => 'Other', 'last_name' => 'One', 'username' => 'jean.ikaze', 'phone' => '0788555446',
+            'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
+            'assignments' => [['property_id' => $this->whole->id]],
+        ])->assertSessionHasErrors('username');
 
         // Another owner's property cannot be given.
         $stranger = $this->makeOwner('stranger@example.com', '0788000020');
         $foreign = Property::create(['paid_until' => now()->addYear(), 'owner_id' => $stranger->id, 'name' => 'Foreign', 'total_floors' => 1]);
         $this->actingAs($this->owner)->post(route('managers.store'), [
-            'first_name' => 'Bad', 'last_name' => 'Pick', 'email' => 'bad@example.com', 'phone' => '0788555445',
+            'first_name' => 'Bad', 'last_name' => 'Pick', 'username' => 'bad.pick', 'email' => 'bad@example.com', 'phone' => '0788555445',
             'password' => 'Temp-Pass#2026', 'password_confirmation' => 'Temp-Pass#2026',
             'assignments' => [['property_id' => $foreign->id]],
         ])->assertSessionHasErrors('assignments');

@@ -82,7 +82,7 @@ export default function Login({ status, canResetPassword, loginOtpEnabled }) {
                 <form onSubmit={submit} className="mt-7 space-y-5" noValidate>
                     <div>
                         <label htmlFor="email" className="mb-1.5 block text-[13px] font-medium text-gray-700">
-                            {t('Email or phone number')}
+                            {t('Email, phone number or username')}
                         </label>
                         <div className="group relative">
                             <span className="pointer-events-none absolute left-3.5 top-1/2 flex -translate-y-1/2 items-center gap-2">
@@ -102,7 +102,7 @@ export default function Login({ status, canResetPassword, loginOtpEnabled }) {
                                 autoCapitalize="none"
                                 spellCheck={false}
                                 autoFocus
-                                placeholder="you@example.com  ·  0788 123 456"
+                                placeholder="you@example.com  ·  0788 123 456  ·  jean.ikaze"
                                 disabled={processing}
                                 onChange={(e) => setData('email', e.target.value)}
                                 aria-invalid={Boolean(errors.email)}

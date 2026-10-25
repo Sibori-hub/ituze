@@ -5,8 +5,7 @@ import usePresence from '@/hooks/usePresence';
 import { displayPhone, formatPhone, getNetwork, RWANDA_MOBILE_REGEX, toLocalDigits } from '@/lib/rwanda';
 import { useTranslation } from '@/localization';
 import { Head, router, useForm } from '@inertiajs/react';
-import {
-    Activity, AlertCircle, Building2, CheckCircle2, ChevronDown, Clock3, CreditCard, Eye, EyeOff, KeyRound, Layers,
+import { AtSign, Activity, AlertCircle, Building2, CheckCircle2, ChevronDown, Clock3, CreditCard, Eye, EyeOff, KeyRound, Layers,
     Loader2, Mail, Pencil, Phone, Power, RefreshCw, ShieldCheck, Trash2, UserCog, UserPlus, Users, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -114,7 +113,8 @@ export default function ManagersIndex({ owner, canManage, adminView = false, man
                                                         : <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100">{t('Active')}</span>}
                                             </div>
                                             <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
-                                                <a href={`mailto:${manager.email}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E]"><Mail size={12} aria-hidden="true" />{manager.email}</a>
+                                                {manager.username && <span className="inline-flex items-center gap-1 font-mono font-semibold text-gray-800"><AtSign size={12} aria-hidden="true" />{manager.username}</span>}
+                                                {manager.email && <a href={`mailto:${manager.email}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E]"><Mail size={12} aria-hidden="true" />{manager.email}</a>}
                                                 <a href={`tel:${manager.phone}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E]"><Phone size={12} aria-hidden="true" />{displayPhone(manager.phone)}</a>
                                             </p>
                                         </div>
@@ -247,7 +247,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
     const { t } = useTranslation();
     const { mounted, closing } = usePresence(open);
     const isNew = !manager;
-    const form = useForm({ first_name: '', last_name: '', email: '', phone: '', password: '', password_confirmation: '', assignments: [] });
+    const form = useForm({ first_name: '', last_name: '', username: '', email: '', phone: '', password: '', password_confirmation: '', assignments: [] });
     const { data, setData, errors, processing, clearErrors } = form;
     const [showPassword, setShowPassword] = useState(true);
     const [submitted, setSubmitted] = useState(false);
@@ -261,6 +261,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
         form.setData({
             first_name: manager?.first_name || '',
             last_name: manager?.last_name || '',
+            username: manager?.username || '',
             email: manager?.email || '',
             phone: manager?.phone || '',
             password: isNew ? password : '',
@@ -295,7 +296,8 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
         const found = {};
         if (!data.first_name.trim()) found.first_name = t('Enter the first name.');
         if (!data.last_name.trim()) found.last_name = t('Enter the last name.');
-        if (!/^\S+@\S+\.\S+$/.test(data.email.trim())) found.email = t('Enter a valid email address.');
+        if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(data.username)) found.username = t('Use 3 to 30 letters or numbers; dots, dashes and underscores are allowed (e.g. jean.ikaze).');
+        if (data.email.trim() && !/^\S+@\S+\.\S+$/.test(data.email.trim())) found.email = t('Enter a valid email address.');
         if (!phoneValid) found.phone = t('Enter 10 digits starting with 078, 079, 072, or 073.');
         if (isNew && !(data.password.length >= 10 && /[a-z]/.test(data.password) && /[A-Z]/.test(data.password) && /\d/.test(data.password) && /[^A-Za-z0-9]/.test(data.password))) found.password = t('Use at least 10 characters with upper and lower case letters, a number and a symbol.');
         if (isNew && data.password !== data.password_confirmation) found.password_confirmation = t('The two passwords do not match.');
@@ -326,7 +328,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
                         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-[#0E3B2E] text-white shadow-md" aria-hidden="true">{isNew ? <UserPlus size={22} /> : <Pencil size={20} />}</span>
                         <div>
                             <h2 id="manager-dialog-title" className="font-[Sora] text-xl font-bold text-gray-900">{isNew ? t('Add manager') : t('Edit :name', { name: manager.name })}</h2>
-                            <p className="mt-1 text-sm text-gray-600">{isNew ? t('They sign in with their email and the temporary password, then choose their own password.') : t('Change their details or the buildings they run.')}</p>
+                            <p className="mt-1 text-sm text-gray-600">{isNew ? t('They sign in with their username and the temporary password, then choose their own password.') : t('Change their details or the buildings they run.')}</p>
                         </div>
                     </div>
                     <button type="button" onClick={onClose} aria-label={t('Close')} className="absolute right-4 top-4 rounded-xl p-2 text-gray-500 hover:bg-white hover:text-gray-800"><X size={20} aria-hidden="true" /></button>
@@ -342,7 +344,17 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
                             <input value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} autoComplete="off" className={fieldClass(errorFor('last_name'))} aria-invalid={errorFor('last_name') ? 'true' : undefined} />
                             {error('last_name')}
                         </label>
-                        <label className="text-sm font-medium text-gray-800">{t('Email (used to sign in)')}
+                        <label className="text-sm font-medium text-gray-800 sm:col-span-2">{t('Username (used to sign in)')}
+                            <span className="relative block">
+                                <AtSign size={15} className="pointer-events-none absolute left-3.5 top-1/2 mt-[3px] -translate-y-1/2 text-gray-400" aria-hidden="true" />
+                                <input value={data.username} onChange={(e) => setData('username', e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 30))} autoComplete="off" autoCapitalize="none" spellCheck={false}
+                                    placeholder={t('e.g. jean.ikaze')} aria-describedby="manager-username-help"
+                                    className={`${fieldClass(errorFor('username'))} pl-9 font-mono`} aria-invalid={errorFor('username') ? 'true' : undefined} />
+                            </span>
+                            <span id="manager-username-help" className="mt-1 block text-xs font-normal text-gray-500">{t('Letters, numbers, dots, dashes or underscores. They can also sign in with their phone.')}</span>
+                            {error('username')}
+                        </label>
+                        <label className="text-sm font-medium text-gray-800">{t('Email')} <span className="font-normal text-gray-500">({t('optional')})</span>
                             <input type="email" value={data.email} onChange={(e) => setData('email', e.target.value.toLowerCase())} autoComplete="off" className={fieldClass(errorFor('email'))} aria-invalid={errorFor('email') ? 'true' : undefined} />
                             {error('email')}
                         </label>
@@ -372,7 +384,7 @@ function ManagerDialog({ open, manager, properties, ownerQuery, onClose }) {
                             <input type={showPassword ? 'text' : 'password'} value={data.password} onChange={(e) => setData((current) => ({ ...current, password: e.target.value, password_confirmation: e.target.value }))}
                                 aria-label={t('Temporary password')} className={`${fieldClass(errorFor('password'))} font-mono tracking-wide`} />
                             {error('password')}
-                            <p className="mt-2 text-xs text-amber-900">{t('Write it down and give it to the manager with their email. They must change it the first time they sign in.')}</p>
+                            <p className="mt-2 text-xs text-amber-900">{t('Write it down and give it to the manager with their username. They must change it the first time they sign in.')}</p>
                         </div>
                     )}
 

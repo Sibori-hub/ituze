@@ -46,10 +46,10 @@ class LoginRequest extends FormRequest
                     return;
                 }
 
-                if (!$this->looksLikeEmail($value) && !$this->looksLikePhone($value)) {
+                if (!$this->looksLikeEmail($value) && !$this->looksLikePhone($value) && !$this->looksLikeUsername($value)) {
                     $validator->errors()->add(
                         'email',
-                        'Enter the email address or Rwanda mobile number linked to your account.'
+                        'Enter the email address, Rwanda mobile number or username linked to your account.'
                     );
                 }
             },
@@ -66,7 +66,7 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         $credentials = [
-            $this->identifierType() === 'phone' ? 'phone' : 'email' => $this->identifier(),
+            $this->identifierType() => $this->identifier(),
             'password' => (string) $this->string('password'),
         ];
 
@@ -102,11 +102,17 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Whether the visitor signed in with an email address or a phone number.
+     * Whether the visitor signed in with an email address, a phone number or
+     * a username (managers get one from the owner they work for).
      */
     public function identifierType(): string
     {
-        return str_contains($this->rawIdentifier(), '@') ? 'email' : 'phone';
+        $value = $this->rawIdentifier();
+        if (str_contains($value, '@')) {
+            return 'email';
+        }
+
+        return $this->looksLikePhone($value) ? 'phone' : 'username';
     }
 
     /**
@@ -119,6 +125,12 @@ class LoginRequest extends FormRequest
         return $this->identifierType() === 'phone'
             ? $this->normalizePhone($value)
             : Str::lower($value);
+    }
+
+    /** Usernames: 3 to 30 letters, digits, dots, dashes or underscores. */
+    public static function looksLikeUsername(string $value): bool
+    {
+        return preg_match('/^[a-z0-9][a-z0-9._-]{2,29}$/i', $value) === 1;
     }
 
     /**

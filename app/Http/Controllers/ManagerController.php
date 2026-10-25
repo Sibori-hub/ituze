@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -74,6 +75,7 @@ class ManagerController extends Controller
                 'name' => $manager->name,
                 'first_name' => $manager->first_name,
                 'last_name' => $manager->last_name,
+                'username' => $manager->username,
                 'email' => $manager->email,
                 'phone' => $manager->phone,
                 'disabled' => $manager->isDisabled(),
@@ -109,17 +111,25 @@ class ManagerController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $owner = $this->workspaceOwner($request, write: true);
-        $request->merge(['phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone'))]);
+        $request->merge([
+            'phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone')),
+            'username' => Str::lower(trim((string) $request->input('username'))),
+            'email' => filled($request->input('email')) ? $request->input('email') : null,
+        ]);
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            // Managers sign in with this username (or their phone); email is optional.
+            'username' => ['required', 'regex:/^[a-z0-9][a-z0-9._-]{2,29}$/', 'unique:'.User::class],
+            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Password::defaults()],
             ...$this->assignmentRules(),
         ], [
             'phone.regex' => 'Enter a valid Rwanda mobile number (072, 073, 078 or 079).',
+            'username.regex' => 'Use 3 to 30 letters or numbers; dots, dashes and underscores are allowed (e.g. jean.ikaze).',
+            'username.unique' => 'This username is already taken. Choose another one.',
             'assignments.required' => 'Give the manager at least one property or unit.',
         ]);
         $assignments = $this->checkedAssignments($owner, $data['assignments']);
@@ -129,6 +139,7 @@ class ManagerController extends Controller
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'],
                 'name' => $data['first_name'].' '.$data['last_name'],
+                'username' => $data['username'],
                 'email' => $data['email'],
                 'phone' => $data['phone'],
                 'role' => 'manager',
@@ -157,16 +168,23 @@ class ManagerController extends Controller
     {
         $owner = $this->workspaceOwner($request, write: true);
         $this->ensureTeamMember($owner, $manager);
-        $request->merge(['phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone'))]);
+        $request->merge([
+            'phone' => RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone')),
+            'username' => Str::lower(trim((string) $request->input('username'))),
+            'email' => filled($request->input('email')) ? $request->input('email') : null,
+        ]);
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($manager->id)],
+            'username' => ['required', 'regex:/^[a-z0-9][a-z0-9._-]{2,29}$/', Rule::unique(User::class)->ignore($manager->id)],
+            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($manager->id)],
             'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', Rule::unique(User::class)->ignore($manager->id)],
             ...$this->assignmentRules(),
         ], [
             'phone.regex' => 'Enter a valid Rwanda mobile number (072, 073, 078 or 079).',
+            'username.regex' => 'Use 3 to 30 letters or numbers; dots, dashes and underscores are allowed (e.g. jean.ikaze).',
+            'username.unique' => 'This username is already taken. Choose another one.',
             'assignments.required' => 'Give the manager at least one property or unit.',
         ]);
         $assignments = $this->checkedAssignments($owner, $data['assignments']);
@@ -176,6 +194,7 @@ class ManagerController extends Controller
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'],
                 'name' => $data['first_name'].' '.$data['last_name'],
+                'username' => $data['username'],
                 'email' => $data['email'],
                 'phone' => $data['phone'],
             ]);
