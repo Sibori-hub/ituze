@@ -85,7 +85,6 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
     });
     const { data, setData, errors, processing } = form;
     const [submitted, setSubmitted] = useState(false);
-    const [unitSearch, setUnitSearch] = useState('');
     // Choose the floor first (building and floor), then the unit on it.
     const [floorKey, setFloorKey] = useState('');
     const [leaseNotice, setLeaseNotice] = useState('');
@@ -102,7 +101,6 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
             form.reset();
             form.clearErrors();
             setSubmitted(false);
-            setUnitSearch('');
         }
     }, [availableUnits]);
     const apartmentStay = isApartmentUnit(selectedUnit);
@@ -140,7 +138,7 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
 
     // Checks in the browser, mirroring the server.
     const clientErrors = {};
-    if (!selectedUnit) clientErrors.unit_id = t('Choose the unit to assign.');
+    if (!selectedUnit) clientErrors.unit_id = floorKey ? t('Choose the unit to assign.') : t('Choose the floor, then the unit.');
     if (!data.business_use.trim()) clientErrors.business_use = t('Type what the client will use the unit for, for example Office or Salon.');
     if (!data.start_date) clientErrors.start_date = t('Choose the start date.');
     if (!data.end_date) clientErrors.end_date = t('Choose the end date.');
@@ -194,7 +192,6 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
                 form.reset();
                 setSubmitted(false);
                 setMomoMode('momopay');
-                setUnitSearch('');
                 setFloorKey('');
             },
         });
@@ -225,12 +222,14 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
         });
         return [...seen.values()].sort((a, b) => String(a.property).localeCompare(String(b.property)) || a.floor - b.floor);
     }, [availableUnits]);
-    const q = unitSearch.trim().toLowerCase();
+    const multipleBuildings = new Set(availableUnits.map(unit => unit.property_id)).size > 1;
     const units = useMemo(() => availableUnits
-        .filter(unit => !floorKey || keyOf(unit) === floorKey)
-        .filter(unit => !q || [unit.property?.name, unit.unit_number]
-            .some(value => String(value || '').toLowerCase().includes(q)))
-        .sort((a, b) => String(a.unit_number).localeCompare(String(b.unit_number), undefined, { numeric: true })), [availableUnits, q, floorKey]);
+        .filter(unit => floorKey && keyOf(unit) === floorKey)
+        .sort((a, b) => String(a.unit_number).localeCompare(String(b.unit_number), undefined, { numeric: true })), [availableUnits, floorKey]);
+    // A single floor is chosen straight away.
+    useEffect(() => {
+        if (!floorKey && floorOptions.length === 1) setFloorKey(floorOptions[0].key);
+    }, [floorOptions]);
 
     const errorLine = (field) => shownError(field) && (
         <p className="mt-1 flex items-center gap-1 text-xs text-red-600"><AlertCircle size={12} aria-hidden="true" />{shownError(field)}</p>
@@ -261,56 +260,51 @@ export default function AssignUnitForm({ tenant, availableUnits }) {
 
             {/* 1. Unit */}
             <Step id="unit" number={1} title={t('Choose the floor and the unit')} done={done.unit} icon={Building2}>
-                <label className="mb-3 block text-sm font-medium text-gray-800">
-                    {t('Floor')}
-                    <select value={floorKey} onChange={e => setFloorKey(e.target.value)} className={fieldClass(false)}>
-                        <option value="">{t('All floors')}</option>
-                        {floorOptions.map(option => (
-                            <option key={option.key} value={option.key}>
-                                {option.property} · {floorLabel(option.floor)} ({option.count === 1 ? t('1 unit') : t(':count units', { count: option.count })})
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                {availableUnits.length > 6 && (
-                    <div className="relative mb-3">
-                        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-                        <label htmlFor="assign-unit-search" className="sr-only">{t('Search units')}</label>
-                        <input id="assign-unit-search" type="search" value={unitSearch} onChange={e => setUnitSearch(e.target.value)} placeholder={t('Search by building or unit number')}
-                            className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-[#0E3B2E] focus:outline-none focus:ring-2 focus:ring-[#0E3B2E]/15" />
+                {/* First the floor, then a second list with only the units on that floor. */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block text-sm font-medium text-gray-800">
+                        {t('1. Floor')}
+                        <select value={floorKey} onChange={e => { setFloorKey(e.target.value); setData('unit_id', ''); }}
+                            className={fieldClass(submitted && !floorKey)} aria-invalid={submitted && !floorKey ? 'true' : undefined}>
+                            <option value="">{t('Choose the floor')}</option>
+                            {floorOptions.map(option => (
+                                <option key={option.key} value={option.key}>
+                                    {multipleBuildings ? `${option.property} · ` : ''}{floorLabel(option.floor)} ({option.count === 1 ? t('1 unit') : t(':count units', { count: option.count })})
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="block text-sm font-medium text-gray-800">
+                        {t('2. Unit')}
+                        <select value={data.unit_id} disabled={!floorKey}
+                            onChange={e => { const unit = units.find(item => String(item.id) === e.target.value); if (unit) chooseUnit(unit); else setData('unit_id', ''); }}
+                            className={`${fieldClass(shownError('unit_id'))} disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400`}
+                            aria-invalid={shownError('unit_id') ? 'true' : undefined}>
+                            <option value="">{floorKey ? t('Choose the unit') : t('Choose the floor first')}</option>
+                            {units.map(unit => (
+                                <option key={unit.id} value={unit.id}>
+                                    {t('Unit :number', { number: unit.unit_number })}{unit.size_sqm ? ` · ${Number(unit.size_sqm).toLocaleString()} m²` : ''} · {money(unit.rent_amount)}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+                {floorOptions.length === 0 && <p className="mt-2 text-sm text-gray-600">{t('No unit is available right now.')}</p>}
+                {selectedUnit && (
+                    <div className="mt-3 flex animate-fade-in items-center gap-3 rounded-2xl border-2 border-[#0E3B2E] bg-[#0E3B2E]/[0.04] p-3.5">
+                        <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[#0E3B2E] text-white"><Building2 size={18} aria-hidden="true" /></span>
+                        <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-gray-900">{selectedUnit.property?.name} · {t('Unit :number', { number: selectedUnit.unit_number })}</span>
+                            <span className="block truncate text-xs text-gray-600">
+                                {floorLabel(selectedUnit.floor_number ?? 0)}{selectedUnit.size_sqm ? ` · ${Number(selectedUnit.size_sqm).toLocaleString()} m²` : ''}
+                            </span>
+                        </span>
+                        <span className="text-right text-sm font-semibold text-[#0E3B2E]">
+                            {money(selectedUnit.rent_amount)}<span className="block text-xs font-normal text-gray-500">/ {t(isApartmentUnit(selectedUnit) && selectedUnit.rent_frequency === 'daily' ? 'night' : 'month')}</span>
+                        </span>
+                        <CheckCircle2 size={18} className="flex-none text-[#0E3B2E]" aria-hidden="true" />
                     </div>
                 )}
-                <fieldset>
-                    <legend className="sr-only">{t('Available unit')}</legend>
-                    <div className="grid max-h-80 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2">
-                        {units.map(unit => {
-                            const selected = String(unit.id) === String(data.unit_id);
-                            const daily = isApartmentUnit(unit) && unit.rent_frequency === 'daily';
-                            return (
-                                <label key={unit.id}
-                                    className={`relative flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-all focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.04] shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                                    <input type="radio" name="assign-unit" value={unit.id} checked={selected} onChange={() => chooseUnit(unit)} className="sr-only" />
-                                    <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl ${selected ? 'bg-[#0E3B2E] text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                        <Building2 size={18} aria-hidden="true" />
-                                    </span>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-semibold text-gray-900">{unit.property?.name}</span>
-                                        <span className="block truncate text-xs text-gray-600">
-                                            {t('Unit :number', { number: unit.unit_number })}
-                                            {unit.floor_number !== null && unit.floor_number !== undefined && ` · ${floorLabel(unit.floor_number)}`}
-                                            {unit.size_sqm ? ` · ${Number(unit.size_sqm).toLocaleString()} m²` : ''}
-                                        </span>
-                                        <span className="mt-1 block text-sm font-semibold text-[#0E3B2E]">
-                                            {money(unit.rent_amount)} <span className="text-xs font-normal text-gray-500">/ {t(daily ? 'night' : 'month')}</span>
-                                        </span>
-                                    </span>
-                                    {selected && <CheckCircle2 size={18} className="absolute right-3 top-3 text-[#0E3B2E]" aria-hidden="true" />}
-                                </label>
-                            );
-                        })}
-                        {units.length === 0 && <p className="text-sm text-gray-600">{t('Nothing matches “:query”.', { query: unitSearch.trim() })}</p>}
-                    </div>
-                </fieldset>
                 {errorLine('unit_id')}
 
                 <label className="mt-4 block text-sm font-medium text-gray-800">

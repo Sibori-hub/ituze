@@ -209,7 +209,7 @@ class TenantController extends Controller
             })
             ->orderBy('property_id')
             ->orderBy('unit_number')
-            ->get(['id', 'property_id', 'unit_type_id', 'unit_number', 'rent_amount', 'rent_frequency', 'bedrooms', 'bathrooms']);
+            ->get(['id', 'property_id', 'unit_type_id', 'floor_number', 'unit_number', 'size_sqm', 'rent_amount', 'rent_frequency', 'bedrooms', 'bathrooms']);
 
         return Inertia::render('Tenants/Show', [
             'tenant' => $tenant,
