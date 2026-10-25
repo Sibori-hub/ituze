@@ -82,14 +82,18 @@ class UtilityReport
             ->whereIn('property_id', $this->propertyIds ?: [0])
             ->where('status', 'collected')
             ->whereBetween('scheduled_on', [$start->toDateString(), $end->endOfMonth()->toDateString()])
-            ->get(['scheduled_on', 'cost'])
+            ->get(['scheduled_on', 'cost', 'biodegradable_bins', 'biodegradable_bin_kg', 'non_biodegradable_bins', 'non_biodegradable_bin_kg'])
             ->groupBy(fn ($collection) => $collection->scheduled_on->format('Y-m'));
 
         return collect(range(0, $months - 1))->map(function (int $offset) use ($start, $readings, $waste) {
             $month = $start->addMonthsNoOverflow($offset)->format('Y-m');
             $rows = $readings->get($month, collect());
             $sum = fn (string $type, string $field) => round((float) $rows->where('type', $type)->sum(fn ($row) => (float) $row->{$field}), 2);
-            $wasteCost = round((float) $waste->get($month, collect())->sum(fn ($row) => (float) $row->cost), 2);
+            $collections = $waste->get($month, collect());
+            $wasteCost = round((float) $collections->sum(fn ($row) => (float) $row->cost), 2);
+            // Weight taken that month: ibibora (biodegradable) and ibitabora (non-biodegradable).
+            $bio = round((float) $collections->sum(fn (WasteCollection $row) => $row->biodegradableKg()), 2);
+            $other = round((float) $collections->sum(fn (WasteCollection $row) => $row->nonBiodegradableKg()), 2);
 
             return [
                 'month' => $month,
@@ -98,6 +102,10 @@ class UtilityReport
                 'water_cost' => $sum('water', 'cost'),
                 'electricity_cost' => $sum('electricity', 'cost'),
                 'waste_cost' => $wasteCost,
+                'waste_bio_kg' => $bio,
+                'waste_other_kg' => $other,
+                'waste_kg' => round($bio + $other, 2),
+                'waste_collections' => $collections->count(),
                 'total_cost' => round($sum('water', 'cost') + $sum('electricity', 'cost') + $wasteCost, 2),
             ];
         })->all();
@@ -116,11 +124,40 @@ class UtilityReport
         };
 
         $result = [];
-        foreach (['water', 'electricity', 'water_cost', 'electricity_cost', 'waste_cost', 'total_cost'] as $key) {
+        foreach (['water', 'electricity', 'water_cost', 'electricity_cost', 'waste_cost', 'waste_kg', 'waste_bio_kg', 'waste_other_kg', 'total_cost'] as $key) {
             $result[$key] = ['current' => (float) ($current[$key] ?? 0), 'previous' => (float) ($previous[$key] ?? 0), 'change' => $change($key)];
         }
 
         return $result;
+    }
+
+    /**
+     * Waste taken in one month, building by building: collections, kg of
+     * ibibora and ibitabora, and what was paid.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function wasteByBuilding(CarbonImmutable $month): array
+    {
+        $collections = WasteCollection::query()->with('property:id,name')
+            ->whereIn('property_id', $this->propertyIds ?: [0])
+            ->where('status', 'collected')
+            ->whereBetween('scheduled_on', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
+            ->get();
+
+        return $collections->groupBy('property_id')->map(function ($rows) {
+            $bio = round((float) $rows->sum(fn (WasteCollection $row) => $row->biodegradableKg()), 2);
+            $other = round((float) $rows->sum(fn (WasteCollection $row) => $row->nonBiodegradableKg()), 2);
+
+            return [
+                'property' => ['id' => $rows->first()->property_id, 'name' => $rows->first()->property?->name],
+                'collections' => $rows->count(),
+                'bio_kg' => $bio,
+                'other_kg' => $other,
+                'total_kg' => round($bio + $other, 2),
+                'cost' => round((float) $rows->sum(fn ($row) => (float) $row->cost), 2),
+            ];
+        })->sortBy('property.name')->values()->all();
     }
 
     /**

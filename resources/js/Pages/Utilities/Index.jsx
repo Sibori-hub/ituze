@@ -37,6 +37,95 @@ function Change({ value, t }) {
     );
 }
 
+/** Waste taken in the chosen month: ibibora and ibitabora in kg, per building and over 6 months. */
+function WasteMonth({ trends, comparison, byBuilding, month, monthLabel, number, money, t }) {
+    const bio = comparison.waste_bio_kg?.current || 0;
+    const other = comparison.waste_other_kg?.current || 0;
+    const total = bio + other;
+    const bioShare = total > 0 ? Math.round((bio / total) * 100) : 0;
+    const lastSix = trends.slice(-6);
+
+    return (
+        <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-sm font-semibold text-gray-900">{t('Waste taken in :month', { month })}</h3>
+                <span className="text-xs text-gray-600">{t('Last month: :value', { value: `${number(comparison.waste_kg?.previous)} kg` })} · <Change value={comparison.waste_kg?.change} t={t} /></span>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-white p-3 ring-1 ring-emerald-200">
+                    <p className="font-[Sora] text-lg font-bold tabular-nums text-emerald-900">{number(bio)} kg</p>
+                    <p className="text-[11px] font-semibold text-emerald-800">{t('Ibibora')}</p>
+                </div>
+                <div className="rounded-xl bg-white p-3 ring-1 ring-sky-200">
+                    <p className="font-[Sora] text-lg font-bold tabular-nums text-sky-900">{number(other)} kg</p>
+                    <p className="text-[11px] font-semibold text-sky-800">{t('Ibitabora')}</p>
+                </div>
+                <div className="rounded-xl bg-white p-3 ring-1 ring-gray-200">
+                    <p className="font-[Sora] text-lg font-bold tabular-nums text-gray-900">{number(total)} kg</p>
+                    <p className="text-[11px] font-semibold text-gray-700">{t('Total')}</p>
+                </div>
+            </div>
+            {total > 0 && (
+                <div className="mt-3">
+                    <div className="flex h-2.5 overflow-hidden rounded-full bg-sky-200" role="img" aria-label={t(':share% biodegradable', { share: bioShare })}>
+                        <div className="h-full bg-emerald-600" style={{ width: `${bioShare}%` }} />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-600">{t(':share% biodegradable (ibibora), :rest% non-biodegradable (ibitabora)', { share: bioShare, rest: 100 - bioShare })}</p>
+                </div>
+            )}
+
+            {byBuilding.length > 0 && (
+                <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                        <caption className="sr-only">{t('Waste per building')}</caption>
+                        <thead>
+                            <tr className="text-gray-600">
+                                <th scope="col" className="py-1.5 pr-2 font-semibold">{t('Building')}</th>
+                                <th scope="col" className="px-2 py-1.5 text-right font-semibold">{t('Collections')}</th>
+                                <th scope="col" className="px-2 py-1.5 text-right font-semibold">{t('Ibibora')}</th>
+                                <th scope="col" className="px-2 py-1.5 text-right font-semibold">{t('Ibitabora')}</th>
+                                <th scope="col" className="px-2 py-1.5 text-right font-semibold">{t('Total')}</th>
+                                <th scope="col" className="py-1.5 pl-2 text-right font-semibold">{t('Paid')}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-100">
+                            {byBuilding.map((row) => (
+                                <tr key={row.property.id} className="text-gray-800">
+                                    <th scope="row" className="py-1.5 pr-2 font-medium">{row.property.name}</th>
+                                    <td className="px-2 py-1.5 text-right tabular-nums">{row.collections}</td>
+                                    <td className="px-2 py-1.5 text-right tabular-nums">{number(row.bio_kg)} kg</td>
+                                    <td className="px-2 py-1.5 text-right tabular-nums">{number(row.other_kg)} kg</td>
+                                    <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{number(row.total_kg)} kg</td>
+                                    <td className="py-1.5 pl-2 text-right tabular-nums">{money(row.cost)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            <div className="mt-4">
+                <p className="text-xs font-semibold text-gray-700">{t('Last 6 months')}</p>
+                <ul className="mt-1.5 grid grid-cols-6 gap-1.5">
+                    {lastSix.map((row) => {
+                        const max = Math.max(1, ...lastSix.map((item) => item.waste_kg || 0));
+                        return (
+                            <li key={row.month} className="text-center">
+                                <div className="mx-auto flex h-16 w-full max-w-[2.5rem] flex-col justify-end overflow-hidden rounded-md bg-white ring-1 ring-gray-200" title={`${number(row.waste_bio_kg)} kg ibibora · ${number(row.waste_other_kg)} kg ibitabora`}>
+                                    <div className="bg-sky-400" style={{ height: `${((row.waste_other_kg || 0) / max) * 100}%` }} />
+                                    <div className="bg-emerald-600" style={{ height: `${((row.waste_bio_kg || 0) / max) * 100}%` }} />
+                                </div>
+                                <p className="mt-1 text-[10px] text-gray-600">{monthLabel(row.month)}</p>
+                                <p className="text-[10px] font-semibold tabular-nums text-gray-800">{number(row.waste_kg)}</p>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+        </div>
+    );
+}
+
 function SummaryCard({ icon: Icon, label, value, previous, change, tone, t }) {
     return (
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -400,7 +489,7 @@ function CollectionForm({ item, onClose, money, formatDate, t }) {
 
 export default function UtilitiesIndex({
     properties = [], filters = {}, canEdit = false, units = { water: 'm³', electricity: 'kWh' }, trends = [], comparison = {},
-    alerts = [], scores = [], overallScore = null, latest = [], readings = [], schedules = [], planned = [],
+    alerts = [], scores = [], overallScore = null, latest = [], readings = [], schedules = [], planned = [], wasteByBuilding = [],
 }) {
     const { t, language } = useTranslation();
     const locale = localeFor(language);
@@ -551,6 +640,7 @@ export default function UtilitiesIndex({
 
                             <section aria-labelledby="waste-title" className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
                                 <h2 id="waste-title" className="flex items-center gap-2 font-[Sora] text-lg font-bold text-gray-900"><Truck size={18} className="text-emerald-700" aria-hidden="true" />{t('Waste collection')}</h2>
+                                <WasteMonth trends={trends} comparison={comparison} byBuilding={wasteByBuilding} month={monthLabel(current, 'long')} monthLabel={monthLabel} number={number} money={money} t={t} />
                                 {schedules.length === 0 ? (
                                     <p className="mt-3 text-sm text-gray-600">{canEdit ? t('No schedule yet. Add who collects the waste and how often.') : t('No waste collection schedule yet.')}</p>
                                 ) : (

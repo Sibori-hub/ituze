@@ -86,6 +86,7 @@ class UtilityController extends Controller
             'units' => UtilityReading::UNITS,
             'trends' => $trends,
             'comparison' => UtilityReport::compare($trends),
+            'wasteByBuilding' => $report->wasteByBuilding($month),
             'alerts' => $report->alerts($month),
             'scores' => $scores,
             'overallScore' => $scores ? (int) round(collect($scores)->avg('score')) : null,

@@ -121,6 +121,12 @@ class UtilityManagementTest extends TestCase
         ])->assertSessionHasNoErrors();
         $done = WasteCollection::query()->whereDate('scheduled_on', '2026-10-05')->firstOrFail();
         $this->assertSame([100.0, 50.0, 150.0], [$done->biodegradableKg(), $done->nonBiodegradableKg(), $done->bins()['total_kg']]);
+
+        // The month adds up: kg of ibibora and ibitabora, per building and in the trend.
+        $october = (new UtilityReport($this->owner))->trends(CarbonImmutable::parse('2026-10-01'));
+        $this->assertEquals([100, 50, 150, 1], [end($october)['waste_bio_kg'], end($october)['waste_other_kg'], end($october)['waste_kg'], end($october)['waste_collections']]);
+        $perBuilding = (new UtilityReport($this->owner))->wasteByBuilding(CarbonImmutable::parse('2026-10-01'));
+        $this->assertEquals([$this->property->id, 150, 5000], [$perBuilding[0]['property']['id'], $perBuilding[0]['total_kg'], $perBuilding[0]['cost']]);
         $this->actingAs($this->owner)->post(route('utilities.collections.store'), [
             'property_id' => $this->property->id, 'scheduled_on' => '2026-10-12', 'status' => 'missed', 'cost' => 5000,
         ])->assertSessionHasNoErrors();
