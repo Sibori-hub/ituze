@@ -32,11 +32,14 @@ class UtilityReport
     /** Buildings whose utilities this account follows (whole buildings only for managers). */
     public static function propertiesFor(User $user): Collection
     {
+        // The owner's own buildings, a manager's whole buildings, and only paid ones (no payment, no action).
         return Property::query()
             ->inWorkspaceOf($user)
+            ->with('owner')
             ->orderBy('name')
-            ->get(['id', 'name', 'owner_id'])
-            ->filter(fn (Property $property) => ! $user->isManager() || $user->canManageWholeProperty($property))
+            ->get(['id', 'name', 'owner_id', 'paid_until'])
+            ->filter(fn (Property $property) => (! $user->isManager() || $user->canManageWholeProperty($property))
+                && $property->subscriptionIsActive())
             ->values();
     }
 

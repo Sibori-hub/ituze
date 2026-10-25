@@ -27,7 +27,7 @@ class UtilityManagementTest extends TestCase
         parent::setUp();
         $this->travelTo(CarbonImmutable::parse('2026-10-15 10:00:00'));
         $this->owner = $this->makeOwner('owner@example.com', '0788000010');
-        $this->property = Property::create(['owner_id' => $this->owner->id, 'name' => 'Green Plaza', 'total_floors' => 2]);
+        $this->property = Property::create(['owner_id' => $this->owner->id, 'name' => 'Green Plaza', 'total_floors' => 2, 'paid_until' => now()->addYear()]);
     }
 
     private function makeOwner(string $email, string $phone, array $extra = []): User
@@ -168,6 +168,17 @@ class UtilityManagementTest extends TestCase
         $this->actingAs($admin)->post(route('utilities.readings.store'), [
             'property_id' => $theirs->id, 'type' => 'electricity', 'month' => '2026-10', 'reading' => 10,
         ])->assertSessionHasNoErrors();
+    }
+
+    public function test_utilities_cover_only_paid_buildings_of_the_owner(): void
+    {
+        // No payment, no action: an unpaid building gets no utility records.
+        $unpaid = Property::create(['owner_id' => $this->owner->id, 'name' => 'Unpaid House', 'total_floors' => 1]);
+        $this->actingAs($this->owner)->get(route('utilities.index'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('properties', 1)->where('properties.0.id', $this->property->id));
+        $this->post(route('utilities.readings.store'), [
+            'property_id' => $unpaid->id, 'type' => 'water', 'month' => '2026-10', 'reading' => 10,
+        ])->assertNotFound();
     }
 
     public function test_dashboard_shows_the_utility_snapshot(): void
