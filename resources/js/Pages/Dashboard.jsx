@@ -459,11 +459,13 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                             label: t('Rent collected this month'), value: money(rentNow), icon: TrendingUp, tone: 'from-emerald-500/15 to-emerald-500/5 text-emerald-800',
                             note: rentChange === null ? t('No rent last month to compare') : t(':change% vs last month', { change: rentChange > 0 ? `+${rentChange}` : rentChange }),
                             noteTone: rentChange === null ? 'text-gray-500' : rentChange >= 0 ? 'text-emerald-700' : 'text-red-700',
+                            // Where the money comes from, owner by owner.
+                            href: route('admin.owners'), linkLabel: t('See it per owner'),
                         },
                         { label: t('Subscriptions this month'), value: money(subscriptionMoney.month), icon: Wallet, tone: 'from-amber-500/20 to-amber-500/5 text-amber-800', note: owners.paying === 1 ? t('1 paying owner') : t(':count paying owners', { count: owners.paying || 0 }) },
                         { label: t('Occupancy'), value: `${occupancy}%`, icon: Home, tone: 'from-sky-500/15 to-sky-500/5 text-sky-800', note: t(':occupied of :total rooms rented', { occupied: overview.occupancy.occupied, total: units }), bar: occupancy },
-                        { label: t('Owners'), value: overview.totalOwners, icon: UsersRound, tone: 'from-violet-500/15 to-violet-500/5 text-violet-800', note: owners.managers === 1 ? t('1 manager working for owners') : t(':count managers working for owners', { count: owners.managers || 0 }) },
-                    ].map(({ label, value, icon: Icon, tone, note, noteTone, bar }, index) => (
+                        { label: t('Owners'), value: overview.totalOwners, icon: UsersRound, tone: 'from-violet-500/15 to-violet-500/5 text-violet-800', href: route('admin.owners'), linkLabel: t('Open owners'), note: owners.managers === 1 ? t('1 manager working for owners') : t(':count managers working for owners', { count: owners.managers || 0 }) },
+                    ].map(({ label, value, icon: Icon, tone, note, noteTone, bar, href, linkLabel }, index) => (
                         <div key={label} className="animate-fade-in rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.04] transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5" style={{ animationDelay: `${index * 60}ms` }}>
                             <div className="flex items-start justify-between gap-2">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</p>
@@ -474,6 +476,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-gradient-to-r from-[#1F7A5A] to-[#D9A441] transition-all duration-700" style={{ width: `${bar}%` }} /></div>
                             )}
                             <p className={`mt-1.5 text-xs ${noteTone || 'text-gray-600'}`}>{note}</p>
+                            {href && <Link href={href} className="mt-2 inline-block text-xs font-semibold text-[#0E3B2E] underline underline-offset-2">{linkLabel}</Link>}
                         </div>
                     ))}
                 </section>

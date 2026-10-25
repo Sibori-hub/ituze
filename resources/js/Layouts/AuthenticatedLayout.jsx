@@ -58,6 +58,7 @@ const adminNavigation = [
     { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
     { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck },
     { name: 'Subscriptions', href: 'admin.subscriptions', icon: Wallet },
+    { name: 'Owners', href: 'admin.owners', icon: Building2, active: 'admin.owners*' },
     { name: 'Chats', href: 'admin.chats', icon: MessagesSquare, badge: 'unreadChats' },
     { name: 'Messages', href: 'admin.messages', icon: Inbox, badge: 'newMessages' },
     { name: 'Newsletter', href: 'admin.newsletter', icon: Newspaper },
@@ -173,7 +174,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         {navigation.map((item) => {
                             // Links that jump to a section of another page (an anchor) never
                             // compete with that page's own entry for the active state.
-                            const isActive = route().current(item.href) && !item.anchor;
+                            const isActive = route().current(item.active || item.href) && !item.anchor;
                             const className = `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                                 isActive
                                     ? 'bg-[#D9A441] text-[#0E3B2E] shadow-sm'

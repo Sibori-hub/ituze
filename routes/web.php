@@ -549,6 +549,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/approvals/{user}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
     Route::get('/approvals/{user}/identity', [ApprovalController::class, 'identityDocument'])->name('approvals.identity-document');
 
+    // Private tracking of self-registered (SaaS) owners: read only.
+    Route::get('/owners', [\App\Http\Controllers\Admin\OwnerTrackingController::class, 'index'])->name('owners');
+    Route::get('/owners/{owner}', [\App\Http\Controllers\Admin\OwnerTrackingController::class, 'show'])->name('owners.show');
+
     Route::get('/users', [AdminUserController::class, 'index'])->name('users');
     Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
     Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
