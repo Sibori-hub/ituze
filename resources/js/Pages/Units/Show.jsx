@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import useCanEdit from '@/hooks/useCanEdit';
+import ManagerRunsNote from '@/Components/ManagerRunsNote';
 import useCanBuild from '@/hooks/useCanBuild';
 import { Head, Link, useForm } from '@inertiajs/react';
 import LeaseNoteField from '@/Components/LeaseNoteField';
@@ -455,6 +456,7 @@ export default function UnitShow({ property, unit }) {
     return (
         <AuthenticatedLayout header={t(':unit - Details', { unit: unit.unit_number })}>
             <Head title={t('Room :unit', { unit: unit.unit_number })} />
+            <ManagerRunsNote className="mb-4" />
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <Link

@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import useCanEdit from '@/hooks/useCanEdit';
+import ManagerRunsNote from '@/Components/ManagerRunsNote';
 import useCanBuild from '@/hooks/useCanBuild';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Search, Plus, DoorOpen, Edit, Trash2, ArrowLeft, Home } from 'lucide-react';
@@ -93,6 +94,7 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
     return (
         <AuthenticatedLayout header={t(':property - Rooms', { property: property.name })}>
             <Head title={t(':property - Rooms', { property: property.name })} />
+            <ManagerRunsNote className="mb-4" />
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -253,8 +255,8 @@ export default function UnitsIndex({ property, units, unitTypes, filters, tenant
                                                 {unit.active_tenancy?.tenant?.name || <span className="text-gray-400">—</span>}
                                             </td>
                                             <td className="px-5 py-3.5 text-right">
-                                                {canEdit && <div className="flex items-center justify-end gap-2">
-                                                    {(unit.status === 'available' || (isApartmentUnit(unit) && ['reserved', 'occupied'].includes(unit.status))) && (
+                                                {(canEdit || canBuild) && <div className="flex items-center justify-end gap-2">
+                                                    {canEdit && (unit.status === 'available' || (isApartmentUnit(unit) && ['reserved', 'occupied'].includes(unit.status))) && (
                                                         <button onClick={() => openAssignment(unit)} className="rounded-lg bg-[#0E3B2E]/10 px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] hover:bg-[#0E3B2E]/20">
                                                             {t('Assign tenant')}
                                                         </button>

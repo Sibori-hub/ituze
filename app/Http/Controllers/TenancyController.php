@@ -92,6 +92,7 @@ class TenancyController extends Controller
     {
         $this->authorizeManager($request->user());
         $this->authorizePropertyAccess($request->user(), $property);
+        $this->ensureNotDelegated($request->user(), $property, $unit);
 
         if ($unit->property_id !== $property->id) {
             abort(404);
@@ -429,6 +430,7 @@ class TenancyController extends Controller
     public function storePayment(Request $request, Property $property, Unit $unit, Tenancy $tenancy, RentCharge $charge): JsonResponse|RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+        $this->ensureNotDelegated($request->user(), $property, $unit);
         if ($charge->tenancy_id !== $tenancy->id) {
             abort(404);
         }
@@ -513,6 +515,7 @@ class TenancyController extends Controller
         Tenancy $tenancy,
     ): RedirectResponse {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+        $this->ensureNotDelegated($request->user(), $property, $unit);
 
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0'],
@@ -605,6 +608,7 @@ class TenancyController extends Controller
     public function renew(Request $request, Property $property, Unit $unit, Tenancy $tenancy): RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+        $this->ensureNotDelegated($request->user(), $property, $unit);
         $unit->loadMissing('unitType');
         $isApartment = $unit->isApartmentAccommodation();
         if ($tenancy->status !== 'active' || $tenancy->moveOutInspection()->exists()) {
@@ -749,6 +753,7 @@ class TenancyController extends Controller
     public function moveOut(Request $request, Property $property, Unit $unit, Tenancy $tenancy): JsonResponse|RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+        $this->ensureNotDelegated($request->user(), $property, $unit);
         if ($tenancy->status !== 'active' || $tenancy->moveOutInspection()->exists()) {
             throw ValidationException::withMessages([
                 'tenancy' => 'Only an active tenancy without a completed move-out inspection can be ended.',
@@ -863,6 +868,7 @@ class TenancyController extends Controller
     public function uploadLease(Request $request, Property $property, Unit $unit, Tenancy $tenancy): RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+        $this->ensureNotDelegated($request->user(), $property, $unit);
 
         try {
             $data = $request->validate([
@@ -899,6 +905,7 @@ class TenancyController extends Controller
     public function deleteLease(Request $request, Property $property, Unit $unit, Tenancy $tenancy, Lease $lease): RedirectResponse
     {
         $this->authorizeTenancyAccess($request->user(), $property, $unit, $tenancy);
+        $this->ensureNotDelegated($request->user(), $property, $unit);
         $this->ensureLeaseBelongsToTenancy($lease, $tenancy);
         Storage::disk('local')->delete($lease->path);
         $lease->delete();
@@ -1005,6 +1012,12 @@ class TenancyController extends Controller
             abort(403, 'You do not have permission to access this property.');
         }
 
+    }
+
+    /** In a unit run by the owner's manager, the owner looks; the manager makes the changes. */
+    private function ensureNotDelegated($user, Property $property, Unit $unit): void
+    {
+        abort_if($user->delegatedToManager($property, $unit), 403, 'Your manager runs this unit. You can see everything here; the manager makes the changes.');
     }
 
     private function authorizeManager($user): void

@@ -35,11 +35,6 @@ class UtilityReport
         // The owner's own buildings, a manager's whole buildings, and only paid ones (no payment, no action).
         return Property::query()
             ->inWorkspaceOf($user)
-            // A building given whole to an active manager is the manager's job: the owner no longer sees it here.
-            ->when($user->isOwner(), fn ($query) => $query->whereNotIn('id', \App\Models\ManagerAssignment::query()
-                ->select('property_id')
-                ->whereNull('property_unit_id')
-                ->whereHas('manager', fn ($manager) => $manager->where('role', 'manager')->whereNull('disabled_at')->where('status', '!=', 'disabled'))))
             ->with('owner')
             ->orderBy('name')
             ->get(['id', 'name', 'owner_id', 'paid_until'])

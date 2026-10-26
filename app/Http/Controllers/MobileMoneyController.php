@@ -38,6 +38,7 @@ class MobileMoneyController extends Controller
         $unit = Unit::with('property')->findOrFail($data['unit_id']);
         $tenant = Tenant::findOrFail($data['tenant_id']);
         abort_unless($user->canAccessRoom($unit), 403);
+        abort_if($user->delegatedToManager($unit->property, $unit), 403, 'Your manager runs this unit. You can see everything here; the manager makes the changes.');
         $this->authorizeTenant($user, $tenant);
 
         $phone = MobileMoneyService::msisdn($data['phone']);

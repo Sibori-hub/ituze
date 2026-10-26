@@ -61,6 +61,7 @@ class UnitController extends Controller
             ->get(['id', 'type', 'name', 'email', 'phone']);
 
         return Inertia::render('Units/Index', [
+            'delegatedToManager' => $request->user()->delegatedToManager($property),
             'property' => $property->load('cell.sector.district.province'),
             'units' => $units,
             'unitTypes' => $unitTypes,
@@ -203,6 +204,8 @@ class UnitController extends Controller
         }
 
         return Inertia::render('Units/Show', [
+            // In a unit the owner's manager runs, the owner sees everything but changes nothing.
+            'delegatedToManager' => $request->user()->delegatedToManager($property, $unit),
             'property' => $property,
             'unit' => $unit,
         ]);

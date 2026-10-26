@@ -240,13 +240,19 @@ class ManagerAccessTest extends TestCase
             ->where('managers.0.assignments.1.property_unit_id', $this->offices->id)
             ->where('activity.data.0.actor.name', 'Jean Manager'));
 
-        // Utilities of a building given whole to a manager are the manager's job: the owner no longer sees it there.
+        // A building given whole to a manager: the owner sees everything there, read only; the manager makes the changes.
         $this->get(route('utilities.index'))->assertInertia(fn (Assert $page) => $page
-            ->where('properties', fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === collect([$this->partial->id, $this->other->id])->sort()->values()->all()));
+            ->has('properties', 3)->where('lockedPropertyIds', [$this->whole->id]));
+        $this->post(route('utilities.readings.store'), ['property_id' => $this->whole->id, 'type' => 'water', 'month' => '2026-10', 'reading' => 10])->assertForbidden();
+        $wholeRoom = Unit::create(['property_id' => $this->whole->id, 'unit_type_id' => \App\Models\UnitType::space()->id, 'floor_number' => 0, 'unit_number' => 'W1', 'rent_amount' => 100000, 'rent_frequency' => 'monthly', 'status' => 'available']);
+        $this->get(route('properties.units.show', [$this->whole, $wholeRoom]))->assertOk()->assertInertia(fn (Assert $page) => $page->where('delegatedToManager', true));
+        $this->post(route('properties.units.tenancy.store', [$this->whole, $wholeRoom]), ['tenant_id' => 1])->assertForbidden();
+        $this->get(route('properties.units.show', [$this->partial, $this->shopRoom]))->assertInertia(fn (Assert $page) => $page->where('delegatedToManager', false));
         $this->actingAs($manager)->get(route('utilities.index'))->assertInertia(fn (Assert $page) => $page
-            ->has('properties', 1)->where('properties.0.id', $this->whole->id));
+            ->has('properties', 1)->where('properties.0.id', $this->whole->id)->where('lockedPropertyIds', []));
+        // A disabled manager hands the work back to the owner.
         $manager->forceFill(['disabled_at' => now()])->save();
-        $this->actingAs($this->owner)->get(route('utilities.index'))->assertInertia(fn (Assert $page) => $page->has('properties', 3));
+        $this->actingAs($this->owner)->get(route('utilities.index'))->assertInertia(fn (Assert $page) => $page->where('lockedPropertyIds', []));
         $manager->forceFill(['disabled_at' => null])->save();
 
         // The owner's own actions are not listed: the history is about the managers.

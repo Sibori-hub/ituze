@@ -1,9 +1,11 @@
 import { usePage } from '@inertiajs/react';
 
 /**
- * False for owners Q.R.A manages: they can follow their properties but every
- * change is made by ITUZE GREEN PLATFORM. Use it to hide add/edit/delete actions.
+ * Whether this account may change tenants, payments and leases on this page:
+ * not a read-only account, and not an owner looking at what their manager runs.
  */
 export default function useCanEdit() {
-    return !usePage().props.auth?.readOnly;
+    const { props } = usePage();
+
+    return !props.auth?.readOnly && !props.delegatedToManager && !props.runByManager;
 }

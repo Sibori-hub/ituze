@@ -49,6 +49,8 @@ class RentalLifecycleTest extends TestCase
             $table->timestamp('email_verified_at')->nullable();
             $table->string('remember_token')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('employer_id')->nullable();
+            $table->timestamp('disabled_at')->nullable();
             $table->string('momo_pay_code', 20)->nullable();
             $table->string('momo_pay_name', 120)->nullable();
             $table->timestamps();
@@ -187,6 +189,13 @@ class RentalLifecycleTest extends TestCase
             $table->unsignedBigInteger('district_id')->nullable();
             $table->unsignedBigInteger('sector_id')->nullable();
             $table->string('status')->default('active');
+            $table->timestamps();
+        });
+        Schema::create('manager_assignments', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('manager_id');
+            $table->unsignedBigInteger('property_id');
+            $table->unsignedBigInteger('property_unit_id')->nullable();
             $table->timestamps();
         });
         Schema::create('tenancies', function (Blueprint $table) {

@@ -63,6 +63,7 @@ class TenantController extends Controller
         $user = $request->user();
         abort_unless($user && in_array($user->role, ['admin', 'owner', 'manager'], true), 403);
         $this->authorizeTenantAccess($user, $tenant);
+        abort_if($this->runByManager($user, $tenant), 403, 'Your manager looks after this tenant. You can see everything; the manager makes the changes.');
 
         $data = $request->validate([
             ...app(TenantLocationService::class)->validationRules($request),
@@ -213,8 +214,28 @@ class TenantController extends Controller
 
         return Inertia::render('Tenants/Show', [
             'tenant' => $tenant,
-            'availableUnits' => $availableUnits,
+            'availableUnits' => $user->isOwner()
+                ? $availableUnits->reject(fn (Unit $unit) => $user->delegatedToManager($unit->property_id, $unit))->values()
+                : $availableUnits,
+            // Shown but not changed by the owner: the manager does that work.
+            'runByManager' => $this->runByManager($user, $tenant),
         ]);
+    }
+
+    /**
+     * For an owner: the tenant was added by one of their active managers, or
+     * rents in a unit a manager runs. The owner then sees but does not change.
+     */
+    private function runByManager($user, Tenant $tenant): bool
+    {
+        if (! $user->isOwner()) {
+            return false;
+        }
+        $addedByManager = \App\Models\User::query()->whereKey($tenant->created_by)->where('role', 'manager')
+            ->where('employer_id', $user->id)->whereNull('disabled_at')->where('status', '!=', 'disabled')->exists();
+
+        return $addedByManager || $tenant->activeTenancies()->with('unit')->get()
+            ->contains(fn ($tenancy) => $tenancy->unit && $user->delegatedToManager($tenancy->unit->property_id, $tenancy->unit));
     }
 
     private function authorizeTenantAccess($user, Tenant $tenant): void

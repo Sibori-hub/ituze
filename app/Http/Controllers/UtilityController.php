@@ -83,6 +83,8 @@ class UtilityController extends Controller
             'properties' => $properties->map(fn (Property $property) => ['id' => $property->id, 'name' => $property->name])->values(),
             'filters' => ['property_id' => $propertyId, 'month' => $month->format('Y-m')],
             'canEdit' => ! $user->isReadOnly(),
+            // Buildings the owner's managers run: shown, but the manager records them.
+            'lockedPropertyIds' => $user->buildingsRunByManagers(),
             'units' => UtilityReading::UNITS,
             'trends' => $trends,
             'comparison' => UtilityReport::compare($trends),
@@ -95,6 +97,7 @@ class UtilityController extends Controller
                 ->orderByDesc('period')->orderBy('type')->limit(40)->get()
                 ->map(fn (UtilityReading $reading) => [
                     'id' => $reading->id,
+                    'property_id' => $reading->property_id,
                     'property' => $reading->property?->name,
                     'type' => $reading->type,
                     'month' => $reading->period->format('Y-m'),
@@ -313,6 +316,7 @@ class UtilityController extends Controller
         $property = Property::query()->findOrFail($propertyId);
         abort_unless(UtilityReport::propertiesFor($user)->contains('id', $property->id), 404);
         abort_if($user->isReadOnly(), 403, 'ITUZE GREEN PLATFORM manages this building for you.');
+        abort_if($user->delegatedToManager($property), 403, 'Your manager records the utilities of this building. You can see them here.');
 
         return $property;
     }

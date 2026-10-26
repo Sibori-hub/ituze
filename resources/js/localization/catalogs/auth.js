@@ -1539,6 +1539,9 @@ export default {
         'Deposits received': 'Cautions reçues',
         'In :month · refundable at move-out': 'En :month · remboursable au départ',
         'In :month · refundable, not your income': 'En :month · remboursable, pas vos revenus',
+        'Your manager looks after this tenant. You can see everything here; the manager makes the changes.': 'Votre gestionnaire s’occupe de ce locataire. Vous voyez tout ici ; c’est le gestionnaire qui fait les modifications.',
+        'Your manager runs this. You can see everything here (tenants, payments, leases); the manager makes the changes.': 'Votre gestionnaire gère ceci. Vous voyez tout ici (locataires, paiements, baux) ; c’est le gestionnaire qui fait les modifications.',
+        'Buildings your managers run are shown read only: :names. Their manager records the water, electricity and waste.': 'Les bâtiments gérés par vos gestionnaires sont en lecture seule : :names. Leur gestionnaire enregistre l’eau, l’électricité et les déchets.',
     },
     rw: {
         'Log in': 'Injira',
@@ -3080,5 +3083,8 @@ export default {
         'Deposits received': 'Ingwate zakiriwe',
         'In :month · refundable at move-out': 'Muri :month · isubizwa umukodesha avuye',
         'In :month · refundable, not your income': 'Muri :month · irasubizwa, si inyungu yawe',
+        'Your manager looks after this tenant. You can see everything here; the manager makes the changes.': 'Umucunga wawe ni we ukurikirana uyu mukodesha. Ubona byose hano; umucunga ni we uhindura.',
+        'Your manager runs this. You can see everything here (tenants, payments, leases); the manager makes the changes.': 'Umucunga wawe ni we ubicunga. Ubona byose hano (abakodesha, ubwishyu, amasezerano); umucunga ni we uhindura.',
+        'Buildings your managers run are shown read only: :names. Their manager records the water, electricity and waste.': 'Inyubako abacunga bawe bacunga ziragaragara ariko ntizihindurwa: :names. Umucunga wazo ni we wandika amazi, amashanyarazi n’imyanda.',
     },
 };

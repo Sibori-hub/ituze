@@ -4,8 +4,7 @@ import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import {
-    AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, CheckCircle2, Droplets, Leaf, Lightbulb, Minus,
+import { Eye, AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, CheckCircle2, Droplets, Leaf, Lightbulb, Minus,
     Plus, Receipt, Trash2, Truck, Wallet, X, Zap,
 } from 'lucide-react';
 import { useTranslation } from '@/localization';
@@ -488,11 +487,15 @@ function CollectionForm({ item, onClose, money, formatDate, t }) {
 }
 
 export default function UtilitiesIndex({
-    properties = [], filters = {}, canEdit = false, units = { water: 'm³', electricity: 'kWh' }, trends = [], comparison = {},
+    properties = [], filters = {}, canEdit: canEditAny = false, lockedPropertyIds = [], units = { water: 'm³', electricity: 'kWh' }, trends = [], comparison = {},
     alerts = [], scores = [], overallScore = null, latest = [], readings = [], schedules = [], planned = [], wasteByBuilding = [],
 }) {
     const { t, language } = useTranslation();
     const locale = localeFor(language);
+    const editable = properties.filter(property => !lockedPropertyIds.includes(property.id));
+    const canEditProperty = id => canEditAny && !lockedPropertyIds.includes(Number(id));
+    // Page-wide actions (add a reading, add a schedule) need at least one building the account records.
+    const canEdit = canEditAny && editable.length > 0;
     const number = value => Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 2 });
     const money = value => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
     const monthLabel = (value, style = 'short') => new Intl.DateTimeFormat(locale, { month: style, ...(style === 'long' ? { year: 'numeric' } : {}) }).format(new Date(`${value}-01T12:00:00`));
@@ -522,6 +525,12 @@ export default function UtilitiesIndex({
         <AuthenticatedLayout>
             <Head title={t('Utilities & environment')} />
             <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+                {properties.some(property => lockedPropertyIds.includes(property.id)) && (
+                    <p role="note" className="flex items-start gap-2 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-950 ring-1 ring-sky-200">
+                        <Eye size={16} className="mt-0.5 flex-none" aria-hidden="true" />
+                        {t('Buildings your managers run are shown read only: :names. Their manager records the water, electricity and waste.', { names: properties.filter(property => lockedPropertyIds.includes(property.id)).map(property => property.name).join(', ') })}
+                    </p>
+                )}
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-800"><Leaf size={14} aria-hidden="true" />{t('Environment')}</p>
@@ -656,7 +665,7 @@ export default function UtilitiesIndex({
                                                         {' · '}{money(schedule.cost)}
                                                     </p>
                                                 </div>
-                                                {canEdit && (
+                                                {canEditProperty(schedule.property.id) && (
                                                     <button type="button" onClick={() => setConfirm({ url: route('utilities.schedules.destroy', schedule.id), title: t('Stop this schedule?'), message: t('Past collections stay recorded.') })} className="rounded-lg px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300">{t('Stop')}</button>
                                                 )}
                                             </li>
@@ -671,7 +680,7 @@ export default function UtilitiesIndex({
                                             {dueCollections.map(item => (
                                                 <li key={`${item.property.id}-${item.date}`} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                                                     <span><span className="font-medium text-gray-900">{formatDate(item.date)}</span> · <span className="text-gray-700">{item.property.name}</span></span>
-                                                    {canEdit ? (
+                                                    {canEditProperty(item.property.id) ? (
                                                         <button type="button" onClick={() => setCollection(item)} className="rounded-lg border border-[#0E3B2E]/30 px-3 py-1 text-xs font-semibold text-[#0E3B2E] hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40">{t('Mark collected or missed')}</button>
                                                     ) : <span className="text-xs text-gray-600">{t('Not confirmed')}</span>}
                                                 </li>
@@ -710,7 +719,7 @@ export default function UtilitiesIndex({
                                                     </span>
                                                     <span className="flex items-center gap-2">
                                                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.status === 'collected' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{item.status === 'collected' ? t('Collected') : t('Missed')}</span>
-                                                        {canEdit && item.collection_id && (
+                                                        {canEditProperty(item.property.id) && item.collection_id && (
                                                             <button type="button" onClick={() => setConfirm({ url: route('utilities.collections.destroy', item.collection_id), title: t('Remove this record?'), message: t('The collection goes back to “To confirm”.') })} className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-red-700" aria-label={t('Remove this record?')}><Trash2 size={14} /></button>
                                                         )}
                                                     </span>
@@ -786,10 +795,10 @@ export default function UtilitiesIndex({
                                                         <td className="px-3 py-3 text-right tabular-nums">{number(reading.reading)}</td>
                                                         <td className="px-3 py-3 text-right font-semibold tabular-nums">{number(reading.consumption)} {units[reading.type]}</td>
                                                         <td className="px-3 py-3 text-right tabular-nums">{reading.cost !== null ? money(reading.cost) : '—'}{reading.bill_reference && <span className="block text-xs text-gray-500">{reading.bill_reference}</span>}</td>
-                                                        {canEdit && (
+                                                        {canEdit && (canEditProperty(reading.property_id) ? (
                                                             <td className="px-3 py-3 text-right">
                                                                 <button type="button" onClick={() => setConfirm({ url: route('utilities.readings.destroy', reading.id), title: t('Delete this reading?'), message: t('The trends and score will be worked out again without it.') })} className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300" aria-label={t('Delete this reading?')}><Trash2 size={15} /></button>
-                                                            </td>
+                                                            </td>) : <td />)}
                                                         )}
                                                     </tr>
                                                 );
@@ -804,9 +813,9 @@ export default function UtilitiesIndex({
             </div>
 
             {canEdit && readingForm && (
-                <ReadingForm show onClose={() => setReadingForm(null)} properties={properties} latest={latest} units={units} defaultPropertyId={filters.property_id} defaultType={readingForm.type} t={t} />
+                <ReadingForm show onClose={() => setReadingForm(null)} properties={editable} latest={latest} units={units} defaultPropertyId={filters.property_id} defaultType={readingForm.type} t={t} />
             )}
-            {canEdit && scheduleForm && <ScheduleForm show onClose={() => setScheduleForm(false)} properties={properties} defaultPropertyId={filters.property_id} t={t} />}
+            {canEdit && scheduleForm && <ScheduleForm show onClose={() => setScheduleForm(false)} properties={editable} defaultPropertyId={filters.property_id} t={t} />}
             {canEdit && <CollectionForm key={collection ? `${collection.property.id}-${collection.date}` : 'none'} item={collection} onClose={() => setCollection(null)} money={money} formatDate={formatDate} t={t} />}
             <ConfirmActionModal
                 open={confirm !== null}

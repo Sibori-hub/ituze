@@ -1,10 +1,11 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import useCanEdit from '@/hooks/useCanEdit';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Building2, CalendarDays, Edit2, FileText, KeyRound, Mail, MapPin, Phone, UserRound, Wallet } from 'lucide-react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Eye, ArrowLeft, Building2, CalendarDays, Edit2, FileText, KeyRound, Mail, MapPin, Phone, UserRound, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from '@/localization';
 import TenantLocationFields from '@/Components/TenantLocationFields';
+import ManagerRunsNote from '@/Components/ManagerRunsNote';
 import { TenantDocumentPicker, TenantPhotoPicker } from '@/Components/TenantUploads';
 import AssignUnitForm from '@/Components/AssignUnitForm';
 import PaymentRecordDetails from '@/Components/PaymentRecordDetails';
@@ -63,6 +64,7 @@ export default function TenantShow({ tenant, availableUnits }) {
                 <Link href={route('tenants.index')} className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[#0E3B2E]">
                     <ArrowLeft size={16} /> {t('Back to tenants')}
                 </Link>
+                <ManagerRunsNote />
 
                 <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                     <div className="flex flex-col gap-5 border-b border-gray-100 bg-gradient-to-r from-[#0E3B2E]/5 to-white p-6 sm:flex-row sm:items-start sm:justify-between">

@@ -221,6 +221,40 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /** Can see this property (all of it, or some units of it for a manager). */
+    /**
+     * For an owner: a building (or a unit of it) is run by one of their active
+     * managers. The owner then sees everything there but changes nothing about
+     * tenants, payments, leases or utilities; the manager does that work.
+     */
+    public function delegatedToManager(Property|int $property, ?Unit $unit = null): bool
+    {
+        if (! $this->isOwner()) {
+            return false;
+        }
+        $propertyId = $property instanceof Property ? $property->id : $property;
+
+        return ManagerAssignment::query()
+            ->where('property_id', $propertyId)
+            ->where(fn ($query) => $query->whereNull('property_unit_id')
+                ->when($unit?->property_unit_id, fn ($inner, $propertyUnitId) => $inner->orWhere('property_unit_id', $propertyUnitId)))
+            ->whereHas('manager', fn ($manager) => $manager->where('role', 'manager')->where('employer_id', $this->id)
+                ->whereNull('disabled_at')->where('status', '!=', 'disabled'))
+            ->exists();
+    }
+
+    /** Ids of the owner's buildings given whole to an active manager. */
+    public function buildingsRunByManagers(): array
+    {
+        if (! $this->isOwner()) {
+            return [];
+        }
+
+        return ManagerAssignment::query()->whereNull('property_unit_id')
+            ->whereHas('manager', fn ($manager) => $manager->where('role', 'manager')->where('employer_id', $this->id)
+                ->whereNull('disabled_at')->where('status', '!=', 'disabled'))
+            ->pluck('property_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
     public function canAccessProperty(Property $property): bool
     {
         if ($this->isAdmin()) {
