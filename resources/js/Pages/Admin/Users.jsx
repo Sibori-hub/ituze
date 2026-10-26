@@ -200,7 +200,7 @@ function TeamList({ team, ownerId, t }) {
             </div>
             <ul className="mt-1.5 flex flex-wrap gap-2">
                 {team.map((manager) => (
-                    <li key={manager.id} className={`inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-2.5 py-1 text-xs ring-1 ${manager.disabled ? 'bg-gray-50 text-gray-500 ring-gray-200' : 'bg-sky-50 text-sky-950 ring-sky-100'}`}>
+                    <li key={manager.id} className={`inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-2.5 py-1 text-xs ring-1 ${manager.disabled ? 'bg-gray-50 text-gray-500 ring-gray-200' : 'bg-sky-50 text-sky-950 ring-sky-100'}`}>
                         <span className="font-semibold">{manager.name}</span>
                         {manager.username && <span className="font-mono text-[11px]">@{manager.username}</span>}
                         {manager.phone && <span className="text-[11px]">{manager.phone}</span>}
@@ -321,8 +321,8 @@ export default function Users({ users, filters, counts = {} }) {
     };
     const roleCount = (role) => (role ? counts.roles?.[role] ?? 0 : counts.all ?? 0);
 
-    const actions = (user) => (
-        <div className="flex items-center justify-end gap-0.5">
+    const actions = (user, onCard = false) => (
+        <div className={`flex flex-wrap items-center gap-0.5 ${onCard ? 'justify-start' : 'justify-end'}`}>
             {(user.role === 'owner' && !user.created_by) || user.role === 'manager' ? (
                 <Link href={route('managers.index', { owner_id: user.role === 'manager' ? user.employer_id : user.id })} className="rounded-lg p-2 text-[#0E3B2E] transition hover:bg-emerald-50" title={t('Managers and activity')} aria-label={t('Managers and activity')}>
                     <UserCog size={16} />
@@ -587,23 +587,28 @@ export default function Users({ users, filters, counts = {} }) {
                             </div>
                         ) : (
                             <>
-                                {/* Desktop table */}
-                                <table className="hidden w-full text-left text-sm md:table">
+                                {/* Wide screens: a table that always fits (no sideways page scroll). */}
+                                <div className="hidden overflow-x-auto xl:block">
+                                <table className="w-full table-fixed text-left text-sm">
+                                    <colgroup>
+                                        <col className="w-[36%]" />
+                                        <col className="w-[28%]" />
+                                        <col className="w-[16%]" />
+                                        <col className="w-[20%]" />
+                                    </colgroup>
                                     <thead>
                                         <tr className="border-b border-gray-100 bg-gray-50/70 text-[11px] uppercase tracking-wide text-gray-500">
-                                            <th className="px-5 py-3 font-semibold">{t('User')}</th>
-                                            <th className="px-5 py-3 font-semibold">{t('Contact')}</th>
-                                            <th className="min-w-[11.5rem] px-5 py-3 font-semibold">{t('Account')}</th>
-                                            <th className="hidden px-5 py-3 font-semibold lg:table-cell">{t('Plan')}</th>
-                                            <th className="hidden px-5 py-3 font-semibold xl:table-cell">{t('Joined')}</th>
-                                            <th className="px-5 py-3 text-right font-semibold">{t('Actions')}</th>
+                                            <th className="px-4 py-3 font-semibold">{t('User')}</th>
+                                            <th className="px-4 py-3 font-semibold">{t('Account')}</th>
+                                            <th className="px-4 py-3 font-semibold">{t('Plan')}</th>
+                                            <th className="px-4 py-3 text-right font-semibold">{t('Actions')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {users.data.map((user) => (
-                                            <tr key={user.id} className="group transition-colors hover:bg-[#0E3B2E]/[0.025]">
-                                                <td className="px-5 py-3.5">
-                                                    <div className="flex items-center gap-3">
+                                            <tr key={user.id} className="group align-top transition-colors hover:bg-[#0E3B2E]/[0.025]">
+                                                <td className="px-4 py-3.5">
+                                                    <div className="flex items-start gap-3">
                                                         <UserAvatar user={user} size="sm" />
                                                         <div className="min-w-0">
                                                             <p className="truncate font-semibold text-gray-900">
@@ -614,23 +619,18 @@ export default function Users({ users, filters, counts = {} }) {
                                                             {user.account_type === 'company' && (
                                                                 <p className="truncate text-[11px] text-sky-900">{t('Company')} · TIN {user.company_tin} · {t('Rep.')} {`${user.first_name || ''} ${user.last_name || ''}`.trim()}</p>
                                                             )}
+                                                            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-700">
+                                                                <span className="inline-flex items-center gap-1"><Phone size={12} className="text-gray-400" />{user.phone || '—'}</span>
+                                                                <span className="truncate">{location(user)}</span>
+                                                            </p>
+                                                            <p className="mt-0.5 text-[11px] text-gray-400">{t('Joined')} {formatDate(user.created_at, language)}</p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-3.5">
-                                                    <p className="inline-flex items-center gap-1 text-xs text-gray-700">
-                                                        <Phone size={12} className="text-gray-400" />
-                                                        {user.phone || '—'}
-                                                    </p>
-                                                    <div className="mt-1">{location(user)}</div>
-                                                </td>
-                                                <td className="px-5 py-3.5">
+                                                <td className="px-4 py-3.5">
                                                     {badges(user)}
-                                                    {user.role === 'manager' && user.employer?.name && (
-                                                        <p className="mt-1.5 text-[11px] text-amber-800">{t('Manager for :name', { name: user.employer.name })}</p>
-                                                    )}
                                                     {user.created_by && user.creator?.name && (
-                                                        <p className="mt-1.5 text-[11px] text-gray-500">{t('Added by :name', { name: user.creator.name })}</p>
+                                                        <p className="mt-1.5 truncate text-[11px] text-gray-500">{t('Added by :name', { name: user.creator.name })}</p>
                                                     )}
                                                     {user.national_id && (
                                                         <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-gray-400">
@@ -639,20 +639,19 @@ export default function Users({ users, filters, counts = {} }) {
                                                         </p>
                                                     )}
                                                     {user.status === 'disabled' && user.disabled_reason && (
-                                                        <p className="mt-1 max-w-[14rem] text-[11px] text-gray-400">{user.disabled_reason}</p>
+                                                        <p className="mt-1 text-[11px] text-gray-400">{user.disabled_reason}</p>
                                                     )}
                                                 </td>
-                                                <td className="hidden px-5 py-3.5 lg:table-cell">
+                                                <td className="px-4 py-3.5">
                                                     <PlanCell user={user} />
                                                 </td>
-                                                <td className="hidden whitespace-nowrap px-5 py-3.5 text-xs text-gray-500 xl:table-cell">{formatDate(user.created_at, language)}</td>
-                                                <td className="px-5 py-3.5">{actions(user)}</td>
+                                                <td className="px-4 py-3.5">{actions(user)}</td>
                                             </tr>
                                         )).flatMap((row, index) => {
                                             const team = users.data[index].team || [];
                                             return team.length ? [row, (
                                                 <tr key={`team-${users.data[index].id}`} className="bg-sky-50/40">
-                                                    <td colSpan={6} className="px-5 pb-3 pt-0">
+                                                    <td colSpan={4} className="px-4 pb-3 pt-0">
                                                         <TeamList team={team} ownerId={users.data[index].id} t={t} />
                                                     </td>
                                                 </tr>
@@ -660,31 +659,40 @@ export default function Users({ users, filters, counts = {} }) {
                                         })}
                                     </tbody>
                                 </table>
+                                </div>
 
-                                {/* Phone cards */}
-                                <ul className="divide-y divide-gray-100 md:hidden">
+                                {/* Phones, tablets and laptops: cards, two per row from tablet size. */}
+                                <ul className="grid gap-3 p-3 sm:p-4 md:grid-cols-2 xl:hidden">
                                     {users.data.map((user) => (
-                                        <li key={user.id} className="p-4">
+                                        <li key={user.id} className={`flex min-w-0 flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 transition hover:shadow-md ${user.status === 'disabled' ? 'ring-gray-200 opacity-90' : 'ring-black/[0.06]'}`}>
                                             <div className="flex items-start gap-3">
                                                 <UserAvatar user={user} size="md" />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="truncate font-semibold text-gray-900">{user.name}</p>
+                                                    <p className="truncate font-semibold text-gray-900">
+                                                        {user.name}
+                                                        {user.id === currentUserId && <span className="ml-1.5 text-xs font-medium text-gray-400">({t('you')})</span>}
+                                                    </p>
                                                     <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                                    {user.account_type === 'company' && (
+                                                        <p className="truncate text-[11px] text-sky-900">{t('Company')} · TIN {user.company_tin}</p>
+                                                    )}
                                                     <div className="mt-2">{badges(user)}</div>
                                                 </div>
-                                                {actions(user)}
                                             </div>
-                                            <div className="mt-3 flex flex-wrap items-end justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5">
-                                                <div className="space-y-1">
-                                                    <p className="inline-flex items-center gap-1 text-xs text-gray-700">
-                                                        <Phone size={12} className="text-gray-400" />
-                                                        {user.phone || '—'}
-                                                    </p>
-                                                    <div>{location(user)}</div>
+                                            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl bg-gray-50 px-3 py-2.5 text-xs">
+                                                <div className="min-w-0">
+                                                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t('Phone')}</dt>
+                                                    <dd className="truncate text-gray-800">{user.phone || '—'}</dd>
                                                 </div>
-                                                <PlanCell user={user} />
-                                            </div>
+                                                <div className="min-w-0">
+                                                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t('Joined')}</dt>
+                                                    <dd className="truncate text-gray-800">{formatDate(user.created_at, language)}</dd>
+                                                </div>
+                                                <div className="col-span-2 min-w-0">{location(user)}</div>
+                                                <div className="col-span-2 min-w-0"><PlanCell user={user} /></div>
+                                            </dl>
                                             {(user.team || []).length > 0 && <div className="mt-2"><TeamList team={user.team} ownerId={user.id} t={t} /></div>}
+                                            <div className="mt-auto border-t border-gray-100 pt-3">{actions(user, true)}</div>
                                         </li>
                                     ))}
                                 </ul>

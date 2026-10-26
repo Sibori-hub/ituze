@@ -742,6 +742,8 @@ export default {
         'Enter the company’s street address (e.g. KG 7 Ave, building, floor).': 'Indiquez l’adresse de la société (ex. KG 7 Ave, bâtiment, étage).',
         'RDB registration certificate': 'Certificat d’enregistrement RDB',
         'No RDB certificate uploaded yet.': 'Aucun certificat RDB téléversé.',
+        'Joined': 'Inscrit',
+        'Phone': 'Téléphone',
     },
     rw: {
         'Lease documents': 'Inyandiko z’amasezerano',
@@ -1477,5 +1479,7 @@ export default {
         'Enter the company’s street address (e.g. KG 7 Ave, building, floor).': 'Andika aderesi ya sosiyete (urugero KG 7 Ave, inyubako, etaje).',
         'RDB registration certificate': 'Icyemezo cya RDB',
         'No RDB certificate uploaded yet.': 'Nta cyemezo cya RDB kirashyirwaho.',
+        'Joined': 'Yiyandikishije',
+        'Phone': 'Telefoni',
     },
 };
