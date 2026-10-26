@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Activity, ArrowUpRight, BadgeCheck, BarChart3, Building2, CalendarDays, CalendarX,
+import { Percent, Megaphone, Eye, Activity, ArrowUpRight, BadgeCheck, BarChart3, Building2, CalendarDays, CalendarX,
     AlertTriangle, CheckCircle2, Clock3, CreditCard, DoorOpen, Droplets, FileText, Home, Leaf, Mail, MessageSquare,
     Phone, Plus, ShieldCheck, TrendingUp, Users, UsersRound, Wallet, X, Zap,
 } from 'lucide-react';
@@ -452,6 +452,8 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                 </section>
 
                 {/* Key figures */}
+                <AdminIncome income={overview.income} money={money} locale={locale} t={t} />
+
                 <section aria-label={t('Key figures')} className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                     {[
                         {
@@ -459,7 +461,7 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                             note: rentChange === null ? t('No rent last month to compare') : t(':change% vs last month', { change: rentChange > 0 ? `+${rentChange}` : rentChange }),
                             noteTone: rentChange === null ? 'text-gray-500' : rentChange >= 0 ? 'text-emerald-700' : 'text-red-700',
                         },
-                        { label: t('Subscriptions this month'), value: money(subscriptionMoney.month), icon: Wallet, tone: 'from-amber-500/20 to-amber-500/5 text-amber-800', note: owners.paying === 1 ? t('1 paying owner') : t(':count paying owners', { count: owners.paying || 0 }) },
+                        { label: t('Advertisers'), value: overview.advertisers || 0, icon: Megaphone, tone: 'from-amber-500/20 to-amber-500/5 text-amber-800', note: t(':count buildings on the homepage now', { count: overview.listedBuildings || 0 }), href: route('admin.ad-payments'), linkLabel: t('Ad payments') },
                         { label: t('Occupancy'), value: `${occupancy}%`, icon: Home, tone: 'from-sky-500/15 to-sky-500/5 text-sky-800', note: t(':occupied of :total rooms rented', { occupied: overview.occupancy.occupied, total: units }), bar: occupancy },
                         { label: t('Owners'), value: overview.totalOwners, icon: UsersRound, tone: 'from-violet-500/15 to-violet-500/5 text-violet-800', href: route('admin.owners'), linkLabel: t('Open owners'), note: owners.managers === 1 ? t('1 manager working for owners') : t(':count managers working for owners', { count: owners.managers || 0 }) },
                     ].map(({ label, value, icon: Icon, tone, note, noteTone, bar, href, linkLabel }, index) => (
@@ -601,6 +603,78 @@ function AdminDashboard({ overview, inquiries, user, language }) {
                 <VisitorInquiries inquiries={inquiries} />
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+/**
+ * What ITUZE (Q.R.A) earns this month, by source, and the total: subscriptions
+ * from self-registered owners, the commission on managed owners' rent, and
+ * advertisers' listings. Kept apart from the rent that belongs to owners.
+ */
+function AdminIncome({ income, money, locale, t }) {
+    if (!income) return null;
+    const now = income.month || {};
+    const before = income.previous || {};
+    const monthName = income.from ? new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(`${income.from}T12:00:00`)) : '';
+    const change = (key) => {
+        const was = Number(before[key] || 0);
+        const is = Number(now[key] || 0);
+        if (was <= 0) return null;
+        return Math.round(((is - was) / was) * 100);
+    };
+    const Change = ({ value }) => value === null
+        ? <span className="text-gray-500">{t('No income last month to compare')}</span>
+        : <span className={value >= 0 ? 'font-semibold text-emerald-700' : 'font-semibold text-red-700'}>{value > 0 ? `+${value}` : value}% {t('vs last month')}</span>;
+    const cards = [
+        { key: 'subscriptions', label: t('Subscriptions'), who: t('Self-registered owners'), icon: Wallet, tone: 'bg-amber-50 text-amber-800 ring-amber-100',
+            note: t(':count payment(s) approved', { count: now.subscription_payments || 0 }), href: route('admin.subscriptions') },
+        { key: 'commission', label: t('Commission'), who: t('Owners managed by QRA'), icon: Percent, tone: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
+            note: t('Fee on :rent rent collected', { rent: money(now.managed_rent) }), href: route('payments.index') },
+        { key: 'ads', label: t('Advertisers'), who: t('Listings on the homepage'), icon: Megaphone, tone: 'bg-violet-50 text-violet-800 ring-violet-100',
+            note: t(':count purchase(s) approved', { count: now.ad_purchases || 0 }), href: route('admin.ad-payments') },
+    ];
+    const total = Number(now.total || 0);
+
+    return (
+        <section aria-labelledby="income-title">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <h2 id="income-title" className="font-[Sora] text-lg font-bold text-gray-900">{t('ITUZE income · :month', { month: monthName })}</h2>
+                <p className="text-xs text-gray-600">{t('What QRA earns; the rent itself belongs to the owners.')}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {cards.map(({ key, label, who, icon: Icon, tone, note, href }) => (
+                    <Link key={key} href={href} className="group rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/[0.04] transition hover:-translate-y-0.5 hover:shadow-md sm:p-5">
+                        <div className="flex items-start justify-between gap-2">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</p>
+                                <p className="text-[11px] text-gray-500">{who}</p>
+                            </div>
+                            <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl ring-1 ${tone}`} aria-hidden="true"><Icon size={18} /></span>
+                        </div>
+                        <p className="mt-3 font-[Sora] text-xl font-bold tabular-nums text-gray-900 sm:text-2xl">{money(now[key])}</p>
+                        <p className="mt-1 text-xs text-gray-600">{note}</p>
+                        <p className="mt-1 text-xs"><Change value={change(key)} /></p>
+                        {total > 0 && (
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100" role="img" aria-label={t(':share% of the total', { share: Math.round((Number(now[key] || 0) / total) * 100) })}>
+                                <div className="h-full rounded-full bg-[#0E3B2E]" style={{ width: `${Math.round((Number(now[key] || 0) / total) * 100)}%` }} />
+                            </div>
+                        )}
+                    </Link>
+                ))}
+                <div className="rounded-2xl bg-gradient-to-br from-[#0E3B2E] to-[#145240] p-4 text-white shadow-sm ring-1 ring-[#0E3B2E] sm:p-5">
+                    <div className="flex items-start justify-between gap-2">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100">{t('Total income')}</p>
+                            <p className="text-[11px] text-emerald-100/80">{t('Subscriptions + commission + advertisers')}</p>
+                        </div>
+                        <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-white/10 text-[#F2C46D] ring-1 ring-white/20" aria-hidden="true"><TrendingUp size={18} /></span>
+                    </div>
+                    <p className="mt-3 font-[Sora] text-2xl font-bold tabular-nums">{money(total)}</p>
+                    <p className="mt-1 text-xs text-emerald-100">{t('Last month: :amount', { amount: money(before.total) })}</p>
+                    <p className="mt-1 text-xs">{change('total') === null ? <span className="text-emerald-100/80">{t('No income last month to compare')}</span> : <span className={change('total') >= 0 ? 'font-semibold text-[#F2C46D]' : 'font-semibold text-red-200'}>{change('total') > 0 ? `+${change('total')}` : change('total')}% {t('vs last month')}</span>}</p>
+                </div>
+            </div>
+        </section>
     );
 }
 

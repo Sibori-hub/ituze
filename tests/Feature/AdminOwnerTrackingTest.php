@@ -30,8 +30,18 @@ class AdminOwnerTrackingTest extends TestCase
         $rentPaid($selfRegistered, 700000);
         $rentPaid($managed, 300000);
 
+        // ITUZE's own income, by source: a 100,000 subscription, a 25,000 listing and 10% of the managed rent.
+        \App\Models\SubscriptionPayment::create(['owner_id' => $selfRegistered->id, 'months' => 1, 'amount' => 100000, 'method' => 'momo_pay', 'status' => 'approved', 'reviewed_at' => now()]);
+        $advertiser = User::factory()->create(['role' => 'advertiser', 'status' => 'approved']);
+        \App\Models\AdPurchase::create(['advertiser_id' => $advertiser->id, 'listings' => 1, 'amount' => 25000, 'method' => 'momo_pay', 'status' => 'approved', 'paid_at' => now()]);
+
         $this->actingAs($admin)->get(route('dashboard'))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('adminOverview.rentCollections.5.amount', fn ($amount) => (float) $amount === 300000.0));
+            ->where('adminOverview.rentCollections.5.amount', fn ($amount) => (float) $amount === 300000.0)
+            ->where('adminOverview.income.month.subscriptions', fn ($value) => (float) $value === 100000.0)
+            ->where('adminOverview.income.month.commission', fn ($value) => (float) $value === 30000.0)
+            ->where('adminOverview.income.month.managed_rent', fn ($value) => (float) $value === 300000.0)
+            ->where('adminOverview.income.month.ads', fn ($value) => (float) $value === 25000.0)
+            ->where('adminOverview.income.month.total', fn ($value) => (float) $value === 155000.0));
     }
 
     public function test_the_managed_owner_is_told_of_everything_qra_does_and_muted_accounts_get_no_sms(): void

@@ -269,6 +269,32 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                     'pending' => $pendingApprovals->count(),
                     'managers' => \App\Models\User::query()->where('role', 'manager')->count(),
                 ],
+                // What ITUZE (Q.R.A) itself earns, by source, this month and last month.
+                'income' => (function () use ($user) {
+                    $month = fn (int $back) => [now()->startOfMonth()->subMonthsNoOverflow($back), now()->startOfMonth()->subMonthsNoOverflow($back)->endOfMonth()];
+                    $figures = function (array $range) use ($user) {
+                        [$from, $to] = $range;
+                        // Managed owners only: the admin report already leaves self-registered owners out.
+                        $managed = (new \App\Services\PortfolioReport($user))->overview($from->toImmutable(), $to->toImmutable());
+                        $subscriptions = \App\Models\SubscriptionPayment::query()->where('status', 'approved')->whereBetween('reviewed_at', [$from, $to]);
+                        $ads = \App\Models\AdPurchase::query()->where('status', \App\Models\AdPurchase::APPROVED)->whereBetween('paid_at', [$from, $to]);
+
+                        return [
+                            'subscriptions' => round((float) (clone $subscriptions)->sum('amount'), 2),
+                            'subscription_payments' => (clone $subscriptions)->count(),
+                            'commission' => round((float) $managed['commission'], 2),
+                            'managed_rent' => round((float) $managed['rent_collected'], 2),
+                            'ads' => round((float) (clone $ads)->sum('amount'), 2),
+                            'ad_purchases' => (clone $ads)->count(),
+                        ];
+                    };
+                    $now = $figures($month(0));
+                    $before = $figures($month(1));
+                    $now['total'] = round($now['subscriptions'] + $now['commission'] + $now['ads'], 2);
+                    $before['total'] = round($before['subscriptions'] + $before['commission'] + $before['ads'], 2);
+
+                    return ['month' => $now, 'previous' => $before, 'from' => now()->startOfMonth()->toDateString()];
+                })(),
                 'subscriptionMoney' => [
                     'month' => (float) (clone $approvedSubscriptionPayments)->where('reviewed_at', '>=', now()->startOfMonth())->sum('amount'),
                     'total' => (float) (clone $approvedSubscriptionPayments)->sum('amount'),
