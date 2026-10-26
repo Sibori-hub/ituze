@@ -582,6 +582,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/approvals/{user}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{user}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
     Route::get('/approvals/{user}/identity', [ApprovalController::class, 'identityDocument'])->name('approvals.identity-document');
+    Route::get('/approvals/{user}/rdb', [ApprovalController::class, 'rdbCertificate'])->name('approvals.rdb-certificate');
 
     // Private tracking of self-registered (SaaS) owners: read only.
     Route::get('/owners', [\App\Http\Controllers\Admin\OwnerTrackingController::class, 'index'])->name('owners');

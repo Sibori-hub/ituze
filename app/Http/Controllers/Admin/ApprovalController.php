@@ -29,7 +29,8 @@ class ApprovalController extends Controller
             ->with('sector.district.province')
             ->latest()
             ->get()
-            ->each(fn (User $user) => $user->setAttribute('has_identity_document', (bool) $user->identity_document));
+            ->each(fn (User $user) => $user->setAttribute('has_identity_document', (bool) $user->identity_document)
+                ->setAttribute('has_rdb_certificate', (bool) $user->rdb_certificate));
 
         return Inertia::render('Admin/Approvals', [
             'pendingUsers' => $pending,
@@ -45,6 +46,15 @@ class ApprovalController extends Controller
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
         return Storage::disk('local')->response($path, "id-{$user->id}.".pathinfo($path, PATHINFO_EXTENSION));
+    }
+
+    /** Stream a company's RDB certificate (private file, admins only). */
+    public function rdbCertificate(User $user): StreamedResponse
+    {
+        $path = $user->rdb_certificate;
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, "rdb-{$user->id}.".pathinfo($path, PATHINFO_EXTENSION));
     }
 
     public function approve(Request $request, User $user): RedirectResponse

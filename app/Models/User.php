@@ -54,6 +54,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'account_type',
         'company_name',
         'company_tin',
+        'rdb_certificate',
+        'company_address',
     ];
 
     /**
@@ -70,6 +72,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password_otp',
         // Private file path; admins open it through admin.approvals.identity-document.
         'identity_document',
+        'rdb_certificate',
     ];
 
     /**

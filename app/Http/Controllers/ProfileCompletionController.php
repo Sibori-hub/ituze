@@ -36,6 +36,9 @@ class ProfileCompletionController extends Controller
                     // One photo or PDF of the whole ID card, or of the passport photo page.
                     'identity_document' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
                     'sector_id'     => 'required|exists:sectors,id',
+                    // A company: its RDB certificate and its street address (the photo is its logo).
+                    'rdb_certificate' => $request->user()->isCompany() ? 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120' : 'nullable',
+                    'address'       => $request->user()->isCompany() ? 'required|string|max:255' : 'nullable|string|max:255',
                     // Accounts created for someone (managers) accept the terms here.
                     'terms'         => $request->user()->isManager() && ! $request->user()->terms_accepted_at ? 'accepted' : 'nullable',
                 ],
@@ -54,6 +57,10 @@ class ProfileCompletionController extends Controller
                     'sector_id.required'     => '📍 Please select your location (Province → District → Sector).',
                     'sector_id.exists'       => '📍 The selected sector is not valid. Please select a sector from the dropdown list.',
                     'terms.accepted'         => 'You must accept the Terms and Conditions and the Privacy Policy to continue.',
+                    'rdb_certificate.required' => 'Upload the company’s RDB registration certificate.',
+                    'rdb_certificate.mimes'  => 'The RDB certificate must be a JPG, PNG, WEBP or PDF file.',
+                    'rdb_certificate.max'    => 'The RDB certificate is too large. The maximum is 5 MB.',
+                    'address.required'       => 'Enter the company’s street address (e.g. KG 7 Ave, building, floor).',
                 ]
             );
 
@@ -61,6 +68,7 @@ class ProfileCompletionController extends Controller
 
             $user = $request->user();
             $previousDocument = $user->identity_document;
+            $previousCertificate = $user->rdb_certificate;
             $firstSubmission = ! $user->profile_completed;
             $updated = $user->update([
                 'national_id'       => $validated['national_id'],
@@ -69,6 +77,10 @@ class ProfileCompletionController extends Controller
                 'profile_photo'     => $path,
                 'sector_id'         => $validated['sector_id'],
                 'profile_completed' => true,
+                ...($user->isCompany() ? [
+                    'rdb_certificate' => $request->file('rdb_certificate')->store('company-documents/'.$user->id, 'local'),
+                    'company_address' => trim($validated['address']),
+                ] : []),
                 ...(! $user->isManager() || $user->terms_accepted_at ? [] : [
                     'terms_accepted_at' => now(),
                     'terms_version' => config('legal.terms_version'),
@@ -90,6 +102,9 @@ class ProfileCompletionController extends Controller
             // A resubmission replaces the earlier ID file.
             if ($previousDocument && $previousDocument !== $user->identity_document) {
                 Storage::disk('local')->delete($previousDocument);
+            }
+            if ($previousCertificate && $previousCertificate !== $user->rdb_certificate) {
+                Storage::disk('local')->delete($previousCertificate);
             }
 
             // Tell every active admin once, so the new account can be reviewed.

@@ -197,7 +197,11 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
         identity_document: null,
         sector_id: '',
         terms: false,
+        // A company: its RDB certificate and street address.
+        rdb_certificate: null,
+        address: '',
     });
+    const isCompany = auth.user?.account_type === 'company';
 
     const fileInput = useRef(null);
     const [preview, setPreview] = useState(null);
@@ -222,9 +226,10 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
     const idValid = isPassport ? /^[A-Z0-9]{6,20}$/.test(data.national_id) : /^\d{16}$/.test(data.national_id);
     const idDone = idValid && Boolean(data.identity_document);
     const photoDone = Boolean(data.profile_photo);
-    const locationDone = Boolean(data.sector_id);
+    const locationDone = Boolean(data.sector_id) && (!isCompany || data.address.trim() !== '');
+    const rdbDone = !isCompany || Boolean(data.rdb_certificate);
     const doneCount = [photoDone, idDone, locationDone].filter(Boolean).length;
-    const isFormValid = doneCount === 3 && (!needsTerms || data.terms);
+    const isFormValid = doneCount === 3 && rdbDone && (!needsTerms || data.terms);
 
     const initials = `${registration.first_name?.[0] ?? ''}${registration.last_name?.[0] ?? ''}`.toUpperCase();
 
@@ -327,7 +332,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
             </div>
 
             <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
-                <Section icon={Camera} title={t('Profile photo')} hint={t('Use a clear, recent photo of your face.')} done={photoDone}>
+                <Section icon={Camera} title={isCompany ? t('Company logo') : t('Profile photo')} hint={isCompany ? t('Upload the company’s logo (JPG, PNG or WEBP).') : t('Use a clear, recent photo of your face.')} done={photoDone}>
                     <div
                         onDragOver={(e) => {
                             e.preventDefault();
@@ -357,7 +362,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                         </button>
                         <div className="flex-1">
                             <p className="text-sm font-medium text-gray-700">
-                                {preview ? data.profile_photo?.name : t('Drag a photo here, or choose one')}
+                                {preview ? data.profile_photo?.name : isCompany ? t('Drag the logo here, or choose it') : t('Drag a photo here, or choose one')}
                             </p>
                             <p className="mt-0.5 text-xs text-gray-400">{t('JPG, PNG or WEBP, up to 2 MB')}</p>
                             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
@@ -394,7 +399,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                     <InputError message={errors.profile_photo} className="mt-2" />
                 </Section>
 
-                <Section icon={IdCard} title={t('Identity document')} hint={t('Our team uses this to confirm your identity.')} done={idDone}>
+                <Section icon={IdCard} title={isCompany ? t('Representative’s identity document') : t('Identity document')} hint={isCompany ? t('The ID of the person who represents the company. Our team uses it to confirm who you are.') : t('Our team uses this to confirm your identity.')} done={idDone && rdbDone}>
                     <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('Identity document')}>
                         {[
                             { value: 'nida', label: t('National ID (NIDA)'), short: 'NIDA', Icon: IdCard },
@@ -463,10 +468,24 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                             error={errors.identity_document}
                         />
                     </div>
-                    <p className="mt-2 text-xs text-gray-400">{t('Only the ITUZE team can see this file. Make sure every word and the photo are clear.')}</p>
+                    {isCompany && (
+                        <div className="mt-4 border-t border-gray-100 pt-4">
+                            <IdDocumentUpload
+                                id="rdb_certificate"
+                                label={t('RDB registration certificate of the company')}
+                                file={data.rdb_certificate}
+                                onChange={(file) => {
+                                    clearErrors('rdb_certificate');
+                                    setData('rdb_certificate', file);
+                                }}
+                                error={errors.rdb_certificate}
+                            />
+                        </div>
+                    )}
+                    <p className="mt-2 text-xs text-gray-400">{isCompany ? t('Only the ITUZE team can see these files. Make sure every word is clear.') : t('Only the ITUZE team can see this file. Make sure every word and the photo are clear.')}</p>
                 </Section>
 
-                <Section icon={MapPin} title={t('Where you live')} hint={t('Choose your province, district and sector.')} done={locationDone}>
+                <Section icon={MapPin} title={isCompany ? t('Company address') : t('Where you live')} hint={isCompany ? t('Where the company is: province, district, sector and street.') : t('Choose your province, district and sector.')} done={locationDone}>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <select
                             aria-label={t('Province')}
@@ -512,6 +531,14 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                         </select>
                     </div>
                     <InputError message={errors.sector_id} className="mt-1" />
+                    {isCompany && (
+                        <div className="mt-3">
+                            <label htmlFor="address" className="mb-1.5 block text-[13px] font-medium text-gray-700">{t('Street address')}</label>
+                            <input id="address" value={data.address} onChange={(e) => setData('address', e.target.value)} maxLength={255} autoComplete="street-address"
+                                placeholder={t('e.g. KG 7 Ave, Ikaze House, 2nd floor')} className={`${fieldClass} px-3.5`} aria-invalid={Boolean(errors.address) || undefined} />
+                            <InputError message={errors.address} className="mt-1" />
+                        </div>
+                    )}
                 </Section>
 
                 {needsTerms && (

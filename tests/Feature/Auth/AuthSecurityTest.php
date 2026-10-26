@@ -300,6 +300,49 @@ class AuthSecurityTest extends TestCase
         $this->assertTrue($user->fresh()->profile_completed);
     }
 
+    public function test_a_company_gives_its_logo_rdb_certificate_and_address(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $sectorId = \Illuminate\Support\Facades\DB::table('sectors')->insertGetId(['name' => 'Kimihurura', 'district_id' => \Illuminate\Support\Facades\DB::table('districts')->insertGetId(['name' => 'Gasabo', 'province_id' => \Illuminate\Support\Facades\DB::table('provinces')->insertGetId(['name' => 'Kigali'])])]);
+        $company = $this->owner(['status' => 'pending', 'expires_at' => null, 'profile_completed' => false]);
+        $company->forceFill(['account_type' => 'company', 'company_name' => 'IKAZE LTD', 'company_tin' => '123456789'])->save();
+        // Every field is kept: the representative's ID, the photo (the logo) and the location.
+        $form = [
+            'identity_document_type' => 'nida', 'national_id' => '1199080012345013', 'sector_id' => $sectorId,
+            'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('logo.png'),
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->create('rep-id.pdf', 100, 'application/pdf'),
+        ];
+
+        // A company also gives its RDB certificate and its street address.
+        $this->actingAs($company)->post(route('profile.complete.store'), $form)->assertSessionHasErrors(['rdb_certificate', 'address']);
+        $this->post(route('profile.complete.store'), [...$form,
+            'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('logo.png'),
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->create('rep-id.pdf', 100, 'application/pdf'),
+            'rdb_certificate' => \Illuminate\Http\UploadedFile::fake()->create('rdb.pdf', 200, 'application/pdf'),
+            'address' => 'KG 7 Ave, Ikaze House',
+        ])->assertSessionHasNoErrors();
+        $company->refresh();
+        $this->assertTrue($company->profile_completed);
+        $this->assertSame('KG 7 Ave, Ikaze House', $company->company_address);
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists($company->rdb_certificate);
+        $this->assertArrayNotHasKey('rdb_certificate', $company->toArray(), 'The file path must not be sent to pages.');
+
+        // Only admins open it.
+        $this->get(route('admin.approvals.rdb-certificate', $company))->assertForbidden();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
+        $this->actingAs($admin)->get(route('admin.approvals.rdb-certificate', $company))->assertOk();
+        $this->get(route('admin.approvals'))->assertInertia(fn ($page) => $page->where('pendingUsers.0.has_rdb_certificate', true));
+
+        // A person registering alone does not need one.
+        $person = $this->owner(['status' => 'pending', 'expires_at' => null, 'profile_completed' => false, 'email' => 'person@example.com', 'phone' => '0788555999']);
+        $this->actingAs($person)->post(route('profile.complete.store'), [...$form,
+            'national_id' => '1199080012345014',
+            'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
+            'identity_document' => \Illuminate\Http\UploadedFile::fake()->create('id.pdf', 100, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+    }
+
     public function test_profile_completion_requires_one_private_id_file_that_only_admins_can_open(): void
     {
         \Illuminate\Support\Facades\Storage::fake('public');

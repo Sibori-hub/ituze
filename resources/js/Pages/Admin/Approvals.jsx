@@ -38,7 +38,7 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
 
     const details = [
         // A company: its TIN, and the person who registered it as its representative.
-        ...(user.account_type === 'company' ? [['Company TIN', user.company_tin], ['Representative', `${user.first_name || ''} ${user.last_name || ''}`.trim()]] : []),
+        ...(user.account_type === 'company' ? [['Company TIN', user.company_tin], ['Representative', `${user.first_name || ''} ${user.last_name || ''}`.trim()], ['Company address', user.company_address]] : []),
         ['Email', user.email],
         ['Phone', user.phone],
         [user.identity_document_type === 'passport' ? 'Passport number' : 'NIDA number', user.national_id],
@@ -150,6 +150,20 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
                             <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
                                 {t('No ID file was uploaded (this account registered before ID uploads were required).')}
                             </p>
+                        )}
+                        {user.account_type === 'company' && (
+                            user.has_rdb_certificate ? (
+                                <a href={route('admin.approvals.rdb-certificate', user.id)} target="_blank" rel="noopener noreferrer"
+                                    className="group mt-3 block overflow-hidden rounded-xl border border-gray-200 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20">
+                                    <DocumentThumb url={route('admin.approvals.rdb-certificate', user.id)} />
+                                    <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700">
+                                        {t('RDB registration certificate')}
+                                        <span className="text-[#1F7A5A] group-hover:underline">{t('Open')}</span>
+                                    </span>
+                                </a>
+                            ) : (
+                                <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{t('No RDB certificate uploaded yet.')}</p>
+                            )
                         )}
                     </section>
                 </div>
