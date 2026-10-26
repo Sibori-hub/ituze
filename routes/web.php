@@ -206,15 +206,18 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
             ->groupBy(fn ($purchase) => $purchase->paid_at->format('Y-m'))
             ->map(fn ($purchases) => $purchases->sum(fn ($purchase) => (float) $purchase->amount));
         $activeTenancies = \App\Models\Tenancy::query()->where('status', 'active');
+        // QRA's buildings only: advertisers and self-registered owners run theirs.
+        $qraProperties = \App\Models\Property::query()->select('id')->whereNotIn('owner_id', \App\Models\User::notRunByQraIds());
         $unitCounts = \App\Models\Unit::query()
             ->selectRaw('status, COUNT(*) as aggregate')
-            ->whereHas('property')
+            ->whereIn('property_id', $qraProperties)
             ->groupBy('status')
             ->pluck('aggregate', 'status');
 
         return Inertia::render('Dashboard', [
             'recentInquiries' => \App\Models\PropertyInquiry::query()
                 ->with(['property:id,name', 'unit:id,unit_number', 'owner:id,name'])
+                ->where(fn ($query) => $query->whereNull('property_id')->orWhereIn('property_id', $qraProperties))
                 ->latest()
                 ->take(20)
                 ->get(),
@@ -228,12 +231,12 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                 'expiredSubscriptions' => (clone $approvedOwners)
                     ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '<=', now()))
                     ->count(),
-                'properties' => \App\Models\Property::query()->count(),
-                'units' => \App\Models\Unit::query()->count(),
+                'properties' => \App\Models\Property::query()->whereIn('id', $qraProperties)->count(),
+                'units' => \App\Models\Unit::query()->whereIn('property_id', $qraProperties)->count(),
                 'tenants' => \App\Models\Tenant::query()->count(),
                 'leases' => \App\Models\Lease::query()->count(),
                 'payments' => \App\Models\RentPayment::query()->count(),
-                'newInquiries' => \App\Models\PropertyInquiry::query()->where('status', 'new')->count(),
+                'newInquiries' => \App\Models\PropertyInquiry::query()->where(fn ($query) => $query->whereNull('property_id')->orWhereIn('property_id', $qraProperties))->where('status', 'new')->count(),
                 'occupancy' => [
                     'occupied' => (int) $unitCounts->get('occupied', 0),
                     'available' => (int) $unitCounts->get('available', 0),
@@ -437,7 +440,7 @@ Route::middleware('auth')->group(function () {
 
     // Property management routes (requires verified email and completed profile)
     // Advertisers manage their buildings and rooms here too; tenancy routes below stay owner-only.
-    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser', 'advertiser.paid'])->prefix('properties')->name('properties.')->group(function () {
+    Route::middleware(['verified', 'profile.complete', 'owner.approved:owner,advertiser', 'advertiser.paid', 'admin.qra-only'])->prefix('properties')->name('properties.')->group(function () {
         Route::get('/', [PropertyController::class, 'index'])->name('index');
         // Buildings, floors, units and prices are the owner's: managers only run tenants, payments and utilities.
         Route::get('/create', [PropertyController::class, 'create'])->middleware('owner.builds')->name('create');

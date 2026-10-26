@@ -61,7 +61,7 @@ class Unit extends Model
     public function scopeInWorkspaceOf($query, User $user)
     {
         return $query->visibleTo($user)->when($user->isAdmin(), fn ($inner) => $inner
-            ->whereNotIn($query->qualifyColumn('property_id'), Property::query()->select('id')->whereIn('owner_id', User::selfRegisteredOwnerIds())));
+            ->whereNotIn($query->qualifyColumn('property_id'), Property::query()->select('id')->whereIn('owner_id', User::notRunByQraIds())));
     }
 
     public function propertyUnit()

@@ -111,7 +111,7 @@ class Property extends Model
     public function scopeInWorkspaceOf($query, User $user)
     {
         return $query->visibleTo($user)->when($user->isAdmin(), fn ($inner) => $inner
-            ->whereNotIn($query->qualifyColumn('owner_id'), User::selfRegisteredOwnerIds()));
+            ->whereNotIn($query->qualifyColumn('owner_id'), User::notRunByQraIds()));
     }
 
     public function cell()

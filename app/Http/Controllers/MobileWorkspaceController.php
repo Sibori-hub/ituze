@@ -53,8 +53,8 @@ class MobileWorkspaceController extends Controller
                     'expiredSubscriptions' => (clone $approvedOwners)
                         ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '<=', now()))
                         ->count(),
-                    'properties' => Property::query()->count(),
-                    'units' => Unit::query()->count(),
+                    'properties' => Property::query()->whereNotIn('owner_id', User::notRunByQraIds())->count(),
+                    'units' => Unit::query()->whereIn('property_id', Property::query()->select('id')->whereNotIn('owner_id', User::notRunByQraIds()))->count(),
                     'tenants' => Tenant::query()->count(),
                     'leases' => Lease::query()->count(),
                     'payments' => RentPayment::query()->count(),
@@ -150,6 +150,7 @@ class MobileWorkspaceController extends Controller
                 'units as units_maintenance_count' => fn ($query) => $query->where('status', 'maintenance'),
             ])
             ->when(! $user->isAdmin(), fn ($query) => $query->where('owner_id', $user->id))
+            ->when($user->isAdmin(), fn ($query) => $query->whereNotIn('owner_id', User::notRunByQraIds()))
             ->when($user->isAdmin() && isset($filters['owner_id']), fn ($query) => $query->where('owner_id', $filters['owner_id']))
             ->when($filters['search'] ?? null, fn ($query, $search) => $query->where(
                 fn ($query) => $query->where('name', 'like', '%'.$search.'%')->orWhere('address', 'like', '%'.$search.'%'),

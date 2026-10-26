@@ -125,6 +125,7 @@ class RentalLifecycleTest extends TestCase
         });
         Schema::create('property_inquiries', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('property_id')->nullable();
             $table->string('status')->default('new');
             $table->timestamps();
         });
@@ -1935,6 +1936,7 @@ class RentalLifecycleTest extends TestCase
             'profile_completed' => true,
         ]);
         $admin->markEmailAsVerified();
+        $owner->update(['created_by' => $admin->id]);
 
         $this->actingAs($admin)->post(route('properties.units.tenancy.store', [$property, $unit]), [
             'tenant_type' => 'individual',

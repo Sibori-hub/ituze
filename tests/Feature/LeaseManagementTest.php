@@ -111,6 +111,7 @@ class LeaseManagementTest extends TestCase
 
     public function test_renewal_records_first_month_paid_and_carries_the_deposit(): void
     {
+        $this->owner->update(['created_by' => $this->admin->id]);
         Storage::fake('local');
         $this->travelTo(Carbon::parse('2026-11-15 09:00:00'));
         app(RentScheduleService::class)->createCharges($this->tenancy);

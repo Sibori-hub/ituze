@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'profile.complete' => \App\Http\Middleware\EnsureProfileIsComplete::class,
             'phone.verified' => \App\Http\Middleware\EnsurePhoneIsVerified::class,
             'owner.builds' => \App\Http\Middleware\EnsureOwnerBuilds::class,
+            'admin.qra-only' => \App\Http\Middleware\EnsureAdminWorksOnQraBuildings::class,
             'owner.approved' => \App\Http\Middleware\EnsureOwnerIsApproved::class,
             'admin' => \App\Http\Middleware\EnsureIsAdmin::class,
             'advertiser.paid' => \App\Http\Middleware\EnsureAdvertiserHasPaid::class,

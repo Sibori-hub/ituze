@@ -137,6 +137,21 @@ class AdvertiserListingTest extends TestCase
         $this->get(route('public.properties.show', $this->building))->assertNotFound();
     }
 
+    public function test_the_admin_neither_sees_nor_changes_an_advertisers_property(): void
+    {
+        $this->admin->markEmailAsVerified();
+        $this->admin->update(['profile_completed' => true]);
+        $this->actingAs($this->admin);
+
+        $this->get(route('properties.index'))->assertOk()
+            ->assertDontSee('Ad Tower');
+        $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('adminOverview.properties', 0));
+        $this->get(route('properties.edit', $this->building))->assertStatus(403);
+        $this->put(route('properties.update', $this->building), ['name' => 'Changed', 'total_floors' => 2])->assertStatus(403);
+        $this->delete(route('properties.destroy', $this->building))->assertStatus(403);
+        $this->assertSame('Ad Tower', $this->building->fresh()->name);
+    }
+
     public function test_an_advertiser_adds_a_property_first_then_pays_for_it(): void
     {
         $this->actingAs($this->advertiser);

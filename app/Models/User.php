@@ -385,6 +385,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return self::query()->select('id')->where('role', 'owner')->whereNull('created_by');
     }
 
+    /**
+     * Accounts that run their own buildings, so an admin's work lists and
+     * dashboard leave them out and an admin changes nothing there:
+     * self-registered owners and advertisers.
+     */
+    public static function notRunByQraIds()
+    {
+        return self::query()->select('id')->where(fn ($query) => $query
+            ->where(fn ($owner) => $owner->where('role', 'owner')->whereNull('created_by'))
+            ->orWhere('role', 'advertiser'));
+    }
+
     /** Self-registered owners pay a monthly subscription. */
     public function paysSubscription(): bool
     {
