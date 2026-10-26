@@ -299,6 +299,29 @@ class ManagerAccessTest extends TestCase
         $this->actingAs($manager->fresh())->get(route('dashboard'))->assertRedirect(route('login'));
     }
 
+    public function test_admin_sees_managers_under_their_owner_and_cannot_delete_them(): void
+    {
+        $manager = $this->hireManager();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'profile_completed' => true]);
+
+        // All users: the manager is not a row of their own; they are listed under the owner.
+        $this->actingAs($admin)->get(route('admin.users'))->assertInertia(fn (Assert $page) => $page
+            ->where('users.data', fn ($rows) => ! collect($rows)->contains('id', $manager->id)
+                && collect(collect($rows)->firstWhere('id', $this->owner->id)['team'])->pluck('id')->all() === [$manager->id]));
+        // Found through the manager's username.
+        $this->get(route('admin.users', ['search' => 'jean.manager']))->assertInertia(fn (Assert $page) => $page
+            ->where('users.data.0.id', $this->owner->id));
+
+        // The admin cannot delete a manager; only the owner removes them.
+        $this->delete(route('admin.users.destroy', $manager))->assertSessionHasErrors('user');
+        $this->assertNotSoftDeleted($manager);
+
+        // The admin suspends the owner: the managers are blocked with them.
+        $this->post(route('admin.users.disable', $this->owner), ['disabled_reason' => 'Unpaid'])->assertSessionHasNoErrors();
+        $this->assertFalse($manager->fresh()->employerWorkspaceIsActive());
+        $this->actingAs($manager->fresh())->get(route('dashboard'))->assertRedirect();
+    }
+
     public function test_only_self_registered_owners_manage_their_own_team(): void
     {
         $manager = $this->hireManager();

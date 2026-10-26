@@ -1568,6 +1568,10 @@ export default {
         'Tenant': 'Locataire',
         'These figures are for the buildings you run. :count building(s) run by your managers are followed separately.': 'Ces chiffres concernent les bâtiments que vous gérez. :count bâtiment(s) gérés par vos gestionnaires sont suivis à part.',
         'See your managers’ work': 'Voir le travail de vos gestionnaires',
+        'Their managers (:count)': 'Leurs gestionnaires (:count)',
+        '1 building or unit': '1 bâtiment ou unité',
+        ':count buildings or units': ':count bâtiments ou unités',
+        'A manager belongs to their owner. Only the owner can remove a manager; you can disable the owner instead.': 'Un gestionnaire appartient à son propriétaire. Seul le propriétaire peut le retirer ; vous pouvez désactiver le propriétaire.',
     },
     rw: {
         'Log in': 'Injira',
@@ -3138,5 +3142,9 @@ export default {
         'Tenant': 'Umukodesha',
         'These figures are for the buildings you run. :count building(s) run by your managers are followed separately.': 'Iyi mibare ni iy’inyubako ucunga wowe. Inyubako :count zicungwa n’abacunga bawe zikurikiranwa ukwazo.',
         'See your managers’ work': 'Reba ibyo abacunga bawe bakora',
+        'Their managers (:count)': 'Abacunga babo (:count)',
+        '1 building or unit': 'Inyubako cyangwa igice 1',
+        ':count buildings or units': 'Inyubako cyangwa ibice :count',
+        'A manager belongs to their owner. Only the owner can remove a manager; you can disable the owner instead.': 'Umucunga ni uwa nyir’inzu. Nyir’inzu wenyine ni we umukuraho; wowe ushobora guhagarika nyir’inzu.',
     },
 };

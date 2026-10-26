@@ -38,7 +38,6 @@ const ROLE_TABS = [
     { value: '', label: 'All users' },
     { value: 'owner', label: 'Owners' },
     { value: 'advertiser', label: 'Advertisers' },
-    { value: 'manager', label: 'Managers' },
     { value: 'admin', label: 'Admins' },
 ];
 
@@ -188,6 +187,31 @@ function DialogShell({ open, onClose, title, description, children }) {
             </div>
         </div>,
         document.body,
+    );
+}
+
+/** A self-registered owner's managers, shown under the owner. The admin follows them; only the owner removes them. */
+function TeamList({ team, ownerId, t }) {
+    return (
+        <div className="rounded-xl border border-sky-100 bg-white px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-900"><UserCog size={13} aria-hidden="true" />{t('Their managers (:count)', { count: team.length })}</p>
+                <Link href={route('managers.index', { owner_id: ownerId })} className="text-[11px] font-semibold text-[#0E3B2E] underline underline-offset-2">{t('Managers and activity')}</Link>
+            </div>
+            <ul className="mt-1.5 flex flex-wrap gap-2">
+                {team.map((manager) => (
+                    <li key={manager.id} className={`inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-2.5 py-1 text-xs ring-1 ${manager.disabled ? 'bg-gray-50 text-gray-500 ring-gray-200' : 'bg-sky-50 text-sky-950 ring-sky-100'}`}>
+                        <span className="font-semibold">{manager.name}</span>
+                        {manager.username && <span className="font-mono text-[11px]">@{manager.username}</span>}
+                        {manager.phone && <span className="text-[11px]">{manager.phone}</span>}
+                        <span className="text-[11px]">{t(manager.assignments === 1 ? '1 building or unit' : ':count buildings or units', { count: manager.assignments })}</span>
+                        <span className={`rounded-full px-1.5 text-[10px] font-semibold ${manager.disabled ? 'bg-gray-200 text-gray-700' : manager.profile_completed ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
+                            {manager.disabled ? t('Disabled') : manager.profile_completed ? t('Active') : t('Not signed in yet')}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </div>
     );
 }
 
@@ -369,7 +393,7 @@ export default function Users({ users, filters, counts = {} }) {
                     <Ban size={16} />
                 </IconAction>
             )}
-            <IconAction label={t('Delete')} tone="red" disabled={!canManage(user)} onClick={() => setUserToDelete(user)}>
+            <IconAction label={t('Delete')} tone="red" disabled={!canManage(user) || user.role === 'manager'} onClick={() => setUserToDelete(user)}>
                 <Trash2 size={16} />
             </IconAction>
         </div>
@@ -621,7 +645,16 @@ export default function Users({ users, filters, counts = {} }) {
                                                 <td className="hidden whitespace-nowrap px-5 py-3.5 text-xs text-gray-500 xl:table-cell">{formatDate(user.created_at, language)}</td>
                                                 <td className="px-5 py-3.5">{actions(user)}</td>
                                             </tr>
-                                        ))}
+                                        )).flatMap((row, index) => {
+                                            const team = users.data[index].team || [];
+                                            return team.length ? [row, (
+                                                <tr key={`team-${users.data[index].id}`} className="bg-sky-50/40">
+                                                    <td colSpan={6} className="px-5 pb-3 pt-0">
+                                                        <TeamList team={team} ownerId={users.data[index].id} t={t} />
+                                                    </td>
+                                                </tr>
+                                            )] : [row];
+                                        })}
                                     </tbody>
                                 </table>
 
@@ -648,6 +681,7 @@ export default function Users({ users, filters, counts = {} }) {
                                                 </div>
                                                 <PlanCell user={user} />
                                             </div>
+                                            {(user.team || []).length > 0 && <div className="mt-2"><TeamList team={user.team} ownerId={user.id} t={t} /></div>}
                                         </li>
                                     ))}
                                 </ul>

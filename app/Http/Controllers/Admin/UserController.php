@@ -27,7 +27,7 @@ use Inertia\Response as InertiaResponse;
 
 class UserController extends Controller
 {
-    protected function filteredUsers(Request $request)
+    protected function filteredUsers(Request $request, bool $withManagers = false)
     {
         $search = $request->input('search');
         $role = $request->input('role');
@@ -38,11 +38,17 @@ class UserController extends Controller
             ->with(['sector.district.province', 'creator:id,name', 'employer:id,name'])
             ->when($source === 'managed', fn ($query) => $query->whereNotNull('created_by'))
             ->when($source === 'self', fn ($query) => $query->whereNull('created_by')->where('role', '!=', 'admin'))
+            // Managers are listed under the self-registered owner they work for.
+            ->when(! $withManagers, fn ($query) => $query->where('role', '!=', 'manager'))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        // An owner is also found by one of their managers.
+                        ->orWhereHas('managers', fn ($manager) => $manager->where('name', 'like', "%{$search}%")
+                            ->orWhere('username', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%"));
                 });
             })
             ->when($role, fn ($query) => $query->where('role', $role))
@@ -52,8 +58,21 @@ class UserController extends Controller
 
     public function index(Request $request): InertiaResponse
     {
-        $users = $this->filteredUsers($request)->paginate(10)->withQueryString();
+        $users = $this->filteredUsers($request)
+            ->with(['managers' => fn ($query) => $query->withCount('managerAssignments')->orderBy('name')])
+            ->paginate(10)->withQueryString();
         $users->getCollection()->transform(function (User $user) {
+            // The owner's team: shown under the owner, never deleted by an admin.
+            $user->setAttribute('team', $user->relationLoaded('managers') ? $user->managers->map(fn (User $manager) => [
+                'id' => $manager->id,
+                'name' => $manager->name,
+                'username' => $manager->username,
+                'phone' => $manager->phone,
+                'disabled' => $manager->isDisabled(),
+                'profile_completed' => (bool) $manager->profile_completed,
+                'assignments' => $manager->manager_assignments_count,
+            ])->values() : []);
+            $user->unsetRelation('managers');
             $expiresAt = $user->expires_at;
             $user->setAttribute('plan_is_expired', !$user->isAdmin() && $user->isExpired());
             $user->setAttribute(
@@ -76,7 +95,7 @@ class UserController extends Controller
             ],
             // Totals for the role tabs and status chips, independent of the current filters.
             'counts' => [
-                'all' => User::query()->count(),
+                'all' => User::query()->where('role', '!=', 'manager')->count(),
                 'roles' => User::query()->selectRaw('role, COUNT(*) as total')->groupBy('role')->pluck('total', 'role'),
                 'statuses' => User::query()->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status'),
                 'sources' => [
@@ -336,6 +355,10 @@ class UserController extends Controller
     public function destroy(Request $request, User $user): RedirectResponse
     {
         $this->assertManageable($request, $user);
+        // A manager belongs to the owner who added them: only that owner removes them.
+        if ($user->isManager()) {
+            throw ValidationException::withMessages(['user' => 'A manager belongs to their owner. Only the owner can remove a manager; you can disable the owner instead.']);
+        }
 
         $user->endAllSessions();
         $user->delete();
@@ -363,7 +386,7 @@ class UserController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $users = $this->filteredUsers($request)->get();
+        $users = $this->filteredUsers($request, withManagers: true)->get();
 
         $callback = function () use ($users) {
             $handle = fopen('php://output', 'w');
