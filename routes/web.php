@@ -508,9 +508,13 @@ Route::middleware('auth')->group(function () {
 // Advertisers buy listings by mobile money and publish their buildings.
 Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete', 'owner.approved:advertiser'])->prefix('advertising')->name('advertising.')->group(function () {
     Route::post('/purchases', [\App\Http\Controllers\AdvertiserController::class, 'startPurchase'])->middleware('throttle:6,1')->name('purchases.start');
+    Route::post('/purchases/momo-pay', [\App\Http\Controllers\AdvertiserController::class, 'storeMomoPay'])->middleware('throttle:10,1')->name('purchases.momopay');
+    Route::post('/purchases/transfer', [\App\Http\Controllers\AdvertiserController::class, 'storeTransfer'])->middleware('throttle:10,1')->name('purchases.transfer');
     Route::get('/purchases/{purchase}', [\App\Http\Controllers\AdvertiserController::class, 'purchaseStatus'])->middleware('throttle:60,1')->name('purchases.status');
     Route::post('/properties/{property}/publish', [\App\Http\Controllers\AdvertiserController::class, 'publish'])->middleware('throttle:20,1')->name('publish');
 });
+// The receipt of a listing payment: the admin who checks it, or the advertiser who sent it.
+Route::middleware(['auth', 'verified'])->get('/ad-payments/{purchase}/proof', [\App\Http\Controllers\AdvertiserController::class, 'proof'])->name('ad-payments.proof');
 
 // Chat with ITUZE support: open to every signed-in user, also while paused.
 Route::middleware(['auth'])->group(function () {
@@ -531,6 +535,10 @@ Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete'])->g
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/subscriptions', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'index'])->name('subscriptions');
+    // Listing payments by MoMo Pay, bank transfer or cheque.
+    Route::get('/ad-payments', [\App\Http\Controllers\Admin\AdPurchaseController::class, 'index'])->name('ad-payments');
+    Route::post('/ad-payments/{purchase}/approve', [\App\Http\Controllers\Admin\AdPurchaseController::class, 'approve'])->name('ad-payments.approve');
+    Route::post('/ad-payments/{purchase}/reject', [\App\Http\Controllers\Admin\AdPurchaseController::class, 'reject'])->name('ad-payments.reject');
     Route::post('/subscriptions/{payment}/approve', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'approve'])->name('subscriptions.approve');
     Route::post('/subscriptions/{payment}/reject', [\App\Http\Controllers\Admin\SubscriptionPaymentController::class, 'reject'])->name('subscriptions.reject');
     Route::get('/chats', [\App\Http\Controllers\Admin\ChatController::class, 'index'])->name('chats');

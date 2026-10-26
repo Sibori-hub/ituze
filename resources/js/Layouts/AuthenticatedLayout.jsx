@@ -9,8 +9,7 @@ import SuccessModal from '@/Components/SuccessModal';
 import UserAvatar from '@/Components/UserAvatar';
 import { Link, usePage } from '@inertiajs/react';
 import { useCallback, useState, useEffect } from 'react';
-import {
-    LayoutDashboard,
+import { Megaphone, LayoutDashboard,
     Building2,
     Users as UsersIcon,
     FileText,
@@ -58,6 +57,7 @@ const adminNavigation = [
     { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
     { name: 'Approvals', href: 'admin.approvals', icon: ShieldCheck },
     { name: 'Subscriptions', href: 'admin.subscriptions', icon: Wallet },
+    { name: 'Ad payments', href: 'admin.ad-payments', icon: Megaphone },
     { name: 'Owners', href: 'admin.owners', icon: Building2, active: 'admin.owners*' },
     { name: 'Chats', href: 'admin.chats', icon: MessagesSquare, badge: 'unreadChats' },
     { name: 'Messages', href: 'admin.messages', icon: Inbox, badge: 'newMessages' },

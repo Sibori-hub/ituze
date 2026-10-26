@@ -9,6 +9,7 @@ import {
     MessageSquare, Phone, Plus, Receipt, Rocket, Send, Sparkles, XCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { MomoPayForm, TransferPay } from '@/Components/SubscriptionPayForms';
 import { csrfFetch } from '@/lib/csrf';
 
 const localeFor = (language) => ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
@@ -30,6 +31,7 @@ const imageSource = (path) => (!path ? null : /^https?:\/\//i.test(path) ? path 
 export default function AdvertiserDashboard({
     status, adUnitPrice = 25000, welcomeBonusUnits = 3, bonusAvailable = true, listingDays = 60,
     credits = 0, buildings = [], purchases = [], inquiries = [], phone, hasPaid = false,
+    momoPay = {}, bank = null, momoApi = false, waiting = false,
 }) {
     const { t, language } = useTranslation();
     const user = usePage().props.auth.user;
@@ -154,7 +156,7 @@ export default function AdvertiserDashboard({
                     </section>
 
                     {/* Buy */}
-                    <BuyListings price={adUnitPrice} bonus={bonusAvailable ? welcomeBonusUnits : 0} listingDays={listingDays} defaultPhone={phone} money={money} />
+                    <BuyListings price={adUnitPrice} bonus={bonusAvailable ? welcomeBonusUnits : 0} listingDays={listingDays} defaultPhone={phone} money={money} momoPay={momoPay} bank={bank} momoApi={momoApi} waiting={waiting} />
                 </div>
 
                 {/* Inquiries */}
@@ -200,9 +202,10 @@ export default function AdvertiserDashboard({
                                     </div>
                                     <div className="text-right">
                                         <p className="font-semibold tabular-nums text-gray-900">{money(purchase.amount)}</p>
-                                        <span className={`text-xs font-semibold ${purchase.status === 'approved' ? 'text-emerald-700' : purchase.status === 'pending' ? 'text-amber-700' : 'text-gray-500'}`}>
-                                            {t({ approved: 'Paid', pending: 'Waiting on phone', failed: 'Not completed' }[purchase.status] || purchase.status)}
+                                        <span className={`text-xs font-semibold ${purchase.status === 'approved' ? 'text-emerald-700' : purchase.status === 'pending' ? 'text-amber-700' : purchase.status === 'rejected' ? 'text-red-700' : 'text-gray-500'}`}>
+                                            {t({ approved: 'Paid', pending: purchase.method === 'mobile_money' ? 'Waiting on phone' : 'Waiting for checking', failed: 'Not completed', rejected: 'Not approved' }[purchase.status] || purchase.status)}
                                         </span>
+                                        {purchase.status === 'rejected' && purchase.rejection_reason && <p className="max-w-[16rem] text-xs text-red-700">{purchase.rejection_reason}</p>}
                                     </div>
                                 </li>
                             ))}
@@ -214,10 +217,15 @@ export default function AdvertiserDashboard({
     );
 }
 
-/** Choose how many listings, then pay on the phone with MoMo. */
-function BuyListings({ price, bonus, listingDays, defaultPhone, money }) {
+/**
+ * Choose how many listings, then pay QRA like owners do: MoMo Pay (details
+ * from the SMS), bank transfer or cheque. An admin checks it, then the
+ * listings are added. The phone request appears only when the MoMo API is on.
+ */
+function BuyListings({ price, bonus, listingDays, defaultPhone, money, momoPay = {}, bank = null, momoApi = false, waiting = false }) {
     const { t } = useTranslation();
     const [count, setCount] = useState(1);
+    const [method, setMethod] = useState('momopay');
     const [phone, setPhone] = useState(toLocalDigits(defaultPhone || ''));
     const [state, setState] = useState({ step: 'idle', error: '', purchase: null });
     const poll = useRef(null);
@@ -264,7 +272,7 @@ function BuyListings({ price, bonus, listingDays, defaultPhone, money }) {
     return (
         <section aria-labelledby="buy-title" className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-2">
             <h2 id="buy-title" className="flex items-center gap-2 font-[Sora] font-semibold text-gray-900"><Sparkles size={17} className="text-amber-600" aria-hidden="true" />{t('Buy listings')}</h2>
-            <p className="mt-1 text-xs text-gray-600">{t(':price per building, shown for :days days. Paid by MTN MoMo or Airtel Money.', { price: money(price), days: listingDays })}</p>
+            <p className="mt-1 text-xs text-gray-600">{t(':price per building, shown for :days days. Pay with MoMo Pay, bank transfer or cheque; ITUZE checks it, then your listings are added.', { price: money(price), days: listingDays })}</p>
 
             {bonus > 0 && (
                 <p className="mt-4 flex items-start gap-2 rounded-xl bg-gradient-to-r from-amber-100 to-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200">
@@ -298,28 +306,56 @@ function BuyListings({ price, bonus, listingDays, defaultPhone, money }) {
                         </p>
                     </fieldset>
 
-                    <label htmlFor="ad-phone" className="mt-4 block text-sm font-medium text-gray-800">{t('Phone that pays (MTN MoMo or Airtel Money)')}</label>
-                    <div className={`mt-1.5 flex items-stretch overflow-hidden rounded-xl border bg-white shadow-sm focus-within:ring-2 ${state.error ? 'border-red-400 focus-within:ring-red-500/20' : 'border-gray-300 focus-within:border-[#0E3B2E] focus-within:ring-[#0E3B2E]/15'}`}>
-                        <span className="flex select-none items-center gap-2 border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-700"><RwandaFlag className="h-[15px] w-[22px]" />+250</span>
-                        <input id="ad-phone" type="tel" inputMode="numeric" value={formatPhone(phone)} placeholder="788 123 456" disabled={state.step === 'waiting' || state.step === 'sending'}
-                            onChange={(event) => setPhone(toLocalDigits(event.target.value))} className="w-full min-w-0 border-0 bg-transparent px-3 py-2.5 text-sm tracking-wide focus:ring-0" />
-                    </div>
-                    {phoneValid && !state.error && state.step === 'idle' && <p className="mt-1 text-xs text-green-700">{t(':network number', { network: getNetwork(phone) })}</p>}
-                    {state.error && <p className="mt-2 flex items-center gap-1.5 text-sm text-red-700" role="alert"><AlertCircle size={15} aria-hidden="true" />{state.error}</p>}
-
-                    {state.step === 'waiting' ? (
-                        <div className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-950 ring-1 ring-amber-200" role="status" aria-live="polite">
-                            <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin text-amber-700" aria-hidden="true" />
-                            <p>{t('Check your phone: approve the payment of :amount with your PIN. This page updates by itself.', { amount: money(total) })}</p>
-                        </div>
+                    {waiting ? (
+                        <p className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-950 ring-1 ring-amber-200" role="status">
+                            <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin text-amber-700" aria-hidden="true" />
+                            {t('Your payment is waiting for checking by ITUZE. You get an SMS and an email as soon as it is approved, and your listings are added.')}
+                        </p>
                     ) : (
-                        <button type="button" onClick={pay} disabled={state.step === 'sending'}
-                            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60">
-                            {state.step === 'sending' ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
-                            {t('Pay :amount', { amount: money(total) })}
-                        </button>
+                        <>
+                            <div role="tablist" aria-label={t('How do you pay?')} className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 text-xs font-semibold sm:text-sm">
+                                {[['momopay', t('MoMo Pay')], ['bank_transfer', t('Bank transfer')], ['cheque', t('Cheque')], ...(momoApi ? [['request', t('Phone request')]] : [])].map(([value, label]) => (
+                                    <button key={value} type="button" role="tab" aria-selected={method === value} onClick={() => setMethod(value)}
+                                        className={`rounded-lg px-2 py-2 transition ${method === value ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>{label}</button>
+                                ))}
+                            </div>
+                            <div className="mt-4">
+                                {method === 'momopay' && (
+                                    <MomoPayForm plan={{ listings: count }} total={total} money={money} momoPay={momoPay} defaultPhone={defaultPhone}
+                                        submitRoute="advertising.purchases.momopay" amountHelp={t(':count listing(s) of :days days.', { count, days: listingDays })} />
+                                )}
+                                {(method === 'bank_transfer' || method === 'cheque') && (
+                                    <TransferPay plan={{ listings: count }} method={method} total={total} money={money} bank={bank} submitRoute="advertising.purchases.transfer" />
+                                )}
+                                {method === 'request' && (
+                                    <>
+                            <label htmlFor="ad-phone" className="mt-4 block text-sm font-medium text-gray-800">{t('Phone that pays (MTN MoMo or Airtel Money)')}</label>
+                            <div className={`mt-1.5 flex items-stretch overflow-hidden rounded-xl border bg-white shadow-sm focus-within:ring-2 ${state.error ? 'border-red-400 focus-within:ring-red-500/20' : 'border-gray-300 focus-within:border-[#0E3B2E] focus-within:ring-[#0E3B2E]/15'}`}>
+                                <span className="flex select-none items-center gap-2 border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-700"><RwandaFlag className="h-[15px] w-[22px]" />+250</span>
+                                <input id="ad-phone" type="tel" inputMode="numeric" value={formatPhone(phone)} placeholder="788 123 456" disabled={state.step === 'waiting' || state.step === 'sending'}
+                                    onChange={(event) => setPhone(toLocalDigits(event.target.value))} className="w-full min-w-0 border-0 bg-transparent px-3 py-2.5 text-sm tracking-wide focus:ring-0" />
+                            </div>
+                            {phoneValid && !state.error && state.step === 'idle' && <p className="mt-1 text-xs text-green-700">{t(':network number', { network: getNetwork(phone) })}</p>}
+                            {state.error && <p className="mt-2 flex items-center gap-1.5 text-sm text-red-700" role="alert"><AlertCircle size={15} aria-hidden="true" />{state.error}</p>}
+
+                            {state.step === 'waiting' ? (
+                                <div className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-950 ring-1 ring-amber-200" role="status" aria-live="polite">
+                                    <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin text-amber-700" aria-hidden="true" />
+                                    <p>{t('Check your phone: approve the payment of :amount with your PIN. This page updates by itself.', { amount: money(total) })}</p>
+                                </div>
+                            ) : (
+                                <button type="button" onClick={pay} disabled={state.step === 'sending'}
+                                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60">
+                                    {state.step === 'sending' ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+                                    {t('Pay :amount', { amount: money(total) })}
+                                </button>
+                            )}
+                            {state.step === 'failed' && <p className="mt-2 flex items-center gap-1.5 text-sm text-red-700"><XCircle size={15} aria-hidden="true" />{t('The payment was not completed. You can try again.')}</p>}
+                                    </>
+                                )}
+                            </div>
+                        </>
                     )}
-                    {state.step === 'failed' && <p className="mt-2 flex items-center gap-1.5 text-sm text-red-700"><XCircle size={15} aria-hidden="true" />{t('The payment was not completed. You can try again.')}</p>}
                 </>
             )}
 

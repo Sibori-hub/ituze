@@ -23,6 +23,8 @@ class MobileMoneyController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // The test driver would mark money as paid without any money: never on the live site.
+        abort_unless(SubscriptionController::mobileMoneyApiAvailable(), 404);
         $data = $request->validate([
             'purpose' => ['nullable', 'in:assignment,renewal'],
             'tenant_id' => ['required', 'integer', 'exists:tenants,id'],

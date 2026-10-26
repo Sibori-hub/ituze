@@ -26,7 +26,7 @@ return [
     'company_name' => 'Ituze Green Platform',
     'operator' => 'Q.R.A GROUP Ltd',
     'contact_email' => 'info@qraltd.com',
-    'contact_phone' => '0789265436',
+    'contact_phone' => '0793905166',
     'contact_address' => 'ULK-KAGUGU Road, Source Oil Plaza, 1st Floor, Gisozi, Gasabo, Kigali-Rwanda',
 
     /*

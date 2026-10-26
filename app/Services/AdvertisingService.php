@@ -39,9 +39,9 @@ class AdvertisingService
     }
 
     /** Adds the paid listings (and the bonus, if still due) to the advertiser's credits. */
-    public function approve(AdPurchase $purchase): AdPurchase
+    public function approve(AdPurchase $purchase, ?User $reviewer = null): AdPurchase
     {
-        $approved = DB::transaction(function () use ($purchase) {
+        $approved = DB::transaction(function () use ($purchase, $reviewer) {
             $locked = AdPurchase::query()->whereKey($purchase->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== AdPurchase::PENDING) {
                 return null;
@@ -55,6 +55,8 @@ class AdvertisingService
                 'bonus' => $bonus,
                 'paid_at' => now(),
                 'receipt_number' => sprintf('ITZ-AD-%s-%06d', now()->format('Y'), $locked->id),
+                'reviewed_by' => $reviewer?->id,
+                'reviewed_at' => $reviewer ? now() : null,
             ]);
 
             return $locked;

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdPurchase;
 use App\Models\Property;
 use App\Models\PropertyUnit;
 use App\Models\Unit;
@@ -49,6 +50,42 @@ class AdvertiserListingTest extends TestCase
             ->assertJsonPath('purchase.amount', $listings * 25000)
             ->json('purchase.id');
         $this->getJson(route('advertising.purchases.status', $id))->assertOk()->assertJsonPath('purchase.status', 'approved');
+    }
+
+    public function test_listings_paid_by_momo_pay_or_bank_are_checked_by_an_admin(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        // MoMo Pay to QRA's code: the details from the SMS. Admins are told; nothing is added yet.
+        $momo = ['listings' => 1, 'sender_name' => 'Ad Payer', 'sender_phone' => '0788000005', 'paid_at' => now('Africa/Kigali')->subMinutes(5)->format('Y-m-d\TH:i'), 'transaction_id' => '5512345678'];
+        $this->actingAs($this->advertiser)->post(route('advertising.purchases.momopay'), $momo)->assertSessionHasNoErrors();
+        $purchase = AdPurchase::query()->latest('id')->firstOrFail();
+        $this->assertSame(['pending', 'momo_pay', 25000.0], [$purchase->status, $purchase->method, (float) $purchase->amount]);
+        $this->assertSame(0, (int) $this->advertiser->fresh()->ad_credits);
+        Notification::assertSentTo($this->admin, \App\Notifications\AdPurchaseDecision::class, fn ($n) => $n->kind === 'submitted');
+        // One waiting at a time.
+        $this->post(route('advertising.purchases.momopay'), [...$momo, 'transaction_id' => '5512345679'])->assertSessionHasErrors('listings');
+
+        // The admin approves: 1 paid + 3 free listings.
+        $this->actingAs($this->admin)->get(route('admin.ad-payments'))->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component('Admin/AdPayments')->where('counts.pending', 1)->where('payments.0.bonus_due', 3));
+        $this->post(route('admin.ad-payments.approve', $purchase))->assertSessionHasNoErrors();
+        $this->assertSame(4, (int) $this->advertiser->fresh()->ad_credits);
+        $this->assertSame($this->admin->id, $purchase->fresh()->reviewed_by);
+
+        // The same transaction ID cannot pay twice; a bank slip can be rejected with a reason.
+        $this->actingAs($this->advertiser)->post(route('advertising.purchases.momopay'), $momo)->assertSessionHasErrors('transaction_id');
+        $this->post(route('advertising.purchases.transfer'), [
+            'listings' => 2, 'method' => 'bank_transfer', 'bank_name' => 'Bank of Kigali', 'account_number' => '00040-0123456-78',
+            'sender_name' => 'AD LTD', 'reference' => 'FT26299XYZ', 'paid_at' => now()->toDateString(),
+            'proof' => \Illuminate\Http\UploadedFile::fake()->image('slip.jpg'),
+        ])->assertSessionHasNoErrors();
+        $slip = AdPurchase::query()->latest('id')->firstOrFail();
+        $this->get(route('ad-payments.proof', $slip))->assertOk();
+        $this->actingAs($this->admin)->post(route('admin.ad-payments.reject', $slip), ['reason' => ''])->assertSessionHasErrors('reason');
+        $this->post(route('admin.ad-payments.reject', $slip), ['reason' => 'No such transfer'])->assertSessionHasNoErrors();
+        $this->assertSame('rejected', $slip->fresh()->status);
+        $this->assertSame(4, (int) $this->advertiser->fresh()->ad_credits);
+        Notification::assertSentTo($this->advertiser, \App\Notifications\AdPurchaseDecision::class, fn ($n) => $n->kind === 'rejected');
     }
 
     public function test_first_purchase_gives_three_free_listings_once_and_admins_are_told(): void

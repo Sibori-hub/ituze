@@ -129,11 +129,11 @@ const localDateTime = (date) => {
  * MoMo Pay without the API: pay our merchant code, then type what the MoMo
  * SMS says. ITUZE checks it against the MoMo statement and approves.
  */
-export function MomoPayForm({ plan, propertyName, total, money, momoPay, defaultPhone }) {
+export function MomoPayForm({ plan, propertyName, total, money, momoPay, defaultPhone, submitRoute = 'subscription.momopay', amountHelp = null }) {
     const { t } = useTranslation();
     const form = useForm({ ...plan, amount: total, sender_name: '', sender_phone: toLocalDigits(defaultPhone || ''), paid_at: localDateTime(new Date()), transaction_id: '', proof: null });
     const [submitted, setSubmitted] = useState(false);
-    useEffect(() => { form.setData((current) => ({ ...current, ...plan, amount: total })); }, [plan.property_id, plan.months, total]);
+    useEffect(() => { form.setData((current) => ({ ...current, ...plan, amount: total })); }, [plan.property_id, plan.months, plan.listings, total]);
 
     const dial = momoPay.code ? `*182*8*1*${momoPay.code}#` : null;
     const clientErrors = {};
@@ -149,7 +149,7 @@ export function MomoPayForm({ plan, propertyName, total, money, momoPay, default
         setSubmitted(true);
         if (Object.keys(clientErrors).length) return;
         form.transform((data) => ({ ...data, sender_phone: `0${data.sender_phone}` }));
-        form.post(route('subscription.momopay'), {
+        form.post(route(submitRoute), {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => { form.reset('transaction_id', 'proof', 'sender_name'); setSubmitted(false); },
@@ -190,7 +190,7 @@ export function MomoPayForm({ plan, propertyName, total, money, momoPay, default
                 <label className="block text-sm font-medium text-gray-800">
                     {t('Amount paid')}
                     <input value={money(total)} readOnly className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-900" aria-describedby="momo-amount-help" />
-                    <span id="momo-amount-help" className="mt-1 block text-xs text-gray-600">{t(':property for :months month(s). Change it above if you paid for more.', { property: propertyName ?? '', months: plan.months })}</span>
+                    <span id="momo-amount-help" className="mt-1 block text-xs text-gray-600">{amountHelp ?? t(':property for :months month(s). Change it above if you paid for more.', { property: propertyName ?? '', months: plan.months })}</span>
                     {form.errors.amount && <span className="mt-1 block text-xs text-red-600">{t(form.errors.amount)}</span>}
                 </label>
                 <label className="block text-sm font-medium text-gray-800">
@@ -219,7 +219,7 @@ export function MomoPayForm({ plan, propertyName, total, money, momoPay, default
                 {form.errors.proof && <span className="mt-1 block text-xs text-red-600">{t(form.errors.proof)}</span>}
             </div>
 
-            {(form.errors.property_id || form.errors.months) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.property_id || form.errors.months)}</p>}
+            {(form.errors.property_id || form.errors.months || form.errors.listings) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.property_id || form.errors.months || form.errors.listings)}</p>}
             {form.errors.reference && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.reference)}</p>}
 
             <button disabled={form.processing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-3 text-sm font-semibold text-white hover:bg-[#124B3A] disabled:opacity-60">
@@ -239,7 +239,7 @@ export const RWANDA_BANKS = [
 ];
 
 /** Bank transfer or cheque: the payer's bank details, the slip or cheque number, its date and a copy. */
-export function TransferPay({ plan, method, total, money, bank }) {
+export function TransferPay({ plan, method, total, money, bank, submitRoute = 'subscription.transfer' }) {
     const { t } = useTranslation();
     const isCheque = method === 'cheque';
     const today = localDateTime(new Date()).slice(0, 10);
@@ -247,7 +247,7 @@ export function TransferPay({ plan, method, total, money, bank }) {
     const [otherBank, setOtherBank] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [preview, setPreview] = useState(null);
-    useEffect(() => { form.setData((current) => ({ ...current, ...plan, method })); }, [plan.property_id, plan.months, method]);
+    useEffect(() => { form.setData((current) => ({ ...current, ...plan, method })); }, [plan.property_id, plan.months, plan.listings, method]);
     useEffect(() => {
         const file = form.data.proof;
         if (!file || !(file.type || '').startsWith('image/')) { setPreview(null); return undefined; }
@@ -271,7 +271,7 @@ export function TransferPay({ plan, method, total, money, bank }) {
         event.preventDefault();
         setSubmitted(true);
         if (Object.keys(clientErrors).length) return;
-        form.post(route('subscription.transfer'), {
+        form.post(route(submitRoute), {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => { form.reset('reference', 'proof'); setSubmitted(false); },
@@ -351,7 +351,7 @@ export function TransferPay({ plan, method, total, money, bank }) {
                         <p className="mt-1.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-bold tabular-nums text-gray-900">{money(total)}</p>
                     </div>
                 </div>
-                {(form.errors.property_id || form.errors.months) && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.property_id || form.errors.months)}</p>}
+                {(form.errors.property_id || form.errors.months || form.errors.listings) && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">{t(form.errors.property_id || form.errors.months || form.errors.listings)}</p>}
             </Step>
 
             <Step number={3} title={isCheque ? t('Copy of the cheque') : t('Bank receipt')}>
