@@ -51,6 +51,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'momo_pay_code',
         'momo_pay_name',
         'sms_muted',
+        'account_type',
+        'company_name',
+        'company_tin',
     ];
 
     /**
@@ -151,6 +154,12 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return (float) ($this->management_fee_percent ?? 10);
+    }
+
+    /** Registered as a company: the first and last name are its representative's. */
+    public function isCompany(): bool
+    {
+        return $this->account_type === 'company';
     }
 
     public function isAdmin(): bool

@@ -23,6 +23,9 @@ class MobileAuthenticationTest extends TestCase
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->string('name')->nullable();
+            $table->string('account_type', 20)->default('individual');
+            $table->string('company_name', 150)->nullable();
+            $table->string('company_tin', 20)->nullable();
             $table->string('email')->unique();
             $table->string('phone')->nullable()->unique();
             $table->string('role')->nullable();

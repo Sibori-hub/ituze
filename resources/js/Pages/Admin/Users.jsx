@@ -611,6 +611,9 @@ export default function Users({ users, filters, counts = {} }) {
                                                                 {user.id === currentUserId && <span className="ml-1.5 text-xs font-medium text-gray-400">({t('you')})</span>}
                                                             </p>
                                                             <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                                            {user.account_type === 'company' && (
+                                                                <p className="truncate text-[11px] text-sky-900">{t('Company')} · TIN {user.company_tin} · {t('Rep.')} {`${user.first_name || ''} ${user.last_name || ''}`.trim()}</p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </td>

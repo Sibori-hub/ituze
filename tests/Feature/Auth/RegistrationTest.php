@@ -49,6 +49,25 @@ class RegistrationTest extends TestCase
         $this->assertSame(config('legal.terms_version'), $user->terms_version);
     }
 
+    public function test_an_owner_can_register_as_a_company_with_its_tin(): void
+    {
+        config(['auth.email_otp_enabled' => false]);
+        $company = [
+            'account_type' => 'company', 'first_name' => 'Aline', 'last_name' => 'Uwase',
+            'email' => 'ikaze@example.com', 'phone' => '0781234568', 'password' => 'Password123!', 'password_confirmation' => 'Password123!', 'terms' => true,
+        ];
+
+        // The company name and its 9-digit TIN are required.
+        $this->post('/register', $company)->assertSessionHasErrors(['company_name', 'company_tin']);
+        $this->post('/register', [...$company, 'company_name' => 'IKAZE LTD', 'company_tin' => '1234'])->assertSessionHasErrors('company_tin');
+        $this->post('/register', [...$company, 'company_name' => 'IKAZE LTD', 'company_tin' => '123 456 789'])->assertSessionHasNoErrors();
+
+        $user = User::where('email', 'ikaze@example.com')->firstOrFail();
+        // Shown by the company name; the person is its representative.
+        $this->assertSame(['company', 'IKAZE LTD', '123456789', 'IKAZE LTD', 'Aline'], [$user->account_type, $user->company_name, $user->company_tin, $user->name, $user->first_name]);
+        $this->assertTrue($user->isCompany());
+    }
+
     public function test_registration_form_can_check_if_email_or_phone_is_taken(): void
     {
         $existing = User::factory()->create(['email' => 'taken@example.com', 'phone' => '0788000111']);

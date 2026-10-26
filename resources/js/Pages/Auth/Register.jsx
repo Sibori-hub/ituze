@@ -108,6 +108,9 @@ export default function Register({ termsVersion }) {
     const [showConfirmation, setShowConfirmation] = useState(false);
     const { data, setData, post, processing, errors, reset, transform } = useForm({
         role: 'owner',
+        account_type: 'individual',
+        company_name: '',
+        company_tin: '',
         first_name: '',
         last_name: '',
         email: '',
@@ -124,7 +127,10 @@ export default function Register({ termsVersion }) {
     const passwordValid = passedRules.length === PASSWORD_RULES.length;
     const strength = STRENGTH_LEVELS[data.password ? passedRules.length : 0];
     const passwordsMatch = data.password_confirmation !== '' && data.password === data.password_confirmation;
-    const namesValid = data.first_name.trim() !== '' && data.last_name.trim() !== '';
+    const isCompany = data.account_type === 'company';
+    const plainInput = 'w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition placeholder:text-gray-400 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10 disabled:opacity-60';
+    const companyValid = !isCompany || (data.company_name.trim() !== '' && /^\d{9}$/.test(data.company_tin));
+    const namesValid = data.first_name.trim() !== '' && data.last_name.trim() !== '' && companyValid;
 
     const emailStatus = useAvailability('email', data.email.toLowerCase(), emailValid);
     const phoneStatus = useAvailability('phone', `0${data.phone}`, phoneValid);
@@ -236,6 +242,39 @@ export default function Register({ termsVersion }) {
                     <section>
                         <SectionHeading number={2} title={t('Your details')} done={namesValid && emailReady && phoneReady} />
                         <div className="space-y-4">
+                            {/* A person, or a company (with its TIN) represented by the person below. */}
+                            <fieldset>
+                                <legend className={labelClass}>{t('You are registering as')}</legend>
+                                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                                    {[['individual', t('An individual'), User], ['company', t('A company'), Building2]].map(([value, label, Icon]) => (
+                                        <label key={value} className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm font-semibold transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#0E3B2E]/15 ${data.account_type === value ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.05] text-[#0E3B2E]' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}>
+                                            <input type="radio" name="account_type" value={value} checked={data.account_type === value} disabled={processing} onChange={() => setData('account_type', value)} className="sr-only" />
+                                            <Icon size={17} aria-hidden="true" />{label}
+                                            {data.account_type === value && <Check size={15} className="ml-auto" strokeWidth={3} aria-hidden="true" />}
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
+                            {isCompany && (
+                                <div className="grid grid-cols-1 gap-4 rounded-2xl border border-[#0E3B2E]/15 bg-[#0E3B2E]/[0.03] p-4 sm:grid-cols-2">
+                                    <div>
+                                        <label htmlFor="company_name" className={labelClass}>{t('Company name')}</label>
+                                        <input id="company_name" name="company_name" value={data.company_name} maxLength={150} autoComplete="organization" disabled={processing}
+                                            onChange={(e) => setData('company_name', e.target.value)} placeholder={t('e.g. IKAZE LTD')}
+                                            className={`${plainInput} ${errors.company_name ? 'border-red-400' : 'border-gray-200'}`} aria-invalid={Boolean(errors.company_name) || undefined} />
+                                        <InputError message={errors.company_name} className="mt-1" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="company_tin" className={labelClass}>{t('Company TIN')}</label>
+                                        <input id="company_tin" name="company_tin" value={data.company_tin} inputMode="numeric" maxLength={9} disabled={processing}
+                                            onChange={(e) => setData('company_tin', e.target.value.replace(/\D/g, '').slice(0, 9))} placeholder="123456789"
+                                            className={`${plainInput} font-mono tracking-wider ${errors.company_tin ? 'border-red-400' : 'border-gray-200'}`} aria-invalid={Boolean(errors.company_tin) || undefined} aria-describedby="company-tin-help" />
+                                        <p id="company-tin-help" className="mt-1 text-xs text-gray-500">{t(':count/9 digits, as on the RRA certificate', { count: data.company_tin.length })}</p>
+                                        <InputError message={errors.company_tin} className="mt-1" />
+                                    </div>
+                                    <p className="text-xs text-gray-600 sm:col-span-2">{t('Below, enter the details of the person who represents the company.')}</p>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
                                     <label htmlFor="first_name" className={labelClass}>{t('First Name')}</label>

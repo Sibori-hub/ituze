@@ -49,6 +49,8 @@ class RegisteredUserController extends Controller
         if ($request->filled('phone')) {
             $request->merge(['phone' => self::normalizeRwandaPhone((string) $request->input('phone'))]);
         }
+        $request->merge(['company_tin' => preg_replace('/\s+/', '', (string) $request->input('company_tin')) ?: null]);
+        $company = $request->input('account_type') === 'company';
 
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
@@ -56,12 +58,20 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/', 'unique:' . User::class],
             'role' => ['nullable', 'in:' . implode(',', self::SELF_SERVICE_ROLES)],
+            // A person, or a company with its name and TIN (the names above are its representative's).
+            'account_type' => ['nullable', 'in:individual,company'],
+            'company_name' => [$company ? 'required' : 'nullable', 'string', 'max:150'],
+            'company_tin' => [$company ? 'required' : 'nullable', 'regex:/^\d{9}$/', 'unique:' . User::class . ',company_tin'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'terms' => ['accepted'],
             'device_name' => ['nullable', 'string', 'max:80'],
         ], [
             'phone.regex' => 'Enter a valid 10-digit Rwanda mobile number (072, 073, 078, or 079).',
             'terms.accepted' => 'You must accept the Terms and Conditions and the Privacy Policy to create an account.',
+            'company_name.required' => 'Enter the company name.',
+            'company_tin.required' => 'Enter the company TIN.',
+            'company_tin.regex' => 'The TIN has 9 digits.',
+            'company_tin.unique' => 'A company with this TIN already has an account.',
         ]);
 
         $validator->validate();
@@ -71,7 +81,11 @@ class RegisteredUserController extends Controller
         $user = User::create([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
-            'name' => $request->first_name . ' ' . $request->last_name,
+            // A company is shown by its name; the person is its representative.
+            'name' => $company ? trim((string) $request->company_name) : $request->first_name . ' ' . $request->last_name,
+            'account_type' => $company ? 'company' : 'individual',
+            'company_name' => $company ? trim((string) $request->company_name) : null,
+            'company_tin' => $company ? $request->company_tin : null,
             'email' => $request->email,
             'phone' => $request->phone,
             'role' => $role,

@@ -37,6 +37,8 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
     }, [onClose]);
 
     const details = [
+        // A company: its TIN, and the person who registered it as its representative.
+        ...(user.account_type === 'company' ? [['Company TIN', user.company_tin], ['Representative', `${user.first_name || ''} ${user.last_name || ''}`.trim()]] : []),
         ['Email', user.email],
         ['Phone', user.phone],
         [user.identity_document_type === 'passport' ? 'Passport number' : 'NIDA number', user.national_id],
@@ -247,6 +249,9 @@ export default function Approvals({ pendingUsers }) {
                                         <span className="rounded-full bg-[#D9A441]/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-[#8a651c]">
                                             {t(user.role)}
                                         </span>
+                                        {user.account_type === 'company' && (
+                                            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-900 ring-1 ring-sky-200">{t('Company')} · TIN {user.company_tin}</span>
+                                        )}
                                     </div>
                                     <p className="text-sm text-gray-500">
                                         {user.email} · {user.phone}
