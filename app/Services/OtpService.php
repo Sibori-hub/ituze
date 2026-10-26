@@ -74,6 +74,15 @@ class OtpService
         }
     }
 
+    /** After the email is confirmed: send the SMS code, so the phone is verified next. */
+    public function startPhoneStep(User $user): void
+    {
+        if ($user->isAdmin() || $user->isPhoneVerified() || blank($user->phone) || $user->phone_otp !== null) {
+            return;
+        }
+        $this->sendPhoneOtp($user);
+    }
+
     public function verifyEmailOtp(User $user, ?string $code): string
     {
         $result = $this->check($user, 'email_otp', $code);

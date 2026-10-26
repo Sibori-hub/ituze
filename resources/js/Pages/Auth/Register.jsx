@@ -581,7 +581,7 @@ export default function Register({ termsVersion }) {
                             {isFormValid ? (
                                 <>
                                     <ShieldCheck size={14} className="text-emerald-500" />
-                                    {t('Next, we will send verification codes to your email and by SMS.')}
+                                    {t('Next, we send a code to your email. Once it is confirmed, we send a code by SMS to your phone.')}
                                 </>
                             ) : (
                                 t('Fill in all fields correctly to continue')

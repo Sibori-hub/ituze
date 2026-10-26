@@ -46,7 +46,8 @@ class ForcedPasswordController extends Controller
 
         // A new manager then confirms the phone with a code, like an owner at registration
         // (the email code is sent when the email page opens).
-        if ($user->isManager() && ! $user->isPhoneVerified()) {
+        // Email first: when the email still needs its code, the SMS code follows that step.
+        if ($user->isManager() && ! $user->isPhoneVerified() && $user->hasVerifiedEmail()) {
             try {
                 app(\App\Services\OtpService::class)->sendPhoneOtp($user);
             } catch (\Throwable $e) {

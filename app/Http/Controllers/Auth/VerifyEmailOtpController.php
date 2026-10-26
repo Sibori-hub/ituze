@@ -47,6 +47,11 @@ class VerifyEmailOtpController extends Controller
             return back()->withErrors(['otp' => $message]);
         }
 
+        // Email first, then phone: now the SMS code goes out.
+        $user = $user->fresh();
+        $this->otp->startPhoneStep($user);
+        $user->refresh();
+
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Email verified successfully.']);
         }

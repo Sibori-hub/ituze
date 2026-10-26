@@ -133,11 +133,16 @@ class ManagerAccessTest extends TestCase
         $this->post(route('password.change.update'), ['current_password' => 'Temp-Pass#2026', 'password' => 'Own-Pass#2026x', 'password_confirmation' => 'Own-Pass#2026x'])->assertSessionHasNoErrors();
         // Changing it themselves sends a security notice too.
         \Illuminate\Support\Facades\Notification::assertSentTo($manager, \App\Notifications\ManagerPasswordChanged::class, fn ($notification) => $notification->byOwner === null);
-        $this->assertNotNull($manager->fresh()->phone_otp, 'The phone code is sent after the new password.');
+        // Email first: no SMS code yet, only the email code.
+        $this->assertNull($manager->fresh()->phone_otp, 'The SMS code waits until the email is confirmed.');
         $this->actingAs($manager->refresh());
         $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));
-        $manager->forceFill(['email_verified_at' => now()])->save();
-        $this->actingAs($manager);
+        $this->get(route('verification.notice'))->assertOk();
+        $code = \Illuminate\Support\Facades\Notification::sent($manager, \App\Notifications\EmailVerificationOtp::class)->last()->code;
+        $this->post(route('verification.otp.verify'), ['otp' => $code])->assertRedirect(route('phone.notice'));
+        // Then the phone: the SMS code goes out once the email is confirmed.
+        $this->assertNotNull($manager->fresh()->phone_otp, 'The SMS code is sent after the email is confirmed.');
+        $this->actingAs($manager->refresh());
         $this->get(route('dashboard'))->assertRedirect(route('phone.notice'));
         $manager->forceFill(['phone_verified_at' => now()])->save();
         $this->actingAs($manager);

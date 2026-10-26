@@ -104,8 +104,11 @@ class RegisteredUserController extends Controller
             $user->markEmailAsVerified();
         }
 
-        // Verify the phone number over WhatsApp as well.
-        $this->otp->sendPhoneOtp($user);
+        // Email first, then phone: the SMS code is sent once the email code is confirmed.
+        // (Without email codes, the email is already verified, so the phone code goes now.)
+        if ($user->hasVerifiedEmail()) {
+            $this->otp->sendPhoneOtp($user);
+        }
 
         if ($request->expectsJson()) {
             return response()->json([

@@ -49,6 +49,29 @@ class RegistrationTest extends TestCase
         $this->assertSame(config('legal.terms_version'), $user->terms_version);
     }
 
+    public function test_registration_verifies_the_email_first_then_the_phone(): void
+    {
+        config(['auth.email_otp_enabled' => true]);
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $this->post('/register', [
+            'first_name' => 'Aline', 'last_name' => 'Uwase', 'email' => 'aline@example.com', 'phone' => '0781234569',
+            'password' => 'Password123!', 'password_confirmation' => 'Password123!', 'terms' => true,
+        ])->assertSessionHasNoErrors();
+        $user = User::where('email', 'aline@example.com')->firstOrFail();
+
+        // Only the email code is sent; the SMS waits.
+        $this->assertNull($user->phone_otp, 'No SMS code before the email is confirmed.');
+        $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));
+        $this->get(route('verification.notice'))->assertOk();
+        $code = \Illuminate\Support\Facades\Notification::sent($user, \App\Notifications\EmailVerificationOtp::class)->last()->code;
+
+        // Email confirmed: now, and only now, the SMS code goes to the phone.
+        $this->post(route('verification.otp.verify'), ['otp' => $code])->assertRedirect(route('phone.notice'));
+        $this->assertNotNull($user->fresh()->email_verified_at);
+        $this->assertNotNull($user->fresh()->phone_otp);
+    }
+
     public function test_an_owner_can_register_as_a_company_with_its_tin(): void
     {
         config(['auth.email_otp_enabled' => false]);

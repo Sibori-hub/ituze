@@ -20,6 +20,8 @@ class VerifyEmailController extends Controller
 
         if ($request->user()->markEmailAsVerified()) {
             event(new Verified($request->user()));
+            // Email first, then phone: now the SMS code goes out.
+            app(\App\Services\OtpService::class)->startPhoneStep($request->user()->fresh());
         }
 
         return redirect()->intended(route('dashboard', absolute: false).'?verified=1');

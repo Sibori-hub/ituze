@@ -1636,6 +1636,7 @@ export default {
         'Enter the company’s street address (e.g. KG 7 Ave, building, floor).': 'Indiquez l’adresse de la société (ex. KG 7 Ave, bâtiment, étage).',
         'RDB registration certificate': 'Certificat d’enregistrement RDB',
         'No RDB certificate uploaded yet.': 'Aucun certificat RDB téléversé.',
+        'Next, we send a code to your email. Once it is confirmed, we send a code by SMS to your phone.': 'Ensuite, nous envoyons un code à votre e-mail. Une fois confirmé, nous envoyons un code par SMS à votre téléphone.',
     },
     rw: {
         'Log in': 'Injira',
@@ -3274,5 +3275,6 @@ export default {
         'Enter the company’s street address (e.g. KG 7 Ave, building, floor).': 'Andika aderesi ya sosiyete (urugero KG 7 Ave, inyubako, etaje).',
         'RDB registration certificate': 'Icyemezo cya RDB',
         'No RDB certificate uploaded yet.': 'Nta cyemezo cya RDB kirashyirwaho.',
+        'Next, we send a code to your email. Once it is confirmed, we send a code by SMS to your phone.': 'Hanyuma, twohereza kode kuri imeyili yawe. Imaze kwemezwa, twohereza kode kuri telefoni yawe kuri SMS.',
     },
 };
