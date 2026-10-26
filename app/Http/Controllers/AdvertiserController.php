@@ -57,6 +57,7 @@ class AdvertiserController extends Controller
                 'is_listed' => $property->listed_until?->isFuture() ?? false,
                 'days_left' => $property->listed_until?->isFuture() ? (int) ceil(now()->diffInHours($property->listed_until) / 24) : null,
                 'new_inquiries' => PropertyInquiry::query()->where('property_id', $property->id)->where('status', 'new')->count(),
+                'status' => $this->listingStatus($property),
             ]);
 
         return Inertia::render('Advertiser/Dashboard', [
@@ -68,7 +69,7 @@ class AdvertiserController extends Controller
             'listingDays' => AdvertisingService::LISTING_DAYS,
             'credits' => (int) $advertiser->ad_credits,
             'buildings' => $buildings,
-            'purchases' => AdPurchase::query()->where('advertiser_id', $advertiser->id)->latest('id')->limit(20)->get()
+            'purchases' => AdPurchase::query()->with('property:id,name')->where('advertiser_id', $advertiser->id)->latest('id')->limit(20)->get()
                 ->map(fn (AdPurchase $purchase) => $this->purchaseRow($purchase)),
             'inquiries' => PropertyInquiry::query()
                 ->with(['property:id,name', 'unit:id,unit_number'])
@@ -93,8 +94,8 @@ class AdvertiserController extends Controller
             'sender_phone' => \App\Http\Controllers\Auth\RegisteredUserController::normalizeRwandaPhone((string) $request->input('sender_phone')),
             'transaction_id' => preg_replace('/\s+/', '', (string) $request->input('transaction_id')),
         ]);
+        $property = $this->ownProperty($request);
         $data = $request->validate([
-            'listings' => ['required', 'integer', 'min:1', 'max:50'],
             'sender_name' => ['required', 'string', 'max:120'],
             'sender_phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/'],
             'paid_at' => ['required', 'date', function (string $attribute, mixed $value, \Closure $fail) {
@@ -118,13 +119,14 @@ class AdvertiserController extends Controller
             'sender_phone.regex' => 'Enter the 10-digit MTN or Airtel number that paid (078, 079, 072 or 073).',
             'transaction_id.regex' => 'Enter the transaction ID from the MoMo SMS: numbers only.',
         ]);
-        $this->ensureNothingWaiting($advertiser);
+        $this->ensureNothingWaiting($advertiser, $property);
 
         $file = $request->file('proof');
         $this->submitted(AdPurchase::create([
             'advertiser_id' => $advertiser->id,
-            'listings' => (int) $data['listings'],
-            'amount' => (int) $data['listings'] * AdvertisingService::price(),
+            'property_id' => $property->id,
+            'listings' => 1,
+            'amount' => AdvertisingService::price(),
             'method' => 'momo_pay',
             'status' => AdPurchase::PENDING,
             'reference' => $data['transaction_id'],
@@ -135,7 +137,7 @@ class AdvertiserController extends Controller
             'proof_name' => $file ? mb_substr($file->getClientOriginalName(), 0, 200) : null,
         ]));
 
-        return back()->with('success', 'Thank you. Your payment was sent for checking; your listings are added as soon as it is approved.');
+        return redirect()->route('dashboard')->with('success', 'Thank you. Your payment for "'.$property->name.'" was sent for checking; it goes on the homepage as soon as it is approved.');
     }
 
     /** Bank transfer or cheque, with the receipt or a copy of the cheque, checked by an admin. */
@@ -147,8 +149,8 @@ class AdvertiserController extends Controller
             'account_number' => preg_replace('/[\s-]+/', '', (string) $request->input('account_number')),
         ]);
         $cheque = $request->input('method') === 'cheque';
+        $property = $this->ownProperty($request);
         $data = $request->validate([
-            'listings' => ['required', 'integer', 'min:1', 'max:50'],
             'method' => ['required', Rule::in(['bank_transfer', 'cheque'])],
             'bank_name' => ['required', 'string', 'max:80'],
             'account_number' => ['required', 'regex:/^[0-9A-Za-z]{5,30}$/'],
@@ -162,13 +164,14 @@ class AdvertiserController extends Controller
             'reference.unique' => $cheque ? 'This cheque was already sent for a payment.' : 'This bank reference was already used for a payment.',
             'proof.required' => $cheque ? 'Attach a copy (photo or scan) of the cheque.' : 'Attach the bank receipt (photo or PDF).',
         ]);
-        $this->ensureNothingWaiting($advertiser);
+        $this->ensureNothingWaiting($advertiser, $property);
 
         $file = $request->file('proof');
         $this->submitted(AdPurchase::create([
             'advertiser_id' => $advertiser->id,
-            'listings' => (int) $data['listings'],
-            'amount' => (int) $data['listings'] * AdvertisingService::price(),
+            'property_id' => $property->id,
+            'listings' => 1,
+            'amount' => AdvertisingService::price(),
             'method' => $data['method'],
             'status' => AdPurchase::PENDING,
             'reference' => $data['reference'],
@@ -180,7 +183,7 @@ class AdvertiserController extends Controller
             'proof_name' => mb_substr($file->getClientOriginalName(), 0, 200),
         ]));
 
-        return back()->with('success', 'Thank you. Your payment was sent for checking; your listings are added as soon as it is approved.');
+        return redirect()->route('dashboard')->with('success', 'Thank you. Your payment for "'.$property->name.'" was sent for checking; it goes on the homepage as soon as it is approved.');
     }
 
     /** The receipt of a listing payment: for admins and for the advertiser who sent it. */
@@ -193,11 +196,65 @@ class AdvertiserController extends Controller
         return \Illuminate\Support\Facades\Storage::disk('local')->response($purchase->proof_path, $purchase->proof_name ?: basename($purchase->proof_path));
     }
 
-    private function ensureNothingWaiting($advertiser): void
+    private function ensureNothingWaiting($advertiser, Property $property): void
     {
-        if (AdPurchase::query()->where('advertiser_id', $advertiser->id)->where('status', AdPurchase::PENDING)->whereNull('mobile_money_request_id')->exists()) {
-            throw ValidationException::withMessages(['listings' => 'A payment is already waiting for checking. You can send another one once it is approved or rejected.']);
+        if (AdPurchase::query()->where('advertiser_id', $advertiser->id)->where('property_id', $property->id)->where('status', AdPurchase::PENDING)->whereNull('mobile_money_request_id')->exists()) {
+            throw ValidationException::withMessages(['property_id' => 'A payment for this property is already waiting for checking.']);
         }
+    }
+
+    /** The advertiser's own property the payment is for. */
+    private function ownProperty(Request $request): Property
+    {
+        $request->validate(['property_id' => ['required', 'integer']]);
+
+        return Property::query()->where('owner_id', $request->user()->id)->findOrFail($request->integer('property_id'));
+    }
+
+    /**
+     * Step 2 after adding a property: pay 25,000 RWF for it (MoMo Pay, bank
+     * transfer or cheque). A free listing from the first-purchase gift can be
+     * used instead, when one is left.
+     */
+    public function pay(Request $request, Property $property): Response
+    {
+        $advertiser = $request->user();
+        abort_unless($property->owner_id === $advertiser->id, 404);
+
+        return Inertia::render('Advertiser/Pay', [
+            'property' => [
+                'id' => $property->id,
+                'name' => $property->name,
+                'address' => $property->address,
+                'rooms' => $property->units()->count(),
+                'status' => $this->listingStatus($property),
+            ],
+            'price' => AdvertisingService::price(),
+            'listingDays' => AdvertisingService::LISTING_DAYS,
+            'bonusOnApproval' => AdvertisingService::bonusFor($advertiser),
+            'credits' => (int) $advertiser->ad_credits,
+            'momoPay' => ['code' => config('services.momo_pay.code'), 'name' => config('services.momo_pay.name')],
+            'bank' => config('legal.qra_bank'),
+            'phone' => $advertiser->phone,
+        ]);
+    }
+
+    /**
+     * Where a property stands: unpaid, payment being checked, not approved,
+     * online (days left) or ended.
+     */
+    private function listingStatus(Property $property): array
+    {
+        $latest = AdPurchase::query()->where('property_id', $property->id)->latest('id')->first();
+        $listed = $property->listed_until?->isFuture() ?? false;
+
+        return match (true) {
+            $listed => ['key' => 'listed', 'until' => $property->listed_until?->toIso8601String(), 'days_left' => (int) ceil(now()->diffInHours($property->listed_until) / 24)],
+            $latest?->status === AdPurchase::PENDING => ['key' => 'checking', 'since' => $latest->created_at?->toIso8601String(), 'amount' => (float) $latest->amount],
+            $latest?->status === AdPurchase::REJECTED => ['key' => 'rejected', 'reason' => $latest->rejection_reason],
+            $property->listed_until !== null => ['key' => 'ended', 'until' => $property->listed_until?->toIso8601String()],
+            default => ['key' => 'unpaid'],
+        };
     }
 
     /** Admins are told by email and SMS that a listing payment waits for them. */
@@ -284,6 +341,7 @@ class AdvertiserController extends Controller
             'receipt_number' => $purchase->receipt_number,
             'method' => $purchase->method,
             'rejection_reason' => $purchase->rejection_reason,
+            'property' => $purchase->property?->name,
         ];
     }
 }

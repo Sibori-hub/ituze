@@ -60,7 +60,7 @@ export default function AdPayments({ payments = [], status = 'pending', counts =
                                         <p className="font-semibold text-gray-900">{payment.advertiser?.name}</p>
                                         <p className="text-xs text-gray-600">{payment.advertiser?.email} · {payment.advertiser?.phone}</p>
                                         <p className="mt-2 text-sm text-gray-800">
-                                            {t(':count listing(s)', { count: payment.listings })}
+                                            {payment.property ? <><span className="font-semibold">{payment.property.name}</span> · </> : null}{t(':count listing(s)', { count: payment.listings })}
                                             {(payment.bonus || payment.bonus_due) > 0 && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-amber-200"><Gift size={12} aria-hidden="true" />{t('+:free free (first purchase)', { free: payment.bonus || payment.bonus_due })}</span>}
                                         </p>
                                     </div>

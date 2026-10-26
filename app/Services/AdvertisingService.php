@@ -62,6 +62,15 @@ class AdvertisingService
             return $locked;
         });
 
+        // A payment for one property publishes it at once; without a room yet, the listing waits for it.
+        if ($approved && $approved->property_id && $approved->property) {
+            try {
+                $this->publish($approved->advertiser()->firstOrFail(), $approved->property);
+            } catch (ValidationException $e) {
+                Log::info('Paid listing waits for a room: '.$approved->property_id);
+            }
+        }
+
         if ($approved) {
             try {
                 $recipients = User::query()->where('role', 'admin')->get()->push($approved->advertiser);

@@ -536,6 +536,8 @@ Route::middleware(['auth', 'verified', 'phone.verified', 'profile.complete', 'ow
     Route::post('/purchases', [\App\Http\Controllers\AdvertiserController::class, 'startPurchase'])->middleware('throttle:6,1')->name('purchases.start');
     Route::post('/purchases/momo-pay', [\App\Http\Controllers\AdvertiserController::class, 'storeMomoPay'])->middleware('throttle:10,1')->name('purchases.momopay');
     Route::post('/purchases/transfer', [\App\Http\Controllers\AdvertiserController::class, 'storeTransfer'])->middleware('throttle:10,1')->name('purchases.transfer');
+    // Step 2 after adding a property: pay 25,000 RWF for it.
+    Route::get('/properties/{property}/pay', [\App\Http\Controllers\AdvertiserController::class, 'pay'])->name('pay');
     Route::get('/purchases/{purchase}', [\App\Http\Controllers\AdvertiserController::class, 'purchaseStatus'])->middleware('throttle:60,1')->name('purchases.status');
     Route::post('/properties/{property}/publish', [\App\Http\Controllers\AdvertiserController::class, 'publish'])->middleware('throttle:20,1')->name('publish');
 });

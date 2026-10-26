@@ -7,26 +7,14 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * An advertiser works with buildings only after paying for their first
- * listing (25,000 RWF). Until then they only see their dashboard, where
- * they pay.
+ * Advertisers used to pay before adding any building. Now they add a
+ * property first and pay 25,000 RWF for that property (step 2); it stays off
+ * the homepage until the payment is approved. Kept so the routes stay the same.
  */
 class EnsureAdvertiserHasPaid
 {
-    public const MESSAGE = 'Pay for your first listing (25,000 RWF) to start adding your buildings.';
-
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
-
-        if (! $user || ! $user->isAdvertiser() || $user->hasPaidForListings()) {
-            return $next($request);
-        }
-
-        if ($request->expectsJson()) {
-            return response()->json(['message' => self::MESSAGE, 'payment_required' => true], 402);
-        }
-
-        return redirect()->route('dashboard')->with('warning', self::MESSAGE);
+        return $next($request);
     }
 }

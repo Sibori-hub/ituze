@@ -176,6 +176,13 @@ class PropertyController extends Controller
                     ->with('success', 'Step 1 done: "'.$property->name.'" is saved. Now pay for it; units, rooms and tenants unlock once ITUZE approves the payment.');
             }
 
+            // An advertiser pays 25,000 RWF for the property as step 2; it goes online once approved.
+            if ($user->isAdvertiser()) {
+                return redirect()
+                    ->route('advertising.pay', $property)
+                    ->with('success', 'Step 1 done: "'.$property->name.'" is saved. Now pay '.number_format(\App\Services\AdvertisingService::price()).' RWF to put it on the homepage.');
+            }
+
             return redirect()
                 ->route('properties.index')
                 ->with('success', '🏠 Property "' . $property->name . '" created successfully!');

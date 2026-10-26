@@ -52,30 +52,41 @@ class AdvertiserListingTest extends TestCase
         $this->getJson(route('advertising.purchases.status', $id))->assertOk()->assertJsonPath('purchase.status', 'approved');
     }
 
-    public function test_listings_paid_by_momo_pay_or_bank_are_checked_by_an_admin(): void
+    public function test_each_property_is_paid_for_then_checked_by_an_admin_and_goes_online(): void
     {
         \Illuminate\Support\Facades\Storage::fake('local');
-        // MoMo Pay to QRA's code: the details from the SMS. Admins are told; nothing is added yet.
-        $momo = ['listings' => 1, 'sender_name' => 'Ad Payer', 'sender_phone' => '0788000005', 'paid_at' => now('Africa/Kigali')->subMinutes(5)->format('Y-m-d\TH:i'), 'transaction_id' => '5512345678'];
+        // Step 2 after adding a property: its pay page shows it is not paid yet.
+        $this->actingAs($this->advertiser)->get(route('advertising.pay', $this->building))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Advertiser/Pay')->where('property.status.key', 'unpaid')->where('price', 25000));
+        // MoMo Pay to QRA's code for THIS property: the details from the SMS. Admins are told; it is not online yet.
+        $momo = ['property_id' => $this->building->id, 'sender_name' => 'Ad Payer', 'sender_phone' => '0788000005', 'paid_at' => now('Africa/Kigali')->subMinutes(5)->format('Y-m-d\TH:i'), 'transaction_id' => '5512345678'];
         $this->actingAs($this->advertiser)->post(route('advertising.purchases.momopay'), $momo)->assertSessionHasNoErrors();
         $purchase = AdPurchase::query()->latest('id')->firstOrFail();
-        $this->assertSame(['pending', 'momo_pay', 25000.0], [$purchase->status, $purchase->method, (float) $purchase->amount]);
+        $this->assertSame(['pending', 'momo_pay', 25000.0, $this->building->id], [$purchase->status, $purchase->method, (float) $purchase->amount, $purchase->property_id]);
         $this->assertSame(0, (int) $this->advertiser->fresh()->ad_credits);
+        $this->assertNull($this->building->fresh()->listed_until);
+        $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('buildings.0.status.key', 'checking'));
         Notification::assertSentTo($this->admin, \App\Notifications\AdPurchaseDecision::class, fn ($n) => $n->kind === 'submitted');
         // One waiting at a time.
-        $this->post(route('advertising.purchases.momopay'), [...$momo, 'transaction_id' => '5512345679'])->assertSessionHasErrors('listings');
+        $this->post(route('advertising.purchases.momopay'), [...$momo, 'transaction_id' => '5512345679'])->assertSessionHasErrors('property_id');
+        // Only the advertiser's own property.
+        $other = Property::create(['owner_id' => $this->admin->id, 'name' => 'Not mine', 'total_floors' => 1]);
+        $this->post(route('advertising.purchases.momopay'), [...$momo, 'property_id' => $other->id, 'transaction_id' => '5512345670'])->assertNotFound();
 
-        // The admin approves: 1 paid + 3 free listings.
+        // The admin approves: the property goes on the homepage, and the first-payment gift of 3 free listings is added.
         $this->actingAs($this->admin)->get(route('admin.ad-payments'))->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
             ->component('Admin/AdPayments')->where('counts.pending', 1)->where('payments.0.bonus_due', 3));
         $this->post(route('admin.ad-payments.approve', $purchase))->assertSessionHasNoErrors();
-        $this->assertSame(4, (int) $this->advertiser->fresh()->ad_credits);
+        $this->assertSame(3, (int) $this->advertiser->fresh()->ad_credits);
+        $this->assertTrue($this->building->fresh()->listed_until->isFuture());
+        $this->actingAs($this->advertiser)->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('buildings.0.status.key', 'listed'));
+        $this->actingAs($this->admin);
         $this->assertSame($this->admin->id, $purchase->fresh()->reviewed_by);
 
         // The same transaction ID cannot pay twice; a bank slip can be rejected with a reason.
         $this->actingAs($this->advertiser)->post(route('advertising.purchases.momopay'), $momo)->assertSessionHasErrors('transaction_id');
         $this->post(route('advertising.purchases.transfer'), [
-            'listings' => 2, 'method' => 'bank_transfer', 'bank_name' => 'Bank of Kigali', 'account_number' => '00040-0123456-78',
+            'property_id' => $this->building->id, 'method' => 'bank_transfer', 'bank_name' => 'Bank of Kigali', 'account_number' => '00040-0123456-78',
             'sender_name' => 'AD LTD', 'reference' => 'FT26299XYZ', 'paid_at' => now()->toDateString(),
             'proof' => \Illuminate\Http\UploadedFile::fake()->image('slip.jpg'),
         ])->assertSessionHasNoErrors();
@@ -84,7 +95,7 @@ class AdvertiserListingTest extends TestCase
         $this->actingAs($this->admin)->post(route('admin.ad-payments.reject', $slip), ['reason' => ''])->assertSessionHasErrors('reason');
         $this->post(route('admin.ad-payments.reject', $slip), ['reason' => 'No such transfer'])->assertSessionHasNoErrors();
         $this->assertSame('rejected', $slip->fresh()->status);
-        $this->assertSame(4, (int) $this->advertiser->fresh()->ad_credits);
+        $this->assertSame(3, (int) $this->advertiser->fresh()->ad_credits);
         Notification::assertSentTo($this->advertiser, \App\Notifications\AdPurchaseDecision::class, fn ($n) => $n->kind === 'rejected');
     }
 
@@ -126,19 +137,15 @@ class AdvertiserListingTest extends TestCase
         $this->get(route('public.properties.show', $this->building))->assertNotFound();
     }
 
-    public function test_nothing_with_buildings_is_allowed_before_the_first_payment(): void
+    public function test_an_advertiser_adds_a_property_first_then_pays_for_it(): void
     {
         $this->actingAs($this->advertiser);
         foreach ([route('properties.index'), route('properties.create'), route('properties.show', $this->building)] as $url) {
-            $this->get($url)->assertRedirect(route('dashboard'));
+            $this->get($url)->assertOk();
         }
-        $this->post(route('properties.store'), ['name' => 'Too early'])->assertRedirect(route('dashboard'));
-        $this->assertDatabaseMissing('properties', ['name' => 'Too early']);
-        $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('hasPaid', false));
-
-        $this->buy(1);
-        $this->get(route('properties.index'))->assertOk();
-        $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('hasPaid', true));
+        // Not paid: not on the homepage.
+        $this->assertFalse(Unit::query()->publiclyListed()->where('property_id', $this->building->id)->exists());
+        $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('buildings.0.status.key', 'unpaid'));
     }
 
     public function test_advertisers_manage_buildings_but_have_no_tenants_or_leases(): void

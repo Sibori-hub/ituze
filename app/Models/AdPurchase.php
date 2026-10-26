@@ -14,7 +14,7 @@ class AdPurchase extends Model
     public const FAILED = 'failed';
 
     protected $fillable = [
-        'advertiser_id', 'listings', 'bonus', 'amount', 'method', 'status',
+        'advertiser_id', 'property_id', 'listings', 'bonus', 'amount', 'method', 'status',
         'mobile_money_request_id', 'reference', 'receipt_number', 'paid_at',
         'sender_name', 'sender_phone', 'bank_name', 'account_number', 'sent_at', 'proof_path', 'proof_name',
         'reviewed_by', 'reviewed_at', 'rejection_reason',
@@ -42,6 +42,11 @@ class AdPurchase extends Model
     public function advertiser()
     {
         return $this->belongsTo(User::class, 'advertiser_id')->withTrashed();
+    }
+
+    public function property()
+    {
+        return $this->belongsTo(Property::class);
     }
 
     public function mobileMoneyRequest()

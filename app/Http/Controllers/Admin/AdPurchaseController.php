@@ -30,7 +30,7 @@ class AdPurchaseController extends Controller
                 'approved' => AdPurchase::query()->where('status', AdPurchase::APPROVED)->count(),
                 'rejected' => AdPurchase::query()->where('status', AdPurchase::REJECTED)->count(),
             ],
-            'payments' => AdPurchase::query()->with(['advertiser:id,name,email,phone', 'reviewer:id,name'])
+            'payments' => AdPurchase::query()->with(['advertiser:id,name,email,phone', 'reviewer:id,name', 'property:id,name'])
                 ->when($status !== 'all', fn ($query) => $query->where('status', $status))
                 ->when($status === 'pending', fn ($query) => $query->whereNull('mobile_money_request_id'))
                 ->latest('id')->limit(100)->get()
@@ -38,6 +38,7 @@ class AdPurchaseController extends Controller
                     'id' => $purchase->id,
                     'created_at' => $purchase->created_at?->toIso8601String(),
                     'advertiser' => $purchase->advertiser?->only(['id', 'name', 'email', 'phone']),
+                    'property' => $purchase->property?->only(['id', 'name']),
                     'listings' => $purchase->listings,
                     'bonus' => $purchase->bonus,
                     'bonus_due' => $purchase->status === AdPurchase::PENDING && $purchase->advertiser ? AdvertisingService::bonusFor($purchase->advertiser) : 0,
