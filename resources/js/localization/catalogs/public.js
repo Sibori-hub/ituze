@@ -312,6 +312,9 @@ export default {
         'Workshop': 'Atelier',
         'Showroom': 'Salle d\'exposition',
         'Gym': 'Salle de sport',
+        'Dark mode': 'Mode sombre',
+        'Switch to light mode': 'Passer au mode clair',
+        'Switch to dark mode': 'Passer au mode sombre',
     },
     rw: {
         'Find your perfect space to rent | ITUZE GREEN PLATFORM': 'Shaka ahantu heza ho gukodesha | ITUZE GREEN PLATFORM',
@@ -626,5 +629,8 @@ export default {
         'Workshop': 'Atelier',
         'Showroom': 'Aho kumurikira',
         'Gym': 'Gym',
+        'Dark mode': 'Uburyo bwijimye',
+        'Switch to light mode': 'Hindura ujye ku buryo bwerurutse',
+        'Switch to dark mode': 'Hindura ujye ku buryo bwijimye',
     },
 };

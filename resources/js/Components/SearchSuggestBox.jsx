@@ -82,11 +82,11 @@ export default function SearchSuggestBox({ value, onChange, onPickPlace, onSearc
     };
 
     const optionId = (index) => `${listId}-option-${index}`;
-    const groupTitle = (key, label) => <li key={key} role="presentation" className="px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</li>;
+    const groupTitle = (key, label) => <li key={key} role="presentation" className="px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</li>;
 
     return (
         <div ref={boxRef} className="relative sm:col-span-2 xl:col-span-1">
-            <label className="flex min-h-12 items-center gap-3 rounded-lg border border-slate-200 px-4 text-sm text-slate-500 focus-within:border-[#078dcc] focus-within:ring-2 focus-within:ring-[#078dcc]/20">
+            <label className="flex min-h-12 items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 px-4 text-sm text-slate-500 dark:text-slate-400 focus-within:border-[#078dcc] focus-within:ring-2 focus-within:ring-[#078dcc]/20">
                 {loading ? <Loader2 size={18} className="shrink-0 animate-spin" aria-hidden="true" /> : <Search size={18} className="shrink-0" aria-hidden="true" />}
                 <input
                     value={value}
@@ -104,14 +104,14 @@ export default function SearchSuggestBox({ value, onChange, onPickPlace, onSearc
                     aria-controls={listId}
                     aria-activedescendant={showList && active >= 0 ? optionId(active) : undefined}
                     autoComplete="off"
-                    className="w-full border-0 p-0 text-slate-800 outline-none ring-0 focus:ring-0"
+                    className="w-full border-0 bg-transparent p-0 text-slate-800 dark:text-slate-200 outline-none ring-0 focus:ring-0"
                 />
             </label>
 
             {showList && (
-                <ul id={listId} role="listbox" aria-label={t('Suggestions')} className="absolute inset-x-0 top-full z-30 mt-2 max-h-[22rem] overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-2xl">
+                <ul id={listId} role="listbox" aria-label={t('Suggestions')} className="absolute inset-x-0 top-full z-30 mt-2 max-h-[22rem] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-1 shadow-2xl">
                     {options.length === 0 ? (
-                        <li role="presentation" className="px-4 py-3 text-sm text-slate-600">{t('No suggestions. Press Enter to search ":text".', { text: term })}</li>
+                        <li role="presentation" className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{t('No suggestions. Press Enter to search ":text".', { text: term })}</li>
                     ) : (
                         options.map((option, index) => {
                             const { item } = option;
@@ -129,16 +129,16 @@ export default function SearchSuggestBox({ value, onChange, onPickPlace, onSearc
                                     onMouseEnter={() => setActive(index)}
                                     className={`mx-1 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 ${index === active ? 'bg-[#078dcc]/10' : ''}`}
                                 >
-                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isPlace ? 'bg-orange-50 text-orange-600' : 'bg-[#064b78]/10 text-[#064b78]'}`}>
+                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isPlace ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-[#064b78]/10 dark:bg-sky-400/10 text-[#064b78] dark:text-sky-300'}`}>
                                         {isPlace ? <MapPin size={17} aria-hidden="true" /> : <Building2 size={17} aria-hidden="true" />}
                                     </span>
                                     <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-semibold text-slate-900">{item.name}</span>
-                                        <span className="block truncate text-xs text-slate-500">
+                                        <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.name}</span>
+                                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                                             {[isPlace ? t(PLACE_TYPES[item.type]) : null, item.context].filter(Boolean).join(' · ')}
                                         </span>
                                     </span>
-                                    <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+                                    <span className="shrink-0 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
                                         {t(':count available', { count: item.available })}
                                     </span>
                                 </li>,

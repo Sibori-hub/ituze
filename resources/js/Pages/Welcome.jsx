@@ -18,8 +18,10 @@ import {
     Megaphone,
     Menu,
     MessageCircle,
+    Moon,
     Phone,
     Search,
+    Sun,
     Warehouse,
     X,
 } from 'lucide-react';
@@ -138,6 +140,17 @@ function cityFilters(city, locations) {
     };
 }
 
+// Light or dark homepage: the visitor's choice, else their device setting.
+// app.blade.php applies it before the first paint; this keeps it in sync.
+const THEME_KEY = 'ituze-theme';
+const prefersDark = () => {
+    try {
+        const saved = window.localStorage.getItem(THEME_KEY);
+        if (saved) return saved === 'dark';
+    } catch {}
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+};
+
 const unitLocation = (unit) => [
     unit.property?.cell?.sector?.name,
     unit.property?.cell?.sector?.district?.name,
@@ -172,22 +185,22 @@ function UnitCard({ unit }) {
     const location = unitLocation(unit);
 
     return (
-        <article className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <article className="group overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
             <Link href={route('public.units.show', [property.id, unit.id])} className="block">
-                <div className="relative h-52 overflow-hidden bg-slate-100">
-                    {image ? <img src={image} alt={`${typeLabel} in ${property.name}`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-[#064b78]/40"><Building2 size={56} /></div>}
+                <div className="relative h-52 overflow-hidden bg-slate-100 dark:bg-slate-800">
+                    {image ? <img src={image} alt={`${typeLabel} in ${property.name}`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-[#064b78]/40 dark:text-sky-300/40"><Building2 size={56} /></div>}
                     <span className="absolute left-4 top-4 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">{t('Available')}</span>
                 </div>
                 <div className="p-5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-[#0e3b2e]">{typeLabel}</p>
-                    <h3 className="mt-2 text-lg font-semibold text-slate-900 transition group-hover:text-[#078dcc]">{property.name} · Unit {unit.unit_number}</h3>
-                    <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500"><MapPin size={14} /> {location}</p>
-                    <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-600">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#0e3b2e] dark:text-emerald-300">{typeLabel}</p>
+                    <h3 className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100 transition group-hover:text-[#078dcc]">{property.name} · Unit {unit.unit_number}</h3>
+                    <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400"><MapPin size={14} /> {location}</p>
+                    <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-600 dark:text-slate-300">
                         {unit.floor_number !== null && unit.floor_number !== undefined && <span>Floor {unit.floor_number}</span>}
                         {unit.size_sqm && <span>{Number(unit.size_sqm).toLocaleString()} m²</span>}
                     </div>
-                    <p className="mt-4 text-base font-bold text-[#0798e6]">{unitRent(unit, t)}</p>
-                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#0e3b2e]">{t('View details')} <ArrowRight size={15} /></span>
+                    <p className="mt-4 text-base font-bold text-[#0798e6] dark:text-sky-400">{unitRent(unit, t)}</p>
+                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#0e3b2e] dark:text-emerald-300">{t('View details')} <ArrowRight size={15} /></span>
                 </div>
             </Link>
         </article>
@@ -200,6 +213,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     const [menuOpen, setMenuOpen] = useState(false);
     const [legalDoc, setLegalDoc] = useState(null);
     const [creditsOpen, setCreditsOpen] = useState(false);
+    const [dark, setDark] = useState(prefersDark);
     const [searchForm, setSearchForm] = useState({
         search: searchFilters.search || '',
         category: searchFilters.category || '',
@@ -220,6 +234,24 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
         const timer = window.setTimeout(() => setSlide((value) => (value + 1) % heroSlides.length), 6500);
         return () => window.clearTimeout(timer);
     }, [slide]);
+
+    // Dark mode belongs to the homepage only: leaving it restores the light app.
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.toggle('dark', dark);
+        root.style.colorScheme = dark ? 'dark' : '';
+        return () => {
+            root.classList.remove('dark');
+            root.style.colorScheme = '';
+        };
+    }, [dark]);
+
+    const toggleTheme = () => setDark((value) => {
+        try {
+            window.localStorage.setItem(THEME_KEY, value ? 'light' : 'dark');
+        } catch {}
+        return !value;
+    });
 
     // Results update by themselves: lists at once, typing after a short pause.
     const typingPause = useRef(true);
@@ -273,8 +305,8 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     return (
         <>
             <Head title={t('Find your perfect space to rent | ITUZE GREEN PLATFORM')} />
-            <div className="min-h-screen bg-[#f6f8fa] text-slate-900">
-                <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.45)] backdrop-blur-md">
+            <div className="min-h-screen bg-[#f6f8fa] dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+                <header className="sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.45)] backdrop-blur-md">
                     <div className="bg-[#063f67] text-white">
                         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 text-[11px] font-medium sm:px-6 sm:text-xs lg:px-8">
                             <a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-white/85 transition hover:text-white">
@@ -290,40 +322,58 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </div>
                     </div>
                     <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
-                        <Link href="/" className="rounded-xl text-[#064b78]">
+                        <Link href="/" className="rounded-xl text-[#064b78] dark:text-sky-300">
                             <BrandLockup
-                                logoClassName="h-12 w-12 sm:h-16 sm:w-16"
+                                logoClassName="h-12 w-12 sm:h-16 sm:w-16 dark:rounded-xl dark:bg-white"
                                 nameClassName="text-xs font-black sm:text-sm"
                                 subtitleClassName="text-[8px] font-semibold sm:text-[9px]"
                             />
                         </Link>
-                        <nav className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 p-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 md:flex">
-                            <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Home')}</a>
-                            <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Properties')}</a>
-                            <a href="#cities" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Cities')}</a>
-                            <a href="#contact" className="rounded-full px-3 py-2 transition hover:bg-white hover:text-[#078dcc]">{t('Contact us')}</a>
+                        <nav className="hidden items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 p-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300 md:flex">
+                            <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white dark:hover:bg-slate-700 hover:text-[#078dcc]">{t('Home')}</a>
+                            <a href="#featured" className="rounded-full px-3 py-2 transition hover:bg-white dark:hover:bg-slate-700 hover:text-[#078dcc]">{t('Properties')}</a>
+                            <a href="#cities" className="rounded-full px-3 py-2 transition hover:bg-white dark:hover:bg-slate-700 hover:text-[#078dcc]">{t('Cities')}</a>
+                            <a href="#contact" className="rounded-full px-3 py-2 transition hover:bg-white dark:hover:bg-slate-700 hover:text-[#078dcc]">{t('Contact us')}</a>
                         </nav>
                         <div className="flex items-center gap-2">
-                            <LanguageSwitcher className="rounded-lg bg-[#0E3B2E] p-1" />
+                            <button
+                                type="button"
+                                onClick={toggleTheme}
+                                aria-pressed={dark}
+                                aria-label={t('Dark mode')}
+                                title={dark ? t('Switch to light mode') : t('Switch to dark mode')}
+                                className="hidden rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-100 sm:inline-flex focus:outline-none focus-visible:ring-2 focus-visible:ring-[#078dcc] dark:border-slate-700 dark:text-amber-300 dark:hover:bg-slate-800"
+                            >
+                                {dark ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
+                            </button>
+                            <LanguageSwitcher className="hidden rounded-lg bg-[#0E3B2E] p-1 sm:inline-flex" />
                             {auth?.user ? (
                                 <Link href={route('dashboard')} className="hidden rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white sm:inline-flex sm:text-xs">{t('Dashboard')}</Link>
                             ) : (
                                 <>
-                                    {canLogin && <Link href={route('login')} className="hidden px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 transition hover:text-[#078dcc] sm:block">{t('Log in')}</Link>}
+                                    {canLogin && <Link href={route('login')} className="hidden px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300 transition hover:text-[#078dcc] sm:block">{t('Log in')}</Link>}
                                     <button type="button" onClick={() => openContactForm('rent')} className="rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#0a9ee1] sm:text-xs">{t('Inquiry')}</button>
                                 </>
                             )}
-                            <button type="button" className="rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-100 md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation menu">
+                            <button type="button" className="rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation menu">
                                 {menuOpen ? <X size={17} /> : <Menu size={17} />}
                             </button>
                         </div>
                     </div>
                     {menuOpen && (
-                        <div className="divide-y divide-slate-100 border-t border-slate-100 bg-white px-4 py-1 text-sm md:hidden">
-                            <a className="block py-3 font-medium text-slate-700" href="#featured">{t('Properties')}</a>
-                            <a className="block py-3 font-medium text-slate-700" href="#cities">{t('Cities')}</a>
-                            <a className="block py-3 font-medium text-slate-700" href="#contact">{t('Contact us')}</a>
-                            {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-3 text-left font-semibold text-slate-700">{t('Log in')}</Link>}
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-1 text-sm md:hidden">
+                            <a className="block py-3 font-medium text-slate-700 dark:text-slate-200" href="#featured">{t('Properties')}</a>
+                            <a className="block py-3 font-medium text-slate-700 dark:text-slate-200" href="#cities">{t('Cities')}</a>
+                            <a className="block py-3 font-medium text-slate-700 dark:text-slate-200" href="#contact">{t('Contact us')}</a>
+                            {!auth?.user && canLogin && <Link href={route('login')} className="block w-full py-3 text-left font-semibold text-slate-700 dark:text-slate-200">{t('Log in')}</Link>}
+                            {/* Phones: language and the light / dark switch live here, the header has no room for them. */}
+                            <div className="py-3 sm:hidden">
+                                <LanguageSwitcher className="rounded-lg bg-[#0E3B2E] p-1" />
+                            </div>
+                            <button type="button" onClick={toggleTheme} aria-pressed={dark} className="flex w-full items-center justify-between py-3 text-left font-medium text-slate-700 dark:text-slate-200 sm:hidden">
+                                {t('Dark mode')}
+                                {dark ? <Sun size={17} className="text-amber-300" aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
+                            </button>
                             {!auth?.user && <button type="button" onClick={() => { setMenuOpen(false); openContactForm('rent'); }} className="block w-full py-3 text-left font-semibold text-[#078dcc]">{t('Inquiry')}</button>}
                         </div>
                     )}
@@ -348,14 +398,14 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     aria-current={index === slide ? 'true' : undefined}
                                     className="flex h-6 items-center px-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                                 >
-                                    <span className={`block h-1.5 rounded-full transition-all ${index === slide ? 'w-7 bg-orange-400' : 'w-3 bg-white/60 hover:bg-white'}`} />
+                                    <span className={`block h-1.5 rounded-full transition-all ${index === slide ? 'w-7 bg-orange-400' : 'w-3 bg-white/60 hover:bg-white dark:hover:bg-slate-700'}`} />
                                 </button>
                             ))}
                         </div>
                     </section>
 
                     <section className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <form onSubmit={submitSearch} role="search" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.6fr)_repeat(4,minmax(140px,1fr))]">
+                        <form onSubmit={submitSearch} role="search" className="grid gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-xl sm:grid-cols-2 xl:grid-cols-[minmax(240px,1.6fr)_repeat(4,minmax(140px,1fr))]">
                             <SearchSuggestBox
                                 value={searchForm.search}
                                 onChange={(text) => updateSearch({ search: text }, true)}
@@ -366,19 +416,19 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     applySearch(filters);
                                 }}
                             />
-                            <select value={searchForm.province_id} onChange={(event) => updateSearch({ province_id: event.target.value, district_id: '', sector_id: '' })} aria-label="Province" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.province_id} onChange={(event) => updateSearch({ province_id: event.target.value, district_id: '', sector_id: '' })} aria-label="Province" className="min-h-12 w-full dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-4 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All provinces')}</option>
                                 {(locations.provinces || []).map((province) => <option key={province.id} value={province.id}>{province.name}</option>)}
                             </select>
-                            <select value={searchForm.district_id} onChange={(event) => updateSearch({ district_id: event.target.value, sector_id: '' })} aria-label="District" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.district_id} onChange={(event) => updateSearch({ district_id: event.target.value, sector_id: '' })} aria-label="District" className="min-h-12 w-full dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-4 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All districts')}</option>
                                 {availableDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}
                             </select>
-                            <select value={searchForm.sector_id} onChange={(event) => updateSearch({ sector_id: event.target.value })} aria-label="Sector" className="min-h-12 w-full rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.sector_id} onChange={(event) => updateSearch({ sector_id: event.target.value })} aria-label="Sector" className="min-h-12 w-full dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 px-4 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="">{t('All sectors')}</option>
                                 {availableSectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.name}</option>)}
                             </select>
-                            <select value={searchForm.price_range} onChange={(event) => updateSearch({ price_range: event.target.value })} aria-label="Rent range" className="min-h-12 w-full sm:col-span-2 xl:col-span-1 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
+                            <select value={searchForm.price_range} onChange={(event) => updateSearch({ price_range: event.target.value })} aria-label="Rent range" className="min-h-12 w-full dark:bg-slate-900 sm:col-span-2 xl:col-span-1 rounded-lg border border-slate-200 dark:border-slate-700 px-4 text-sm font-semibold text-slate-700 dark:text-slate-200 focus:border-[#078dcc] focus:ring-2 focus:ring-[#078dcc]/20">
                                 <option value="any">{t('Any price')}</option>
                                 <option value="under-500000">{t('Under 500,000 RWF')}</option>
                                 <option value="500000-1500000">500,000 - 1,500,000 RWF</option>
@@ -392,10 +442,10 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         <section id="search-results" className="mx-auto max-w-7xl scroll-mt-32 px-4 pt-10 sm:px-6 lg:px-8">
                             <div className="flex flex-wrap items-end justify-between gap-3">
                                 <div>
-                                    <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600">{t('Search results')}</p>
-                                    <h2 className="mt-2 text-2xl font-semibold text-slate-900">{t(':count available :units found', { count: units.total, units: t(units.total === 1 ? 'unit' : 'units') })}</h2>
+                                    <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600 dark:text-orange-400">{t('Search results')}</p>
+                                    <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{t(':count available :units found', { count: units.total, units: t(units.total === 1 ? 'unit' : 'units') })}</h2>
                                 </div>
-                                <button type="button" onClick={clearSearch} className="text-sm font-semibold text-[#064b78] transition hover:text-orange-600">{t('Clear filters')}</button>
+                                <button type="button" onClick={clearSearch} className="text-sm font-semibold text-[#064b78] dark:text-sky-300 transition hover:text-orange-600">{t('Clear filters')}</button>
                             </div>
                             {units.data.length ? (
                                 <InfiniteScroll
@@ -413,10 +463,10 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     {units.data.map((unit) => <UnitCard key={unit.id} unit={unit} />)}
                                 </InfiniteScroll>
                             ) : (
-                                <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+                                <div className="mt-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-6 py-10 text-center">
                                     <Search className="mx-auto text-slate-400" size={30} />
-                                    <p className="mt-3 font-semibold text-slate-800">{t('No matching available units')}</p>
-                                    <p className="mt-1 text-sm text-slate-500">{t('Try a different location, property type, or price range.')}</p>
+                                    <p className="mt-3 font-semibold text-slate-800 dark:text-slate-200">{t('No matching available units')}</p>
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('Try a different location, property type, or price range.')}</p>
                                 </div>
                             )}
                         </section>
@@ -425,9 +475,9 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                     {!searchFilters.active && (
                         <section id="featured" className="mx-auto max-w-7xl scroll-mt-28 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
                             <div className="text-center">
-                                <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600">{t('Available now')}</p>
+                                <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600 dark:text-orange-400">{t('Available now')}</p>
                                 <h2 className="mt-3 text-3xl font-light sm:text-4xl">{t('Discover Available Rental Units')}</h2>
-                                <p className="mt-3 text-sm text-slate-500">{t('Browse individual spaces, see their details, and contact the property owner.')}</p>
+                                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t('Browse individual spaces, see their details, and contact the property owner.')}</p>
                             </div>
                             {units.data.length ? (
                                 <InfiniteScroll
@@ -445,16 +495,16 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     {units.data.map((unit) => <UnitCard key={unit.id} unit={unit} />)}
                                 </InfiniteScroll>
                             ) : (
-                                <div className="mt-7 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">{t('There are no available units yet. Please check back soon.')}</div>
+                                <div className="mt-7 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">{t('There are no available units yet. Please check back soon.')}</div>
                             )}
                         </section>
                     )}
 
-                    <section id="cities" className="scroll-mt-28 bg-white" aria-labelledby="cities-title">
+                    <section id="cities" className="scroll-mt-28 bg-white dark:bg-slate-900" aria-labelledby="cities-title">
                         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
                             <div className="text-center">
                                 <h2 id="cities-title" className="text-3xl font-light sm:text-4xl">{t('Explore by cities')}</h2>
-                                <p className="mt-3 text-sm text-slate-600">{t('Choose a city to see available listings.')}</p>
+                                <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{t('Choose a city to see available listings.')}</p>
                             </div>
                             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
                                 {cities.map((city, index) => (
@@ -482,12 +532,12 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                         </div>
                     </section>
 
-                    <section className="border-t border-slate-100 bg-[#f6f8fa]">
+                    <section className="border-t border-slate-100 dark:border-slate-800 bg-[#f6f8fa] dark:bg-slate-950">
                         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
                             <div className="text-center">
-                                <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600">{t('Built together')}</p>
-                                <h2 className="mt-3 text-3xl font-light text-slate-900 sm:text-4xl">{t('Our Partners')}</h2>
-                                <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-500">{t('We work with trusted property owners, business communities, relocation teams, and local enterprises to make finding the right space easier.')}</p>
+                                <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-600 dark:text-orange-400">{t('Built together')}</p>
+                                <h2 className="mt-3 text-3xl font-light text-slate-900 dark:text-slate-100 sm:text-4xl">{t('Our Partners')}</h2>
+                                <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">{t('We work with trusted property owners, business communities, relocation teams, and local enterprises to make finding the right space easier.')}</p>
                             </div>
                             <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-4">
                                 {[
@@ -496,10 +546,10 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                                     ['Relocation teams', 'Practical support for people moving into a new space.'],
                                     ['Local enterprises', 'Flexible solutions for growing businesses and brands.'],
                                 ].map(([title, description]) => (
-                                    <div key={title} className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#064b78]/10 text-[#064b78]"><Building2 size={21} /></div>
-                                        <h3 className="mt-4 font-bold text-slate-900">{t(title)}</h3>
-                                        <p className="mt-2 text-sm leading-6 text-slate-500">{t(description)}</p>
+                                    <div key={title} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#064b78]/10 dark:bg-sky-400/10 text-[#064b78] dark:text-sky-300"><Building2 size={21} /></div>
+                                        <h3 className="mt-4 font-bold text-slate-900 dark:text-slate-100">{t(title)}</h3>
+                                        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{t(description)}</p>
                                     </div>
                                 ))}
                             </div>
@@ -541,13 +591,13 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
             {legalDoc && <LegalModal document={legalDoc} onClose={() => setLegalDoc(null)} />}
             {creditsOpen && (
                 <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="credits-title" onClick={() => setCreditsOpen(false)} onKeyDown={(e) => e.key === 'Escape' && setCreditsOpen(false)}>
-                    <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <h2 id="credits-title" className="text-lg font-bold text-slate-900">{t('Photo credits')}</h2>
-                        <p className="mt-1 text-sm text-slate-600">{t('Photos of Rwanda from Wikimedia Commons:')}</p>
-                        <ul className="mt-4 space-y-2 text-sm text-slate-700">
+                    <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h2 id="credits-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">{t('Photo credits')}</h2>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{t('Photos of Rwanda from Wikimedia Commons:')}</p>
+                        <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-200">
                             {[...heroSlides.map((slideItem) => ({ ...slideItem, name: t(slideItem.name) })), ...cities].map((photo) => (
                                 <li key={photo.source}>
-                                    <a href={photo.source} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0E3B2E] underline underline-offset-2">{photo.name}</a> — {photo.credit}
+                                    <a href={photo.source} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#0E3B2E] dark:text-emerald-300 underline underline-offset-2">{photo.name}</a> — {photo.credit}
                                 </li>
                             ))}
                         </ul>

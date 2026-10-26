@@ -4,6 +4,17 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        @if (request()->is('/'))
+            <script>
+                try {
+                    var theme = localStorage.getItem('ituze-theme');
+                    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                        document.documentElement.classList.add('dark');
+                        document.documentElement.style.colorScheme = 'dark';
+                    }
+                } catch (e) {}
+            </script>
+        @endif
 
         @php
             // Link previews and Google: public pages are indexed, the rest of the app is not.
