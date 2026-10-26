@@ -19,8 +19,30 @@ class PortfolioReport
 {
     public const PRESETS = ['this_month', 'last_month', 'this_quarter', 'this_year', 'last_12_months', 'custom'];
 
+    /** @var list<int>|null */
+    private ?array $onlyProperties = null;
+
+    /** @var list<int> */
+    private array $exceptProperties = [];
+
     public function __construct(private User $user, private ?int $ownerId = null)
     {
+    }
+
+    /** Leave these buildings out (an owner's dashboard leaves out what their managers run). */
+    public function without(array $propertyIds): static
+    {
+        $this->exceptProperties = array_values(array_map('intval', $propertyIds));
+
+        return $this;
+    }
+
+    /** Only these buildings (an owner's private view of one manager's work). */
+    public function only(array $propertyIds): static
+    {
+        $this->onlyProperties = array_values(array_map('intval', $propertyIds));
+
+        return $this;
     }
 
     /**
@@ -55,7 +77,9 @@ class PortfolioReport
             ->join('units', 'units.id', '=', 'tenancies.unit_id')
             ->join('properties', 'properties.id', '=', 'units.property_id')
             ->where(fn ($query) => $this->limitToViewer($query))
-            ->when($this->ownerId, fn ($query) => $query->where('properties.owner_id', $this->ownerId));
+            ->when($this->ownerId, fn ($query) => $query->where('properties.owner_id', $this->ownerId))
+            ->when($this->exceptProperties, fn ($query) => $query->whereNotIn('properties.id', $this->exceptProperties))
+            ->when($this->onlyProperties !== null, fn ($query) => $query->whereIn('properties.id', $this->onlyProperties ?: [0]));
     }
 
     /**
@@ -86,7 +110,9 @@ class PortfolioReport
             ->join('properties', 'properties.id', '=', 'units.property_id')
             ->whereNull('rent_charges.voided_at')
             ->where(fn ($query) => $this->limitToViewer($query))
-            ->when($this->ownerId, fn ($query) => $query->where('properties.owner_id', $this->ownerId));
+            ->when($this->ownerId, fn ($query) => $query->where('properties.owner_id', $this->ownerId))
+            ->when($this->exceptProperties, fn ($query) => $query->whereNotIn('properties.id', $this->exceptProperties))
+            ->when($this->onlyProperties !== null, fn ($query) => $query->whereIn('properties.id', $this->onlyProperties ?: [0]));
     }
 
     /** Money received in the period per owner and charge type. */

@@ -283,6 +283,59 @@ class ManagerController extends Controller
     }
 
     /**
+     * Private, read-only view for the owner of what each manager runs: the
+     * buildings, this month's rent, deposits and income, overdue rent,
+     * tenants, the latest payments and the latest actions. Kept apart from
+     * the owner's own dashboard figures.
+     */
+    public function work(Request $request): Response
+    {
+        $owner = $this->workspaceOwner($request);
+        $period = \App\Services\PortfolioReport::period('this_month');
+        $viewer = $request->user()->isAdmin() ? $owner : $request->user();
+
+        $managers = $owner->managers()->with(['managerAssignments.property:id,name', 'managerAssignments.propertyUnit.unitType:id,name'])->orderBy('name')->get()
+            ->map(function (User $manager) use ($owner, $period, $viewer) {
+                // Money follows whole buildings, the same ones left out of the owner's dashboard.
+                $buildings = $manager->managerAssignments->whereNull('property_unit_id')->pluck('property_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+                $report = (new \App\Services\PortfolioReport($viewer))->only($buildings);
+                $overview = $report->overview($period['from'], $period['to']);
+                $arrears = $report->arrears();
+                $fee = $owner->managementFeeRate();
+
+                return [
+                    'id' => $manager->id,
+                    'name' => $manager->name,
+                    'phone' => $manager->phone,
+                    'disabled' => $manager->isDisabled(),
+                    'runs' => $manager->managerAssignments->map(fn ($assignment) => [
+                        'property_id' => $assignment->property_id,
+                        'label' => $assignment->property_unit_id
+                            ? ($assignment->property?->name.' · '.($assignment->propertyUnit?->unitType?->name ?? 'Unit').' · '.PropertyUnit::floorLabel((int) $assignment->propertyUnit?->floor_number))
+                            : $assignment->property?->name,
+                        'whole' => $assignment->property_unit_id === null,
+                    ])->values(),
+                    'month' => [
+                        'rent' => $overview['rent_collected'],
+                        'deposits' => $overview['deposits_received'],
+                        'income' => round($overview['rent_collected'] * (1 - $fee / 100), 2),
+                        'collection_rate' => $overview['collection_rate'],
+                    ],
+                    'arrears' => ['total' => $arrears['totals']['total'], 'tenants' => $arrears['totals']['tenants']],
+                    'tenants' => \App\Models\Tenancy::query()->where('status', 'active')->whereHas('unit', fn ($unit) => $unit->whereIn('property_id', $buildings ?: [0]))->count(),
+                    'recent_payments' => $report->recentPayments(5),
+                    'activity' => ActivityLog::query()->with('property:id,name')->where('actor_id', $manager->id)->latest('created_at')->limit(6)->get()
+                        ->map(fn (ActivityLog $log) => ['id' => $log->id, 'at' => $log->created_at, 'description' => $log->description, 'property' => $log->property?->name, 'amount' => $log->amount])->values(),
+                ];
+            })->values();
+
+        return Inertia::render('Managers/Work', [
+            'managers' => $managers,
+            'month' => $period['from']->toDateString(),
+        ]);
+    }
+
+    /**
      * The owner whose team is shown: the signed-in self-registered owner, or
      * for an admin the owner chosen with ?owner_id.
      */

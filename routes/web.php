@@ -284,9 +284,12 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     }
 
     // Owners see their buildings; a manager only the rooms assigned to them.
+    // Buildings an owner gave to a manager are followed privately on Managers > Their work, not mixed in here.
+    $runByManagers = $user->buildingsRunByManagers();
     $rooms = fn ($query) => $user->isManager() ? $query->visibleTo($user) : $query;
     $properties = \App\Models\Property::query()
         ->visibleTo($user)
+        ->whereNotIn('id', $runByManagers ?: [0])
         ->with(['images'])
         ->withCount([
             'units' => $rooms,
@@ -299,7 +302,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
 
     $recentTenancies = \App\Models\Tenancy::with(['tenant', 'unit.property'])
         ->where('status', 'active')
-        ->whereHas('unit', fn ($room) => $room->visibleTo($user))
+        ->whereHas('unit', fn ($room) => $room->visibleTo($user)->whereNotIn('property_id', $runByManagers ?: [0]))
         ->latest('start_date')
         ->take(5)
         ->get();
@@ -314,7 +317,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
     $occupiedUnits = $properties->sum('occupied_units_count');
 
     // The owner's figures for this month, from the same source as Reports.
-    $portfolio = new \App\Services\PortfolioReport($user);
+    $portfolio = (new \App\Services\PortfolioReport($user))->without($runByManagers);
     $thisMonth = \App\Services\PortfolioReport::period('this_month');
     $overview = $portfolio->overview($thisMonth['from'], $thisMonth['to']);
     $arrears = $portfolio->arrears();
@@ -339,6 +342,7 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
             'arrears' => ['total' => $arrears['totals']['total'], 'tenants' => $arrears['totals']['tenants'], 'rows' => array_slice($arrears['rows'], 0, 5)],
             'vacant_rent' => round((float) \App\Models\Unit::query()
                 ->visibleTo($user)
+                ->whereNotIn('property_id', $runByManagers ?: [0])
                 ->where('status', 'available')
                 ->sum('rent_amount'), 2),
             'ending_soon' => \App\Models\Tenancy::query()
@@ -346,14 +350,14 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                 ->where('status', 'active')
                 ->whereNotNull('end_date')
                 ->whereBetween('end_date', [today(), today()->addDays(\App\Http\Controllers\ManagementController::ENDING_SOON_DAYS)])
-                ->whereHas('unit', fn ($room) => $room->visibleTo($user))
+                ->whereHas('unit', fn ($room) => $room->visibleTo($user)->whereNotIn('property_id', $runByManagers ?: [0]))
                 ->orderBy('end_date')
                 ->take(5)
                 ->get(['id', 'tenant_id', 'unit_id', 'end_date', 'monthly_rent']),
             // Rent and the security deposit apart: a first payment holds both.
             'recent_payments' => $portfolio->recentPayments(5),
-            // This month, building by building, with who runs each (the owner or a manager).
-            'by_property' => $user->isManager() ? [] : $portfolio->byProperty($thisMonth['from'], $thisMonth['to']),
+            // Buildings run by managers: how many, for the link to the private view.
+            'run_by_managers' => count($runByManagers),
         ],
 
         'summary' => [
@@ -485,6 +489,8 @@ Route::middleware('auth')->group(function () {
 
         // A self-registered owner's managers (admins can open any owner's team with ?owner_id).
         Route::get('/managers', [\App\Http\Controllers\ManagerController::class, 'index'])->name('managers.index');
+        // The owner's private, read-only view of what each manager runs.
+        Route::get('/managers/work', [\App\Http\Controllers\ManagerController::class, 'work'])->name('managers.work');
         Route::post('/managers', [\App\Http\Controllers\ManagerController::class, 'store'])->name('managers.store');
         Route::put('/managers/{manager}', [\App\Http\Controllers\ManagerController::class, 'update'])->name('managers.update');
         Route::post('/managers/{manager}/password', [\App\Http\Controllers\ManagerController::class, 'setPassword'])->name('managers.password');
