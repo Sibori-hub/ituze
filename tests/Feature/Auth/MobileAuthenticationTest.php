@@ -23,6 +23,8 @@ class MobileAuthenticationTest extends TestCase
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->string('name')->nullable();
+            $table->string('gender', 10)->nullable();
+            $table->string('marital_status', 20)->nullable();
             $table->string('account_type', 20)->default('individual');
             $table->string('company_name', 150)->nullable();
             $table->string('company_tin', 20)->nullable();
@@ -280,7 +282,7 @@ class MobileAuthenticationTest extends TestCase
             'Accept' => 'application/json',
         ])->post('/api/mobile/complete-profile', [
             'national_id' => '1199080012345678',
-            'identity_document_type' => 'nida',
+            'identity_document_type' => 'nida', 'gender' => 'female', 'marital_status' => 'single',
             'address' => 'Kigali, Rwanda',
             'sector_id' => $sectorId,
             'profile_photo' => UploadedFile::fake()->createWithContent(

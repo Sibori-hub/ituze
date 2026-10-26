@@ -200,6 +200,8 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
         // A company: its RDB certificate and street address.
         rdb_certificate: null,
         address: '',
+        gender: '',
+        marital_status: '',
     });
     const isCompany = auth.user?.account_type === 'company';
 
@@ -224,7 +226,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
 
     const isPassport = data.identity_document_type === 'passport';
     const idValid = isPassport ? /^[A-Z0-9]{6,20}$/.test(data.national_id) : /^\d{16}$/.test(data.national_id);
-    const idDone = idValid && Boolean(data.identity_document);
+    const idDone = idValid && Boolean(data.identity_document) && Boolean(data.gender) && Boolean(data.marital_status);
     const photoDone = Boolean(data.profile_photo);
     const locationDone = Boolean(data.sector_id) && (!isCompany || data.address.trim() !== '');
     const rdbDone = !isCompany || Boolean(data.rdb_certificate);
@@ -455,6 +457,31 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                         {isPassport ? t('6 to 20 letters and numbers, exactly as printed.') : t('Exactly 16 digits, as printed on your ID card.')}
                     </p>
                     <InputError message={errors.national_id || errors.identity_document_type} className="mt-1" />
+
+                    {/* The same personal details as tenants: for a company, the representative's. */}
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        {[
+                            ['gender', isCompany ? t('Representative’s gender') : t('Gender'), [['female', t('Female')], ['male', t('Male')]]],
+                            ['marital_status', isCompany ? t('Representative’s marital status') : t('Marital status'), [['single', t('Single')], ['married', t('Married')], ['divorced', t('Divorced')], ['widowed', t('Widowed')]]],
+                        ].map(([field, legend, options]) => (
+                            <fieldset key={field} className={field === 'marital_status' ? 'sm:col-span-2' : ''}>
+                                <legend className="mb-1.5 text-[13px] font-medium text-gray-700">{legend}</legend>
+                                <div className="flex flex-wrap gap-2">
+                                    {options.map(([value, label]) => {
+                                        const selected = data[field] === value;
+                                        return (
+                                            <label key={value} className={`inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#0E3B2E]/15 ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E] text-white shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}>
+                                                <input type="radio" name={field} value={value} checked={selected} onChange={() => { clearErrors(field); setData(field, value); }} className="sr-only" />
+                                                {selected && <Check size={14} strokeWidth={3} aria-hidden="true" />}
+                                                {label}
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                <InputError message={errors[field]} className="mt-1" />
+                            </fieldset>
+                        ))}
+                    </div>
 
                     <div className="mt-4">
                         <IdDocumentUpload

@@ -39,6 +39,8 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
     const details = [
         // A company: its TIN, and the person who registered it as its representative.
         ...(user.account_type === 'company' ? [['Company TIN', user.company_tin], ['Representative', `${user.first_name || ''} ${user.last_name || ''}`.trim()], ['Company address', user.company_address]] : []),
+        ['Gender', user.gender ? ({ female: 'Female', male: 'Male' }[user.gender] || user.gender) : null],
+        ['Marital status', user.marital_status ? user.marital_status.charAt(0).toUpperCase() + user.marital_status.slice(1) : null],
         ['Email', user.email],
         ['Phone', user.phone],
         [user.identity_document_type === 'passport' ? 'Passport number' : 'NIDA number', user.national_id],

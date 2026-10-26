@@ -744,6 +744,10 @@ export default {
         'No RDB certificate uploaded yet.': 'Aucun certificat RDB téléversé.',
         'Joined': 'Inscrit',
         'Phone': 'Téléphone',
+        'Representative’s gender': 'Sexe du représentant',
+        'Representative’s marital status': 'État civil du représentant',
+        'Choose your gender.': 'Choisissez votre sexe.',
+        'Choose your marital status.': 'Choisissez votre état civil.',
     },
     rw: {
         'Lease documents': 'Inyandiko z’amasezerano',
@@ -1481,5 +1485,9 @@ export default {
         'No RDB certificate uploaded yet.': 'Nta cyemezo cya RDB kirashyirwaho.',
         'Joined': 'Yiyandikishije',
         'Phone': 'Telefoni',
+        'Representative’s gender': 'Igitsina cy’uhagarariye',
+        'Representative’s marital status': 'Irangamimerere ry’uhagarariye',
+        'Choose your gender.': 'Hitamo igitsina cyawe.',
+        'Choose your marital status.': 'Hitamo irangamimerere ryawe.',
     },
 };

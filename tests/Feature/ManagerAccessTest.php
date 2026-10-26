@@ -153,7 +153,7 @@ class ManagerAccessTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake('local');
         $sector = \App\Models\Sector::create(['name' => 'Remera', 'district_id' => \App\Models\District::create(['name' => 'Gasabo', 'province_id' => \App\Models\Province::create(['name' => 'Kigali City'])->id])->id]);
         $profile = [
-            'identity_document_type' => 'nida', 'national_id' => '1199080012345678', 'sector_id' => $sector->id,
+            'identity_document_type' => 'nida', 'gender' => 'female', 'marital_status' => 'single', 'national_id' => '1199080012345678', 'sector_id' => $sector->id,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'), 'identity_document' => \Illuminate\Http\UploadedFile::fake()->image('id.jpg'),
         ];
         $this->post(route('profile.complete.store'), $profile)->assertSessionHasErrors('terms');

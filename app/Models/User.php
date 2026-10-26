@@ -56,6 +56,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'company_tin',
         'rdb_certificate',
         'company_address',
+        'gender',
+        'marital_status',
     ];
 
     /**

@@ -36,6 +36,9 @@ class ProfileCompletionController extends Controller
                     // One photo or PDF of the whole ID card, or of the passport photo page.
                     'identity_document' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
                     'sector_id'     => 'required|exists:sectors,id',
+                    // The same personal details as tenants (for a company, its representative's).
+                    'gender'        => 'required|in:'.implode(',', \App\Support\TenantProfile::GENDERS),
+                    'marital_status' => 'required|in:'.implode(',', \App\Support\TenantProfile::MARITAL_STATUSES),
                     // A company: its RDB certificate and its street address (the photo is its logo).
                     'rdb_certificate' => $request->user()->isCompany() ? 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120' : 'nullable',
                     'address'       => $request->user()->isCompany() ? 'required|string|max:255' : 'nullable|string|max:255',
@@ -57,6 +60,8 @@ class ProfileCompletionController extends Controller
                     'sector_id.required'     => '📍 Please select your location (Province → District → Sector).',
                     'sector_id.exists'       => '📍 The selected sector is not valid. Please select a sector from the dropdown list.',
                     'terms.accepted'         => 'You must accept the Terms and Conditions and the Privacy Policy to continue.',
+                    'gender.required'        => 'Choose your gender.',
+                    'marital_status.required' => 'Choose your marital status.',
                     'rdb_certificate.required' => 'Upload the company’s RDB registration certificate.',
                     'rdb_certificate.mimes'  => 'The RDB certificate must be a JPG, PNG, WEBP or PDF file.',
                     'rdb_certificate.max'    => 'The RDB certificate is too large. The maximum is 5 MB.',
@@ -76,6 +81,8 @@ class ProfileCompletionController extends Controller
                 'identity_document' => $request->file('identity_document')->store('identity-documents/'.$user->id, 'local'),
                 'profile_photo'     => $path,
                 'sector_id'         => $validated['sector_id'],
+                'gender'            => $validated['gender'],
+                'marital_status'    => $validated['marital_status'],
                 'profile_completed' => true,
                 ...($user->isCompany() ? [
                     'rdb_certificate' => $request->file('rdb_certificate')->store('company-documents/'.$user->id, 'local'),

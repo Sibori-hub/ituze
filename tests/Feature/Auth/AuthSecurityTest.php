@@ -284,6 +284,8 @@ class AuthSecurityTest extends TestCase
         $submit = fn (string $type, string $number) => $this->actingAs($user)->post(route('profile.complete.store'), [
             'identity_document_type' => $type,
             'national_id' => $number,
+            'gender' => 'male',
+            'marital_status' => 'married',
             'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
             'identity_document' => \Illuminate\Http\UploadedFile::fake()->image('id.jpg'),
@@ -309,13 +311,16 @@ class AuthSecurityTest extends TestCase
         $company->forceFill(['account_type' => 'company', 'company_name' => 'IKAZE LTD', 'company_tin' => '123456789'])->save();
         // Every field is kept: the representative's ID, the photo (the logo) and the location.
         $form = [
-            'identity_document_type' => 'nida', 'national_id' => '1199080012345013', 'sector_id' => $sectorId,
+            'identity_document_type' => 'nida', 'gender' => 'female', 'marital_status' => 'single', 'national_id' => '1199080012345013', 'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('logo.png'),
             'identity_document' => \Illuminate\Http\UploadedFile::fake()->create('rep-id.pdf', 100, 'application/pdf'),
         ];
 
+        // Gender and marital status, like a tenant's (here the representative's), are required.
+        $this->actingAs($company)->post(route('profile.complete.store'), array_diff_key($form, array_flip(['gender', 'marital_status'])))
+            ->assertSessionHasErrors(['gender', 'marital_status']);
         // A company also gives its RDB certificate and its street address.
-        $this->actingAs($company)->post(route('profile.complete.store'), $form)->assertSessionHasErrors(['rdb_certificate', 'address']);
+        $this->post(route('profile.complete.store'), $form)->assertSessionHasErrors(['rdb_certificate', 'address']);
         $this->post(route('profile.complete.store'), [...$form,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('logo.png'),
             'identity_document' => \Illuminate\Http\UploadedFile::fake()->create('rep-id.pdf', 100, 'application/pdf'),
@@ -350,7 +355,7 @@ class AuthSecurityTest extends TestCase
         $sectorId = \Illuminate\Support\Facades\DB::table('sectors')->insertGetId(['name' => 'Kimihurura', 'district_id' => \Illuminate\Support\Facades\DB::table('districts')->insertGetId(['name' => 'Gasabo', 'province_id' => \Illuminate\Support\Facades\DB::table('provinces')->insertGetId(['name' => 'Kigali'])])]);
         $user = $this->owner(['status' => 'pending', 'expires_at' => null, 'profile_completed' => false]);
         $form = fn (array $extra) => [
-            'identity_document_type' => 'nida',
+            'identity_document_type' => 'nida', 'gender' => 'female', 'marital_status' => 'single',
             'national_id' => '1199080012345012',
             'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
@@ -402,7 +407,7 @@ class AuthSecurityTest extends TestCase
         $disabledAdmin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'phone' => '0788000001', 'disabled_at' => now()]);
         $user = $this->owner(['first_name' => 'Jean', 'last_name' => 'Uwase', 'status' => 'pending', 'expires_at' => null, 'profile_completed' => false]);
         $submit = fn () => $this->actingAs($user)->post(route('profile.complete.store'), [
-            'identity_document_type' => 'nida',
+            'identity_document_type' => 'nida', 'gender' => 'female', 'marital_status' => 'single',
             'national_id' => '1199080012345012',
             'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('me.jpg'),
@@ -496,7 +501,7 @@ class AuthSecurityTest extends TestCase
             'last_name' => 'Mukamana',
             'email' => 'jeanne.owner@example.com',
             'phone' => '+250 788 555 111',
-            'identity_document_type' => 'nida',
+            'identity_document_type' => 'nida', 'gender' => 'female', 'marital_status' => 'single',
             'national_id' => '1 1985 7 0012345 0 99',
             'sector_id' => $sectorId,
             'profile_photo' => \Illuminate\Http\UploadedFile::fake()->image('jeanne.jpg'),
