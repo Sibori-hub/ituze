@@ -141,7 +141,18 @@ class UnitsOnFloorsTest extends TestCase
         $this->actingAs($owner)->get(route('dashboard'))->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
             ->where('ownerReport.recent_payments.0.rent', fn ($rent) => (float) $rent === 400000.0)
             ->where('ownerReport.recent_payments.0.deposit', fn ($deposit) => (float) $deposit === 200000.0)
-            ->where('ownerReport.recent_payments.0.amount', fn ($amount) => (float) $amount === 600000.0));
+            ->where('ownerReport.recent_payments.0.amount', fn ($amount) => (float) $amount === 600000.0)
+            // This month by building: who runs it, rent, deposits and income apart.
+            ->where('ownerReport.by_property.0.name', 'Ikaze Building')
+            ->where('ownerReport.by_property.0.whole_by_manager', true)
+            ->where('ownerReport.by_property.0.managers', [$manager->name])
+            ->where('ownerReport.by_property.0.rent', fn ($rent) => (float) $rent === 400000.0)
+            ->where('ownerReport.by_property.0.deposits', fn ($deposits) => (float) $deposits === 200000.0)
+            ->where('ownerReport.by_property.0.income', fn ($income) => (float) $income === 400000.0));
+
+        // The subscription page totals every property: per month and paid.
+        $this->get(route('subscription.show'))->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->where('totals.properties', 1)->where('totals.per_month', 100000));
     }
 
     /** A valid Rwandan address for a new tenant. */

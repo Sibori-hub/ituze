@@ -352,6 +352,8 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
                 ->get(['id', 'tenant_id', 'unit_id', 'end_date', 'monthly_rent']),
             // Rent and the security deposit apart: a first payment holds both.
             'recent_payments' => $portfolio->recentPayments(5),
+            // This month, building by building, with who runs each (the owner or a manager).
+            'by_property' => $user->isManager() ? [] : $portfolio->byProperty($thisMonth['from'], $thisMonth['to']),
         ],
 
         'summary' => [

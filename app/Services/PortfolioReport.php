@@ -103,6 +103,44 @@ class PortfolioReport
             ]);
     }
 
+    /**
+     * Rent, deposits and income of the period for each building, and who runs
+     * it: the owner, or the manager(s) the owner gave it (or part of it) to.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function byProperty(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $rows = $this->paymentsQuery()
+            ->whereBetween('rent_payments.paid_at', [$from->startOfDay(), $to->endOfDay()])
+            ->groupBy('properties.id', 'rent_charges.charge_type')
+            ->get(['properties.id as property_id', 'rent_charges.charge_type', DB::raw('SUM(rent_payments.amount) as total')])
+            ->groupBy('property_id');
+        $properties = \App\Models\Property::query()->visibleTo($this->user)->with('owner')->orderBy('name')->get(['id', 'name', 'owner_id']);
+        $managers = \App\Models\ManagerAssignment::query()->whereIn('property_id', $properties->pluck('id'))
+            ->whereHas('manager', fn ($manager) => $manager->where('role', 'manager')->whereNull('disabled_at')->where('status', '!=', 'disabled'))
+            ->with('manager:id,name')->get()->groupBy('property_id');
+
+        return $properties->map(function ($property) use ($rows, $managers) {
+            $money = $rows->get($property->id, collect());
+            $sum = fn (string $type) => round((float) $money->where('charge_type', $type)->sum('total'), 2);
+            $rent = $sum('rent');
+            $fee = round($rent * (float) ($property->owner?->managementFeeRate() ?? 0) / 100, 2);
+            $runBy = $managers->get($property->id, collect());
+
+            return [
+                'id' => $property->id,
+                'name' => $property->name,
+                // Names of the managers running all or part of it; empty when the owner runs it.
+                'managers' => $runBy->pluck('manager.name')->filter()->unique()->values()->all(),
+                'whole_by_manager' => $runBy->contains(fn ($assignment) => $assignment->property_unit_id === null),
+                'rent' => $rent,
+                'deposits' => $sum('deposit'),
+                'income' => round($rent - $fee, 2),
+            ];
+        })->values()->all();
+    }
+
     /** @return Collection<int, User> */
     private function ownersById(Collection $ids): Collection
     {

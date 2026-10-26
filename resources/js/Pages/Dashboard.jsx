@@ -605,6 +605,72 @@ function AdminDashboard({ overview, inquiries, user, language }) {
     );
 }
 
+/**
+ * The month's money building by building, grouped by who runs it: the owner,
+ * or their managers. Totals match the cards above.
+ */
+function ByBuilding({ rows, month, money, managed, t }) {
+    const groups = [
+        ['you', t('Run by you'), rows.filter((row) => !row.whole_by_manager)],
+        ['managers', t('Run by your managers'), rows.filter((row) => row.whole_by_manager)],
+    ].filter(([, , list]) => list.length > 0);
+    const sum = (list, key) => list.reduce((total, row) => total + Number(row[key] || 0), 0);
+    const Totals = ({ label, list, strong = false }) => (
+        <tr className={strong ? 'bg-[#0E3B2E]/[0.06] font-bold text-gray-900' : 'bg-gray-50 font-semibold text-gray-800'}>
+            <th scope="row" colSpan={2} className="px-4 py-2.5 text-left">{label}</th>
+            <td className="px-4 py-2.5 text-right tabular-nums">{money(sum(list, 'rent'))}</td>
+            <td className="px-4 py-2.5 text-right tabular-nums text-violet-800">{money(sum(list, 'deposits'))}</td>
+            <td className="px-4 py-2.5 text-right tabular-nums">{money(sum(list, 'income'))}</td>
+        </tr>
+    );
+
+    return (
+        <section aria-labelledby="by-building-title" className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+            <div className="border-b border-gray-100 px-5 py-4">
+                <h2 id="by-building-title" className="font-[Sora] font-semibold text-gray-900">{t('This month by building')}</h2>
+                <p className="mt-0.5 text-xs text-gray-600">{t(':month · rent collected, deposits and your income for each building, and who runs it', { month })}</p>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-sm">
+                    <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-600">
+                        <tr>
+                            <th scope="col" className="px-4 py-3 text-left font-semibold">{t('Building')}</th>
+                            <th scope="col" className="px-4 py-3 text-left font-semibold">{t('Run by')}</th>
+                            <th scope="col" className="px-4 py-3 text-right font-semibold">{t('Rent collected')}</th>
+                            <th scope="col" className="px-4 py-3 text-right font-semibold">{t('Deposits received')}</th>
+                            <th scope="col" className="px-4 py-3 text-right font-semibold">{managed ? t('Your payout') : t('Your income')}</th>
+                        </tr>
+                    </thead>
+                    {groups.map(([key, label, list]) => (
+                        <tbody key={key} className="divide-y divide-gray-100">
+                            {list.map((row) => (
+                                <tr key={row.id} className="text-gray-800">
+                                    <th scope="row" className="px-4 py-2.5 text-left font-semibold text-gray-900">
+                                        <Link href={route('properties.show', row.id)} className="hover:text-[#0E3B2E] hover:underline">{row.name}</Link>
+                                    </th>
+                                    <td className="px-4 py-2.5">
+                                        {row.whole_by_manager
+                                            ? <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-900 ring-1 ring-sky-200">{row.managers.join(', ')}</span>
+                                            : <span className="text-xs text-gray-600">{t('You')}{row.managers.length > 0 ? ` · ${t('some units: :names', { names: row.managers.join(', ') })}` : ''}</span>}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right tabular-nums">{money(row.rent)}</td>
+                                    <td className="px-4 py-2.5 text-right tabular-nums text-violet-800">{money(row.deposits)}</td>
+                                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums">{money(row.income)}</td>
+                                </tr>
+                            ))}
+                            {groups.length > 1 && <Totals label={label} list={list} />}
+                        </tbody>
+                    ))}
+                    <tfoot>
+                        <Totals label={t('Total')} list={rows} strong />
+                    </tfoot>
+                </table>
+            </div>
+            <p className="border-t border-gray-100 px-5 py-2.5 text-xs text-gray-600">{t('Deposits are the tenants’ money, held until they move out: they are not part of your income.')}</p>
+        </section>
+    );
+}
+
 export default function Dashboard({ summary, recentProperties = [], recentTenancies = [], recentInquiries = [], adminOverview, ownerReport, utilitySnapshot = null }) {
     const { auth } = usePage().props;
     const { t, language } = useTranslation();
@@ -729,6 +795,10 @@ function OwnerDashboard({ user, language, summary, recentProperties, recentTenan
                         ))}
                     </div>
                 </section>
+
+                {!isManager && (report.by_property || []).length > 0 && (
+                    <ByBuilding rows={report.by_property} month={thisMonth} money={money} managed={report.managed} t={t} />
+                )}
 
                 <div className="grid gap-5 lg:grid-cols-3">
                     {/* Collection chart */}

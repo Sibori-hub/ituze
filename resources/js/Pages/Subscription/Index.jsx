@@ -28,7 +28,7 @@ const STATE_STYLE = {
     paused: ['bg-gray-100 text-gray-700 ring-gray-200', 'Paused'],
 };
 
-export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null, momoPay = {}, momoApi = false, selectedProperty = null }) {
+export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null, momoPay = {}, momoApi = false, selectedProperty = null, totals = { properties: 0, per_month: 0, paid: 0, pending: 0 } }) {
     const { t, language } = useTranslation();
     const locale = localeFor(language);
     const money = (value) => `${Number(value || 0).toLocaleString(locale, { maximumFractionDigits: 0 })} RWF`;
@@ -100,11 +100,23 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                 </p>
                             </div>
                         </div>
-                        <div className="rounded-2xl bg-white/15 px-5 py-4 text-right ring-1 ring-white/20">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{t('Price')}</p>
-                            <p className="font-[Sora] text-2xl font-bold">{money(monthlyPrice)}</p>
-                            <p className="text-xs text-white/80">{t('per property, per month')}</p>
-                        </div>
+                        <dl className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
+                            <div className="rounded-2xl bg-white/15 px-4 py-3 ring-1 ring-white/20 sm:text-right">
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-white/80">{t('Total per month')}</dt>
+                                <dd className="font-[Sora] text-2xl font-bold tabular-nums">{money(totals.per_month)}</dd>
+                                <dd className="text-xs text-white/80">{t(':count × :price', { count: totals.properties, price: money(monthlyPrice) })}</dd>
+                            </div>
+                            <div className="rounded-2xl bg-white/15 px-4 py-3 ring-1 ring-white/20 sm:text-right">
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-white/80">{t('Total paid')}</dt>
+                                <dd className="font-[Sora] text-2xl font-bold tabular-nums">{money(totals.paid)}</dd>
+                                <dd className="text-xs text-white/80">{t('approved payments')}</dd>
+                            </div>
+                            <div className="rounded-2xl bg-white/15 px-4 py-3 ring-1 ring-white/20 sm:text-right">
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-white/80">{t('Waiting for approval')}</dt>
+                                <dd className="font-[Sora] text-2xl font-bold tabular-nums">{money(totals.pending)}</dd>
+                                <dd className="text-xs text-white/80">{t(':price per property, per month', { price: money(monthlyPrice) })}</dd>
+                            </div>
+                        </dl>
                     </div>
                 </section>
 

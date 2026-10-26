@@ -50,6 +50,13 @@ class SubscriptionController extends Controller
         return Inertia::render('Subscription/Index', [
             'subscription' => $this->status($owner),
             'monthlyPrice' => SubscriptionService::monthlyPrice(),
+            // Totals: what all the properties cost per month, what was paid, what waits for approval.
+            'totals' => [
+                'properties' => $owner->properties()->count(),
+                'per_month' => $owner->properties()->count() * SubscriptionService::monthlyPrice(),
+                'paid' => (float) SubscriptionPayment::query()->where('owner_id', $owner->id)->where('status', SubscriptionPayment::APPROVED)->sum('amount'),
+                'pending' => (float) SubscriptionPayment::query()->where('owner_id', $owner->id)->where('status', SubscriptionPayment::PENDING)->sum('amount'),
+            ],
             'monthOptions' => SubscriptionService::monthOptions(),
             'selectedProperty' => $request->integer('property') ?: null,
             'payments' => SubscriptionPayment::query()
