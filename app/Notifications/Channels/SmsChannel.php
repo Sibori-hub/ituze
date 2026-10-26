@@ -24,7 +24,8 @@ class SmsChannel
             ? ($notifiable->routeNotificationFor('sms', $notification) ?? $notifiable->phone ?? null)
             : ($notifiable->phone ?? null);
 
-        if (blank($phone) || ! method_exists($notification, 'toSms')) {
+        // Sample or demo accounts whose phone may belong to someone else get no SMS.
+        if (blank($phone) || ! method_exists($notification, 'toSms') || ($notifiable->sms_muted ?? false)) {
             return;
         }
 

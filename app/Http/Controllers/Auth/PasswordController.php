@@ -24,7 +24,7 @@ class PasswordController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
         // A manager is told by email and SMS, so a change they did not make is noticed.
-        if ($request->user()->isManager()) {
+        if ($request->user()->isManager() || ($request->user()->isOwner() && $request->user()->isManaged())) {
             $request->user()->notify(new \App\Notifications\ManagerPasswordChanged());
         }
 

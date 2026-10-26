@@ -69,6 +69,7 @@ export default function CreateUser({ locations }) {
         first_name: '',
         last_name: '',
         email: '',
+        username: '',
         phone: '',
         identity_document_type: 'nida',
         national_id: '',
@@ -110,7 +111,9 @@ export default function CreateUser({ locations }) {
     const passwordValid = passwordChecks.every((rule) => rule.met);
     const passwordsMatch = data.password !== '' && data.password === data.password_confirmation;
     const feeValid = data.role !== 'owner' || (data.management_fee_percent !== '' && Number(data.management_fee_percent) >= 0 && Number(data.management_fee_percent) <= 100);
-    const accessDone = passwordValid && passwordsMatch && feeValid;
+    // Owners sign in with a username, like managers.
+    const usernameValid = data.role !== 'owner' || /^[a-z0-9][a-z0-9._-]{2,29}$/.test(data.username);
+    const accessDone = passwordValid && passwordsMatch && feeValid && usernameValid;
     const isFormValid = contactDone && idValid && locationDone && photoDone && accessDone;
 
     // A strong temporary password the admin can read out or send to the owner.
@@ -439,6 +442,17 @@ export default function CreateUser({ locations }) {
 
                     <Section number={6} title={t('Sign-in & fee')} hint={t('Set a temporary password to give the account holder. They must change it at their first sign-in.')} done={accessDone}>
                         <div className="grid gap-4 sm:grid-cols-2">
+                            {data.role === 'owner' && (
+                                <div className="sm:col-span-2">
+                                    <label htmlFor="username" className="mb-1.5 block text-sm font-semibold text-gray-800">{t('Username (used to sign in)')}</label>
+                                    <input id="username" value={data.username} onChange={(e) => setData('username', e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 30))}
+                                        autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={t('e.g. albert.rwibutso')} aria-describedby="username-help"
+                                        aria-invalid={Boolean(errors.username) || undefined}
+                                        className={`${fieldClass} px-3 font-mono ${errors.username ? invalidClass : ''}`} />
+                                    <p id="username-help" className="mt-1 text-xs text-gray-600">{t('They also get an email and an SMS with this username. The password is never sent: give it to them yourself.')}</p>
+                                    {errors.username && <p className="mt-1 text-xs font-medium text-red-600">{t(errors.username)}</p>}
+                                </div>
+                            )}
                             <div>
                                 <div className="mb-1.5 flex items-center justify-between gap-2">
                                     <label htmlFor="password" className="text-sm font-semibold text-gray-800">{t('Temporary password')}</label>

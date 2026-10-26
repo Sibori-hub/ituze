@@ -1572,6 +1572,8 @@ export default {
         '1 building or unit': '1 bâtiment ou unité',
         ':count buildings or units': ':count bâtiments ou unités',
         'A manager belongs to their owner. Only the owner can remove a manager; you can disable the owner instead.': 'Un gestionnaire appartient à son propriétaire. Seul le propriétaire peut le retirer ; vous pouvez désactiver le propriétaire.',
+        'e.g. albert.rwibutso': 'ex. albert.rwibutso',
+        'They also get an email and an SMS with this username. The password is never sent: give it to them yourself.': 'Il reçoit aussi un e-mail et un SMS avec ce nom d’utilisateur. Le mot de passe n’est jamais envoyé : donnez-le-lui vous-même.',
     },
     rw: {
         'Log in': 'Injira',
@@ -3146,5 +3148,7 @@ export default {
         '1 building or unit': 'Inyubako cyangwa igice 1',
         ':count buildings or units': 'Inyubako cyangwa ibice :count',
         'A manager belongs to their owner. Only the owner can remove a manager; you can disable the owner instead.': 'Umucunga ni uwa nyir’inzu. Nyir’inzu wenyine ni we umukuraho; wowe ushobora guhagarika nyir’inzu.',
+        'e.g. albert.rwibutso': 'urugero albert.rwibutso',
+        'They also get an email and an SMS with this username. The password is never sent: give it to them yourself.': 'Ahabwa kandi imeyili na SMS birimo iri zina ry’ukoresha. Ijambo ry’ibanga ntiryoherezwa: urimuhe ubwawe.',
     },
 };

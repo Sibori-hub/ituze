@@ -38,10 +38,10 @@ class ManagerPasswordChanged extends Notification implements ShouldQueue
             ->greeting('Hello '.($notifiable->first_name ?: $notifiable->name).',');
 
         $mail = $this->byOwner
-            ? $mail->line($this->byOwner.' set a new temporary password for your manager account on '.now('Africa/Kigali')->format('j M Y, H:i').'.')
+            ? $mail->line($this->byOwner.' set a new temporary password for your account on '.now('Africa/Kigali')->format('j M Y, H:i').'.')
                 ->line('Ask '.$this->byOwner.' for it. You will choose your own password at your next sign-in.')
-            : $mail->line('The password of your manager account was changed on '.now('Africa/Kigali')->format('j M Y, H:i').'.')
-                ->line('If you did not do this, contact the owner you work for or ITUZE at once.');
+            : $mail->line('The password of your account was changed on '.now('Africa/Kigali')->format('j M Y, H:i').'.')
+                ->line($notifiable->isManager() ? 'If you did not do this, contact the owner you work for or ITUZE at once.' : 'If you did not do this, contact ITUZE at once.');
 
         return $mail->action('Sign in', route('login'))
             ->salutation('ITUZE GREEN PLATFORM · Q.R.A GROUP LTD');
@@ -52,6 +52,6 @@ class ManagerPasswordChanged extends Notification implements ShouldQueue
     {
         return $this->byOwner
             ? 'ITUZE: '.str($this->byOwner)->limit(20, '').' set a new temporary password for you (username '.$notifiable->username.'). Ask them for it, then sign in: '.route('login')
-            : 'ITUZE: your manager password was changed '.now('Africa/Kigali')->format('j M H:i').'. Not you? Contact your owner or ITUZE now.';
+            : 'ITUZE: your password was changed '.now('Africa/Kigali')->format('j M H:i').'. Not you? Contact '.($notifiable->isManager() ? 'your owner or ' : '').'ITUZE now.';
     }
 }

@@ -448,6 +448,7 @@ class AuthSecurityTest extends TestCase
 
         return [
             'role' => 'owner',
+            'username' => 'jeanne.mukamana',
             'first_name' => 'Jeanne',
             'last_name' => 'Mukamana',
             'email' => 'jeanne.owner@example.com',

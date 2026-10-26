@@ -132,10 +132,13 @@ class UserController extends Controller
                 ? RegisteredUserController::normalizeRwandaPhone((string) $request->input('phone'))
                 : $request->input('phone'),
             'national_id' => IdentityNumber::normalize($request->input('identity_document_type'), $request->input('national_id')),
+            'username' => filled($request->input('username')) ? \Illuminate\Support\Str::lower(trim((string) $request->input('username'))) : null,
         ]);
 
         $validated = $request->validate([
             'role' => ['required', 'in:'.implode(',', RegisteredUserController::SELF_SERVICE_ROLES)],
+            // Like a manager: the owner signs in with this username (or the phone).
+            'username' => [$request->input('role') === 'owner' ? 'required' : 'nullable', 'nullable', 'regex:/^[a-z0-9][a-z0-9._-]{2,29}$/', 'unique:'.User::class],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
@@ -148,10 +151,13 @@ class UserController extends Controller
             'management_fee_percent' => [$request->input('role') === 'owner' ? 'required' : 'prohibited', 'nullable', 'numeric', 'between:0,100'],
         ], [
             'phone.regex' => 'Enter a valid Rwanda mobile number (072, 073, 078, or 079).',
+            'username.regex' => 'Use 3 to 30 letters or numbers; dots, dashes and underscores are allowed (e.g. albert.rwibutso).',
+            'username.unique' => 'This username is already taken. Choose another one.',
             ...IdentityNumber::messages(),
         ]);
 
         $user = new User([
+            'username' => $validated['username'] ?? null,
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'name' => $validated['first_name'].' '.$validated['last_name'],
@@ -179,8 +185,13 @@ class UserController extends Controller
             'phone_verified_at' => now(),
         ])->save();
 
+        // Like a new manager: told by email and SMS (username and how to sign in; never the password).
+        if ($user->isOwner()) {
+            $user->notify(new \App\Notifications\ManagedOwnerAccountCreated());
+        }
+
         return redirect()->route('admin.users', ['source' => 'managed'])
-            ->with('success', $user->name.' was added as a '.strtolower($user->roleLabel()).' managed by ITUZE GREEN PLATFORM. Give them the temporary password; they must change it at first sign-in.');
+            ->with('success', $user->name.' was added as a '.strtolower($user->roleLabel()).' managed by ITUZE GREEN PLATFORM and was told by email and SMS. Give them the temporary password; they must change it at first sign-in.');
     }
 
     /**
@@ -201,6 +212,10 @@ class UserController extends Controller
             'must_change_password' => true,
         ])->save();
         $user->endAllSessions();
+
+        if ($user->isOwner()) {
+            $user->notify(new \App\Notifications\ManagerPasswordChanged(byOwner: 'ITUZE GREEN PLATFORM'));
+        }
 
         return back()->with('success', 'A temporary password was set for '.$user->name.'. They must change it at their next sign-in.');
     }

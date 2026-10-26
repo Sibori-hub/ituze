@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\Log;
  */
 class ActivityLogger
 {
+    /** Side effects of another action (a unit turning occupied): no separate message. */
+    private const QUIET = ['room.updated', 'lease.status'];
+
+    /** @var array<int, true> log lines to tell the managed owner about, sent once the request ends */
+    private static array $toTell = [];
     public static function record(
         string $action,
         string $description,
@@ -59,7 +64,7 @@ class ActivityLogger
             }
         }
 
-        ActivityLog::create([
+        $log = ActivityLog::create([
             'actor_id' => $actor->id,
             'owner_id' => $ownerId,
             'property_id' => $propertyId,
@@ -71,5 +76,41 @@ class ActivityLogger
             'group_key' => $groupKey,
             'created_at' => now(),
         ]);
+        self::tellManagedOwner($log, $actor);
+    }
+
+    /**
+     * An owner Q.R.A manages is told by email and SMS of each thing Q.R.A does
+     * in their buildings. Sent when the request ends, so a payment covering
+     * several months goes out once with its full amount.
+     */
+    private static function tellManagedOwner(ActivityLog $log, $actor): void
+    {
+        if (! $log->owner_id || $log->owner_id === $actor->id || in_array($log->action, self::QUIET, true)) {
+            return;
+        }
+        if (self::$toTell === []) {
+            app()->terminating(static function () {
+                $ids = array_keys(self::$toTell);
+                self::$toTell = [];
+                foreach (ActivityLog::query()->with(['owner', 'property:id,name'])->whereKey($ids)->get() as $line) {
+                    $owner = $line->owner;
+                    if (! $owner || $owner->role !== 'owner' || ! $owner->isManaged() || $owner->isDisabled()) {
+                        continue;
+                    }
+                    try {
+                        $owner->notify(new \App\Notifications\ManagedOwnerActivity(
+                            $line->description,
+                            $line->property?->name,
+                            $line->amount !== null ? (float) $line->amount : null,
+                            $line->created_at?->timezone('Africa/Kigali')->format('j M Y, H:i') ?? '',
+                        ));
+                    } catch (\Throwable $e) {
+                        Log::warning('Managed owner not told: '.$e->getMessage(), ['log' => $line->id]);
+                    }
+                }
+            });
+        }
+        self::$toTell[$log->id] = true;
     }
 }

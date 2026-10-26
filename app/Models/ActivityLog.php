@@ -26,6 +26,12 @@ class ActivityLog extends Model
         return $this->belongsTo(User::class, 'actor_id')->withTrashed();
     }
 
+    /** The owner whose workspace this line belongs to. */
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
     public function property()
     {
         return $this->belongsTo(Property::class);

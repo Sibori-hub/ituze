@@ -34,6 +34,31 @@ class AdminOwnerTrackingTest extends TestCase
             ->where('adminOverview.rentCollections.5.amount', fn ($amount) => (float) $amount === 300000.0));
     }
 
+    public function test_the_managed_owner_is_told_of_everything_qra_does_and_muted_accounts_get_no_sms(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'profile_completed' => true]);
+        $owner = User::factory()->create(['role' => 'owner', 'status' => 'approved', 'created_by' => $admin->id, 'username' => 'albert.rwibutso', 'phone' => '0780000001']);
+        $property = Property::create(['owner_id' => $owner->id, 'name' => 'Rwibutso Plaza', 'address' => 'KG 9 Ave', 'total_floors' => 2]);
+
+        // Q.R.A adds a unit in the owner's building: the owner is told by email and SMS.
+        $this->actingAs($admin)->post(route('properties.units.store', $property), [
+            'floor_number' => 1, 'unit_number' => '101', 'size_sqm' => 30, 'rent_amount' => 250000, 'rent_frequency' => 'monthly',
+            'images' => [\Illuminate\Http\UploadedFile::fake()->image('unit.jpg')],
+        ])->assertSessionHasNoErrors();
+        \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\ManagedOwnerActivity::class,
+            fn ($notification, $channels) => str_contains($notification->description, '101') && $notification->propertyName === 'Rwibutso Plaza'
+                && in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true));
+
+        // A muted sample account: the SMS channel sends nothing.
+        $owner->forceFill(['sms_muted' => true])->save();
+        $sms = \Mockery::mock(\App\Services\SmsService::class);
+        $sms->shouldNotReceive('send');
+        $this->app->instance(\App\Services\SmsService::class, $sms);
+        app(\App\Notifications\Channels\SmsChannel::class)->send($owner->fresh(), new \App\Notifications\ManagedOwnerActivity('Test', 'Rwibutso Plaza', null, 'now'));
+    }
+
     public function test_only_admins_follow_self_registered_owners_and_their_data(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved', 'profile_completed' => true]);

@@ -40,7 +40,7 @@ class ForcedPasswordController extends Controller
             'must_change_password' => false,
         ])->save();
 
-        if ($user->isManager()) {
+        if ($user->isManager() || ($user->isOwner() && $user->isManaged())) {
             $user->notify(new \App\Notifications\ManagerPasswordChanged());
         }
 

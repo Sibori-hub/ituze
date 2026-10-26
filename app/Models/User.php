@@ -50,6 +50,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'management_fee_percent',
         'momo_pay_code',
         'momo_pay_name',
+        'sms_muted',
     ];
 
     /**
