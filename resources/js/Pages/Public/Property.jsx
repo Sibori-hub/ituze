@@ -1,5 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
+import RwandaFlag from '@/Components/RwandaFlag';
+import RwandaPhoneInput, { isRwandaMobile } from '@/Components/RwandaPhoneInput';
 import BrandLockup from '@/Components/BrandLockup';
 import {
     ArrowLeft,
@@ -48,6 +50,14 @@ const companyPhoneDisplay = '0793905166';
 const companyAddress = 'KG 14 Ave, Kigali-Gisozi-Musezero: ULK-Kagugu Road, Source Oil Building';
 const companyMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(companyAddress)}`;
 
+// A Rwandan number as its 10 local digits, grouped: 0788 123 456.
+const localPhone = (phone) => {
+    let digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('250') && digits.length === 12) digits = `0${digits.slice(3)}`;
+    if (digits.length === 9) digits = `0${digits}`;
+    return digits.length === 10 ? `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}` : phone;
+};
+
 const internationalPhone = (phone) => {
     const digits = phone.replace(/\D/g, '');
     if (digits.startsWith('00')) return digits.slice(2);
@@ -69,6 +79,12 @@ function InquiryModal({ property, unit, onClose, onSubmitted }) {
 
     const submit = (event) => {
         event.preventDefault();
+        if (!isRwandaMobile(form.data.visitor_phone)) {
+            form.setError('visitor_phone', 'Enter the 9 digits after +250, starting with 72, 73, 78 or 79.');
+            return;
+        }
+        // The box holds the 9 digits after +250; the server gets the 10 local digits (07...).
+        form.transform((data) => ({ ...data, visitor_phone: `0${data.visitor_phone}` }));
         form.post(route('public.properties.inquiries.store', property.id), {
             preserveScroll: true,
             onSuccess: onSubmitted,
@@ -100,12 +116,21 @@ function InquiryModal({ property, unit, onClose, onSubmitted }) {
                         <label className="text-xs font-bold uppercase tracking-wide text-slate-600">{t('Your name')}
                             <input required value={form.data.visitor_name} onChange={(event) => form.setData('visitor_name', event.target.value)} placeholder="e.g. Alex" className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
                         </label>
-                        <label className="text-xs font-bold uppercase tracking-wide text-slate-600">{t('Phone number')}
-                            <input required type="tel" value={form.data.visitor_phone} onChange={(event) => form.setData('visitor_phone', event.target.value)} placeholder="+250..." className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
-                        </label>
+                        <div>
+                            <label htmlFor="visitor_phone" className="text-xs font-bold uppercase tracking-wide text-slate-600">{t('Phone number')}</label>
+                            <RwandaPhoneInput
+                                id="visitor_phone"
+                                className="mt-2"
+                                value={form.data.visitor_phone}
+                                onChange={(digits) => {
+                                    form.clearErrors('visitor_phone');
+                                    form.setData('visitor_phone', digits);
+                                }}
+                                error={form.errors.visitor_phone}
+                            />
+                        </div>
                     </div>
                     {form.errors.visitor_name && <p className="text-xs font-medium text-red-600">{form.errors.visitor_name}</p>}
-                    {form.errors.visitor_phone && <p className="text-xs font-medium text-red-600">{form.errors.visitor_phone}</p>}
                     <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">{t('Email address')}
                         <input required type="email" value={form.data.visitor_email} onChange={(event) => form.setData('visitor_email', event.target.value)} placeholder="you@example.com" className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
                     </label>
@@ -289,7 +314,7 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                                             <p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-200">{t('Property contact')}</p>
                                             <p className="mt-1 flex items-center gap-1.5 truncate text-lg font-black">{ownerName} <CheckCircle2 size={15} className="shrink-0 text-emerald-300" /></p>
                                             <p className="mt-0.5 text-xs text-white/65">Owner · {property.name}</p>
-                                            {ownerPhone && <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-white"><Phone size={13} className="shrink-0 text-emerald-200" />{ownerPhone}</p>}
+                                            {ownerPhone && <p className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-white"><RwandaFlag className="h-[11px] w-[16px] shrink-0 rounded-[2px]" aria-hidden="true" />{localPhone(ownerPhone)}</p>}
                                         </div>
                                     </div>
                                     <div className="relative mt-5 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 px-4 py-3">

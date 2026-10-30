@@ -55,27 +55,22 @@ class PublicPropertyController extends Controller
 
     public function inquire(Request $request, Property $property): JsonResponse|RedirectResponse
     {
+        // The +250 box sends the 10 local digits (07...); +250 or spaces are accepted too.
+        $request->merge(['visitor_phone' => \App\Http\Controllers\Auth\RegisteredUserController::normalizeRwandaPhone((string) $request->input('visitor_phone'))]);
         $validated = $request->validate([
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
             'visitor_name' => ['required', 'string', 'max:120'],
             'visitor_email' => ['required', 'email', 'max:255'],
-            'visitor_phone' => ['required', 'string', 'regex:/^\+?[0-9\s().-]{7,40}$/'],
+            'visitor_phone' => ['required', 'regex:/^(072|073|078|079)\d{7}$/'],
             'message' => ['required', 'string', 'max:2000'],
             // The business the visitor will run there (office, salon, shop...).
             'business_use' => ['nullable', 'string', 'max:120'],
+        ], [
+            'visitor_phone.regex' => 'Enter a Rwandan mobile number: 10 digits starting with 072, 073, 078 or 079.',
         ]);
         $validated['visitor_email'] = strtolower(trim($validated['visitor_email']));
-        $phoneDigits = preg_replace('/\D+/', '', $validated['visitor_phone']) ?? '';
-        $phoneDigits = str_starts_with($phoneDigits, '00') ? substr($phoneDigits, 2) : $phoneDigits;
-        if (strlen($phoneDigits) === 9) {
-            $phoneDigits = '250'.$phoneDigits;
-        } elseif (str_starts_with($phoneDigits, '0') && strlen($phoneDigits) === 10) {
-            $phoneDigits = '250'.substr($phoneDigits, 1);
-        }
-        if (strlen($phoneDigits) < 7 || strlen($phoneDigits) > 15) {
-            return $this->inquiryError($request, 'visitor_phone', 'Enter a valid phone number.');
-        }
-        $validated['visitor_phone'] = '+'.$phoneDigits;
+        // Saved as the 10 local digits; older inquiries were saved as +250..., both are matched below.
+        $phoneDigits = '250'.substr($validated['visitor_phone'], 1);
 
         $unit = $property->units()
             ->publiclyListed()

@@ -168,9 +168,21 @@ class PublicPropertyInquiryTest extends TestCase
             'unit_id' => $unit->id,
             'owner_id' => $owner->id,
             'visitor_email' => 'visitor@example.com',
-            'visitor_phone' => '+250783000111',
+            'visitor_phone' => '0783000111',
             'status' => 'new',
         ]);
+    }
+
+    public function test_inquiry_phone_must_be_a_rwandan_mobile_saved_as_10_digits(): void
+    {
+        [, $property, $unit] = $this->makeListing();
+        foreach (['+1 202 555 0100', '0712345678', '07830001'] as $phone) {
+            $this->post(route('public.properties.inquiries.store', $property), [...$this->inquiryData($unit), 'visitor_phone' => $phone])
+                ->assertSessionHasErrors('visitor_phone');
+        }
+        $this->post(route('public.properties.inquiries.store', $property), [...$this->inquiryData($unit), 'visitor_phone' => '+250 788 123 456'])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('property_inquiries', ['visitor_phone' => '0788123456']);
     }
 
     public function test_new_inquiry_alerts_owner_and_admins_by_email_and_sms(): void
@@ -189,7 +201,7 @@ class PublicPropertyInquiryTest extends TestCase
 
                 return in_array('mail', $channels, true)
                     && in_array(\App\Notifications\Channels\SmsChannel::class, $channels, true)
-                    && str_contains($sms, '+250783000111')
+                    && str_contains($sms, '0783000111')
                     && str_contains($notification->toMail($user)->subject, 'New inquiry');
             });
         }
@@ -231,7 +243,7 @@ class PublicPropertyInquiryTest extends TestCase
             'unit_id' => $unit->id,
             'owner_id' => $owner->id,
             'visitor_email' => 'visitor@example.com',
-            'visitor_phone' => '+250783000111',
+            'visitor_phone' => '0783000111',
             'status' => 'new',
         ]);
 

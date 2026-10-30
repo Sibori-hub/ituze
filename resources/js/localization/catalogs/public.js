@@ -315,6 +315,7 @@ export default {
         'Dark mode': 'Mode sombre',
         'Switch to light mode': 'Passer au mode clair',
         'Switch to dark mode': 'Passer au mode sombre',
+        'Enter a Rwandan mobile number: 10 digits starting with 072, 073, 078 or 079.': 'Entrez un numéro mobile rwandais : 10 chiffres commençant par 072, 073, 078 ou 079.',
     },
     rw: {
         'Find your perfect space to rent | ITUZE GREEN PLATFORM': 'Shaka ahantu heza ho gukodesha | ITUZE GREEN PLATFORM',
@@ -632,5 +633,6 @@ export default {
         'Dark mode': 'Uburyo bwijimye',
         'Switch to light mode': 'Hindura ujye ku buryo bwerurutse',
         'Switch to dark mode': 'Hindura ujye ku buryo bwijimye',
+        'Enter a Rwandan mobile number: 10 digits starting with 072, 073, 078 or 079.': 'Andika nimero ya telefoni yo mu Rwanda: imibare 10 itangirwa na 072, 073, 078 cyangwa 079.',
     },
 };
