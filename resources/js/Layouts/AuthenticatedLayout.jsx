@@ -145,7 +145,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* Sidebar */}
                 <aside
-                    className={`authenticated-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden transform bg-[#0E3B2E] transition-transform duration-300 ease-out lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${
+                    className={`authenticated-sidebar fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden transform bg-[#0E3B2E] dark:border-r dark:border-slate-800 dark:bg-slate-900 transition-transform duration-300 ease-out lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${
                         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
                 >
@@ -178,7 +178,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             const isActive = route().current(item.active || item.href) && !item.anchor;
                             const className = `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                                 isActive
-                                    ? 'bg-[#D9A441] text-[#0E3B2E] dark:text-emerald-300 shadow-sm'
+                                    ? 'bg-[#D9A441] text-[#0E3B2E] shadow-sm'
                                     : 'text-white/60 hover:bg-white/10 hover:text-white'
                             }`;
                             const content = (
@@ -187,7 +187,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         size={18}
                                         className={
                                             isActive
-                                                ? 'text-[#0E3B2E] dark:text-emerald-300'
+                                                ? 'text-[#0E3B2E]'
                                                 : 'text-white/50 group-hover:text-white'
                                         }
                                     />
@@ -230,7 +230,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 {/* Main content area */}
                 <div className="authenticated-main-column flex min-h-0 min-w-0 flex-1 flex-col" style={{ display: 'flex', flex: '1 1 0%', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
                     {/* Top bar */}
-                    <header className="authenticated-main-header z-30 flex h-16 shrink-0 items-center justify-between bg-[#0E3B2E] px-4 sm:px-6" style={{ flexShrink: 0 }}>
+                    <header className="authenticated-main-header z-30 flex h-16 shrink-0 items-center justify-between bg-[#0E3B2E] dark:border-b dark:border-slate-800 dark:bg-slate-900 px-4 sm:px-6" style={{ flexShrink: 0 }}>
                         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                             <button
                                 onClick={() => setSidebarOpen(true)}

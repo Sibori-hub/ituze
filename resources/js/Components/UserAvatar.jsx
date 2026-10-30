@@ -31,7 +31,7 @@ export default function UserAvatar({ user, size = 'md', className = '' }) {
 
     return (
         <span
-            className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#D9A441] to-[#F3D58F] font-[Sora] font-bold text-[#0E3B2E] dark:text-emerald-300 ${SIZES[size] ?? SIZES.md} ${className}`}
+            className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#D9A441] to-[#F3D58F] font-[Sora] font-bold text-[#0E3B2E] ${SIZES[size] ?? SIZES.md} ${className}`}
         >
             {src && !failed ? (
                 <img

@@ -586,7 +586,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                     <button
                         type="submit"
                         disabled={!isFormValid || processing}
-                        className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D9A441] py-3.5 text-sm font-semibold tracking-wide text-[#0E3B2E] dark:text-emerald-300 shadow-[0_10px_24px_-12px_rgba(217,164,65,0.9)] transition-all hover:bg-[#c9962f] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-slate-800 disabled:text-gray-400 dark:disabled:text-slate-500 disabled:shadow-none"
+                        className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D9A441] py-3.5 text-sm font-semibold tracking-wide text-[#0E3B2E] shadow-[0_10px_24px_-12px_rgba(217,164,65,0.9)] transition-all hover:bg-[#c9962f] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-slate-800 disabled:text-gray-400 dark:disabled:text-slate-500 disabled:shadow-none"
                     >
                         {processing ? (
                             <>

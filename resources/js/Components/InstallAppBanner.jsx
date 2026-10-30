@@ -121,7 +121,7 @@ function InstallAppOffer({ className = '', force = false }) {
             {isAndroid() && !canInstall && !isInAppBrowser() && (
                 <div className="mt-2 rounded-xl bg-white dark:bg-slate-900 px-3 py-2.5 text-xs text-gray-700 dark:text-slate-200 ring-1 ring-emerald-100 dark:ring-emerald-500/30">
                     <p className="font-semibold text-gray-900 dark:text-slate-100">{t('No install option on your phone? Get the Android app:')}</p>
-                    <a href={APK_URL} download="ITUZE.apk" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#D9A441] px-3 py-2 font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:bg-[#c99535]">
+                    <a href={APK_URL} download="ITUZE.apk" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#D9A441] px-3 py-2 font-semibold text-[#0E3B2E] hover:bg-[#c99535]">
                         <Smartphone size={14} aria-hidden="true" />{t('Download the Android app (1.6 MB)')}
                     </a>
                     <p className="mt-2 text-gray-600 dark:text-slate-300">{t('Then open the downloaded file and tap Install. If your phone asks, allow installing apps from this source.')}</p>

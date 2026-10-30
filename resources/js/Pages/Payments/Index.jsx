@@ -116,7 +116,7 @@ export default function PaymentsIndex({ payments, reportTotals = {}, filters = {
                     {Number(reportTotals.managed_rent) > 0 && (
                         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-amber-200 dark:border-amber-500/30 bg-gradient-to-r from-amber-50 dark:from-amber-500/10 via-amber-50/60 to-white dark:to-slate-900 px-5 py-4">
                             <div className="flex items-center gap-3">
-                                <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-[#D9A441] text-[#0E3B2E] dark:text-emerald-300 shadow-sm"><HandCoins size={20} aria-hidden="true" /></span>
+                                <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-[#D9A441] text-[#0E3B2E] shadow-sm"><HandCoins size={20} aria-hidden="true" /></span>
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-300">{t('Q.R.A commission')}</p>
                                     <p className="font-[Sora] text-2xl font-bold text-gray-900 dark:text-slate-100">{money(reportTotals.commission)}</p>

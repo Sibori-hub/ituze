@@ -161,7 +161,7 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                 {monthOptions.map((option) => (
                                     <label key={option} className={`relative cursor-pointer rounded-2xl border-2 p-3 text-center transition ${months === option ? 'border-[#0E3B2E] dark:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-500/10 shadow-sm' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-500'}`}>
                                         <input type="radio" name="months" value={option} checked={months === option} onChange={() => setMonths(option)} className="sr-only" />
-                                        {option === 12 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#D9A441] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0E3B2E] dark:text-emerald-300">{t('1 year')}</span>}
+                                        {option === 12 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#D9A441] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0E3B2E]">{t('1 year')}</span>}
                                         <span className="block font-[Sora] text-xl font-bold text-gray-900 dark:text-slate-100">{option}</span>
                                         <span className="block text-xs text-gray-600 dark:text-slate-300">{t(option === 1 ? 'month' : 'months')}</span>
                                         <span className="mt-1 block text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300">{money(option * monthlyPrice)}</span>

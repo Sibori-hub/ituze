@@ -46,7 +46,7 @@ export default function Status({ status, expired, managerPaused = false, employe
                     </p>
                 )}
                 {isExpired && canPay && (
-                    <Link href={route('subscription.show')} className="mr-3 mt-7 inline-block rounded-xl bg-[#D9A441] px-5 py-3 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 transition hover:bg-[#c99535]">
+                    <Link href={route('subscription.show')} className="mr-3 mt-7 inline-block rounded-xl bg-[#D9A441] px-5 py-3 text-sm font-semibold text-[#0E3B2E] transition hover:bg-[#c99535]">
                         {t('Pay my subscription')}
                     </Link>
                 )}
