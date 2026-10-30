@@ -35,27 +35,27 @@ function printSection() {
 
 function StatCard({ icon: Icon, label, value, note, tone = 'emerald', href }) {
     const tones = {
-        emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-100',
-        amber: 'bg-amber-50 text-amber-800 ring-amber-100',
-        blue: 'bg-sky-50 text-sky-800 ring-sky-100',
-        violet: 'bg-violet-50 text-violet-800 ring-violet-100',
-        red: 'bg-red-50 text-red-700 ring-red-100',
+        emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 ring-emerald-100 dark:ring-emerald-500/30',
+        amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 ring-amber-100 dark:ring-amber-500/30',
+        blue: 'bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300 ring-sky-100 dark:ring-sky-500/30',
+        violet: 'bg-violet-50 dark:bg-violet-500/10 text-violet-800 dark:text-violet-300 ring-violet-100 dark:ring-violet-500/30',
+        red: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-100 dark:ring-red-500/30',
     };
     const body = (
         <>
             <div className="flex items-start justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-300">{label}</p>
                 <span className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ring-1 ${tones[tone]}`} aria-hidden="true"><Icon size={17} /></span>
             </div>
-            <p className="mt-3 break-words font-[Sora] text-xl font-bold tabular-nums text-gray-900 sm:text-2xl">{value}</p>
-            {note && <p className="mt-1 text-xs leading-relaxed text-gray-600">{note}</p>}
+            <p className="mt-3 break-words font-[Sora] text-xl font-bold tabular-nums text-gray-900 dark:text-slate-100 sm:text-2xl">{value}</p>
+            {note && <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-slate-300">{note}</p>}
         </>
     );
 
     return href ? (
-        <Link href={href} className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#0E3B2E]/30 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40">{body}</Link>
+        <Link href={href} className="group rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#0E3B2E]/30 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40">{body}</Link>
     ) : (
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">{body}</div>
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">{body}</div>
     );
 }
 
@@ -91,17 +91,17 @@ export default function ReportsIndex({
             <Head title={t('Reports')} />
 
             {/* Heading and filters */}
-            <div className="overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-br from-white via-white to-emerald-50/60 shadow-sm">
+            <div className="overflow-hidden rounded-3xl border border-gray-200 dark:border-slate-700 bg-gradient-to-br from-white dark:from-slate-900 via-white dark:via-slate-900 to-emerald-50/60 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-5 p-5 sm:p-6">
                     <div className="flex items-start gap-4">
                         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-[#0E3B2E] text-white shadow-sm" aria-hidden="true"><TrendingUp size={22} /></span>
                         <div>
-                            <h1 className="font-[Sora] text-2xl font-bold text-gray-900">{t('Reports')}</h1>
-                            <p className="mt-1 max-w-xl text-sm text-gray-600">{t('Money received, who owes, owner payouts and occupancy — for the period you choose.')}</p>
+                            <h1 className="font-[Sora] text-2xl font-bold text-gray-900 dark:text-slate-100">{t('Reports')}</h1>
+                            <p className="mt-1 max-w-xl text-sm text-gray-600 dark:text-slate-300">{t('Money received, who owes, owner payouts and occupancy — for the period you choose.')}</p>
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <a href={exportHref} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-[#0E3B2E]/30 hover:bg-emerald-50">
+                        <a href={exportHref} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm font-semibold text-gray-800 dark:text-slate-100 shadow-sm transition hover:border-[#0E3B2E]/30 hover:bg-emerald-50 dark:hover:bg-emerald-500/10">
                             <Download size={16} aria-hidden="true" /> {t('Export to Excel')}
                         </a>
                         <button type="button" onClick={printSection} className="inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#145240]">
@@ -110,14 +110,14 @@ export default function ReportsIndex({
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-end gap-3 border-t border-gray-200 bg-white/70 px-5 py-4 sm:px-6">
+                <div className="flex flex-wrap items-end gap-3 border-t border-gray-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 px-5 py-4 sm:px-6">
                     {isAdmin && (
-                        <label className="flex min-w-52 flex-col gap-1 text-xs font-semibold text-gray-700">
+                        <label className="flex min-w-52 flex-col gap-1 text-xs font-semibold text-gray-700 dark:text-slate-200">
                             {t('Owner')}
                             <select
                                 value={filters.owner_id || ''}
                                 onChange={event => visit({ owner_id: event.target.value || undefined })}
-                                className="rounded-xl border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-900 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20"
+                                className="rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2.5 text-sm font-medium text-gray-900 dark:text-slate-100 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20"
                             >
                                 <option value="">{t('All owners · platform-wide')}</option>
                                 {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
@@ -126,14 +126,14 @@ export default function ReportsIndex({
                     )}
                     {usesPeriod && (
                         <>
-                            <label className="flex min-w-44 flex-col gap-1 text-xs font-semibold text-gray-700">
+                            <label className="flex min-w-44 flex-col gap-1 text-xs font-semibold text-gray-700 dark:text-slate-200">
                                 {t('Period')}
                                 <select
                                     value={filters.period || 'this_month'}
                                     onChange={event => event.target.value === 'custom'
                                         ? visit({ period: 'custom', from: custom.from || filters.from, to: custom.to || filters.to })
                                         : visit({ period: event.target.value === 'this_month' ? undefined : event.target.value, from: undefined, to: undefined })}
-                                    className="rounded-xl border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-900 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20"
+                                    className="rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2.5 text-sm font-medium text-gray-900 dark:text-slate-100 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20"
                                 >
                                     {PRESETS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
                                 </select>
@@ -143,24 +143,24 @@ export default function ReportsIndex({
                                     className="flex flex-wrap items-end gap-2"
                                     onSubmit={event => { event.preventDefault(); visit({ period: 'custom', from: custom.from, to: custom.to }); }}
                                 >
-                                    <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700">
+                                    <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 dark:text-slate-200">
                                         {t('From')}
-                                        <input type="date" required value={custom.from} onChange={event => setCustom(current => ({ ...current, from: event.target.value }))} className="rounded-xl border-gray-300 py-2 text-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20" />
+                                        <input type="date" required value={custom.from} onChange={event => setCustom(current => ({ ...current, from: event.target.value }))} className="rounded-xl border-gray-300 dark:border-slate-600 py-2 text-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20" />
                                     </label>
-                                    <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700">
+                                    <label className="flex flex-col gap-1 text-xs font-semibold text-gray-700 dark:text-slate-200">
                                         {t('To')}
-                                        <input type="date" required min={custom.from || undefined} value={custom.to} onChange={event => setCustom(current => ({ ...current, to: event.target.value }))} className="rounded-xl border-gray-300 py-2 text-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20" />
+                                        <input type="date" required min={custom.from || undefined} value={custom.to} onChange={event => setCustom(current => ({ ...current, to: event.target.value }))} className="rounded-xl border-gray-300 dark:border-slate-600 py-2 text-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/20" />
                                     </label>
                                     <button className="rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#145240]">{t('Apply')}</button>
                                 </form>
                             )}
-                            <p className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-100">
+                            <p className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-900 dark:text-emerald-300 ring-1 ring-emerald-100 dark:ring-emerald-500/30">
                                 <CalendarRange size={14} aria-hidden="true" /> {periodLabel}
                             </p>
                         </>
                     )}
                     {!usesPeriod && (
-                        <p className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700">
+                        <p className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200">
                             <CalendarRange size={14} aria-hidden="true" /> {t('As of today')}
                         </p>
                     )}
@@ -168,14 +168,14 @@ export default function ReportsIndex({
             </div>
 
             {/* Tabs */}
-            <nav aria-label={t('Report sections')} className="mt-5 flex gap-1 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
+            <nav aria-label={t('Report sections')} className="mt-5 flex gap-1 overflow-x-auto rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-sm">
                 {TABS.filter(({ key }) => !(key === 'owners' && auth?.user?.role === 'manager')).map(({ key, label, icon: Icon }) => (
                     <Link
                         key={key}
                         href={route('reports.index', { ...baseParams, tab: key === 'overview' ? undefined : key })}
                         preserveScroll
                         aria-current={tab === key ? 'page' : undefined}
-                        className={`inline-flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition ${tab === key ? 'bg-[#0E3B2E] text-white shadow-sm' : 'text-gray-700 hover:bg-emerald-50 hover:text-[#0E3B2E]'}`}
+                        className={`inline-flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition ${tab === key ? 'bg-[#0E3B2E] text-white shadow-sm' : 'text-gray-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-[#0E3B2E] dark:hover:text-emerald-200'}`}
                     >
                         <Icon size={16} aria-hidden="true" /> {t(label)}
                         {key === 'arrears' && Number(summary?.past_due_charges) > 0 && <span className={`h-2 w-2 rounded-full ${tab === key ? 'bg-amber-300' : 'bg-red-500'}`} aria-label={t('Money overdue')} />}
@@ -184,8 +184,8 @@ export default function ReportsIndex({
             </nav>
 
             <div id="report-print" className="mt-5">
-                <div className="print-only mb-4 hidden border-b-2 border-[#0E3B2E] pb-3">
-                    <BrandLockup logoClassName="h-14 w-14" nameClassName="text-xs font-bold text-[#0E3B2E]" subtitleClassName="text-[8px] text-[#0E3B2E]/70" />
+                <div className="print-only mb-4 hidden border-b-2 border-[#0E3B2E] dark:border-emerald-500 pb-3">
+                    <BrandLockup logoClassName="h-14 w-14" nameClassName="text-xs font-bold text-[#0E3B2E] dark:text-emerald-300" subtitleClassName="text-[8px] text-[#0E3B2E]/70" />
                     <p className="mt-2 text-lg font-bold">{t(TABS.find(item => item.key === tab)?.label || 'Reports')}{usesPeriod ? ` · ${periodLabel}` : ''}</p>
                 </div>
                 {tab === 'overview' && overview && <OverviewTab {...{ overview, summary, money, monthLabel, t, vatRate, baseParams }} />}
@@ -212,16 +212,16 @@ function OverviewTab({ overview, summary, money, monthLabel, t, vatRate, basePar
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
-                <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{t('Collection rate')}</p>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100" aria-hidden="true"><Percent size={17} /></span>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-300">{t('Collection rate')}</p>
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-100 dark:ring-emerald-500/30" aria-hidden="true"><Percent size={17} /></span>
                     </div>
-                    <p className="mt-3 font-[Sora] text-3xl font-bold text-gray-900">{rate === null ? '—' : `${rate}%`}</p>
-                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-gray-100" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={rate ?? 0} aria-label={t('Collection rate')}>
+                    <p className="mt-3 font-[Sora] text-3xl font-bold text-gray-900 dark:text-slate-100">{rate === null ? '—' : `${rate}%`}</p>
+                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={rate ?? 0} aria-label={t('Collection rate')}>
                         <div className={`h-full rounded-full ${rate >= 90 ? 'bg-emerald-600' : rate >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${rate ?? 0}%` }} />
                     </div>
-                    <p className="mt-2 text-xs text-gray-600">
+                    <p className="mt-2 text-xs text-gray-600 dark:text-slate-300">
                         {rate === null
                             ? t('No rent fell due in this period.')
                             : t(':paid paid of :expected due in this period', { paid: money(overview.rent_paid_of_expected), expected: money(overview.rent_expected) })}
@@ -244,14 +244,14 @@ function OverviewTab({ overview, summary, money, monthLabel, t, vatRate, basePar
                 />
             </div>
 
-            <section aria-labelledby="cashflow-title" className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
+            <section aria-labelledby="cashflow-title" className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-100 dark:border-slate-800 px-5 py-4 sm:px-6">
                     <div>
-                        <h2 id="cashflow-title" className="font-[Sora] text-lg font-bold text-gray-900">{t('Rent due vs collected')}</h2>
-                        <p className="mt-0.5 text-sm text-gray-600">{t('12 months ending with the chosen period')}</p>
+                        <h2 id="cashflow-title" className="font-[Sora] text-lg font-bold text-gray-900 dark:text-slate-100">{t('Rent due vs collected')}</h2>
+                        <p className="mt-0.5 text-sm text-gray-600 dark:text-slate-300">{t('12 months ending with the chosen period')}</p>
                     </div>
-                    <div className="flex flex-wrap gap-4 text-xs font-medium text-gray-700">
-                        <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-200 ring-1 ring-emerald-400" />{t('Rent due')}</span>
+                    <div className="flex flex-wrap gap-4 text-xs font-medium text-gray-700 dark:text-slate-200">
+                        <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-200 dark:bg-emerald-500/25 ring-1 ring-emerald-400" />{t('Rent due')}</span>
                         <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#0E3B2E]" />{t('Rent collected')}</span>
                     </div>
                 </div>
@@ -282,16 +282,16 @@ function OverviewTab({ overview, summary, money, monthLabel, t, vatRate, basePar
                         })}
                     </svg>
                 </div>
-                <dl className="grid gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-3">
+                <dl className="grid gap-px border-t border-gray-100 dark:border-slate-800 bg-gray-100 dark:bg-slate-800 sm:grid-cols-3">
                     {[
                         [t('Total received in period'), money(overview.total_received), t('Rent, deposits and other charges')],
                         [t('Deposits held now'), money(summary.deposits_held), t('To refund at move-out, less damages')],
                         [t('Other charges collected'), money(overview.other_collected), t('Damage and other charges')],
                     ].map(([label, value, note]) => (
-                        <div key={label} className="bg-white px-5 py-4">
-                            <dt className="text-xs font-semibold text-gray-600">{label}</dt>
-                            <dd className="mt-1 font-[Sora] text-lg font-bold text-gray-900">{value}</dd>
-                            <dd className="text-xs text-gray-500">{note}</dd>
+                        <div key={label} className="bg-white dark:bg-slate-900 px-5 py-4">
+                            <dt className="text-xs font-semibold text-gray-600 dark:text-slate-300">{label}</dt>
+                            <dd className="mt-1 font-[Sora] text-lg font-bold text-gray-900 dark:text-slate-100">{value}</dd>
+                            <dd className="text-xs text-gray-500 dark:text-slate-400">{note}</dd>
                         </div>
                     ))}
                 </dl>
@@ -304,18 +304,18 @@ function OverviewTab({ overview, summary, money, monthLabel, t, vatRate, basePar
 function ArrearsTab({ arrears, money, formatDate, t }) {
     const { rows, totals } = arrears;
     const buckets = [
-        ['d30', t('1–30 days'), 'bg-amber-50 text-amber-900 ring-amber-200'],
-        ['d60', t('31–60 days'), 'bg-orange-50 text-orange-900 ring-orange-200'],
-        ['d90', t('61–90 days'), 'bg-red-50 text-red-800 ring-red-200'],
-        ['over90', t('Over 90 days'), 'bg-red-100 text-red-900 ring-red-300'],
+        ['d30', t('1–30 days'), 'bg-amber-50 dark:bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/30'],
+        ['d60', t('31–60 days'), 'bg-orange-50 dark:bg-orange-500/10 text-orange-900 dark:text-orange-300 ring-orange-200 dark:ring-orange-500/30'],
+        ['d90', t('61–90 days'), 'bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-300 ring-red-200 dark:ring-red-500/30'],
+        ['over90', t('Over 90 days'), 'bg-red-100 dark:bg-red-500/15 text-red-900 dark:text-red-300 ring-red-300 dark:ring-red-500/40'],
     ];
 
     if (!rows.length) {
         return (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-10 text-center">
-                <CheckCircle2 size={36} className="mx-auto text-emerald-700" aria-hidden="true" />
-                <p className="mt-3 font-[Sora] text-lg font-bold text-gray-900">{t('Nobody owes money today')}</p>
-                <p className="mt-1 text-sm text-gray-600">{t('All rent and damage charges that fell due have been paid.')}</p>
+            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-500/10 p-10 text-center">
+                <CheckCircle2 size={36} className="mx-auto text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
+                <p className="mt-3 font-[Sora] text-lg font-bold text-gray-900 dark:text-slate-100">{t('Nobody owes money today')}</p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{t('All rent and damage charges that fell due have been paid.')}</p>
             </div>
         );
     }
@@ -336,11 +336,11 @@ function ArrearsTab({ arrears, money, formatDate, t }) {
                 ))}
             </div>
 
-            <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[860px] text-left text-sm">
                         <caption className="sr-only">{t('Tenants with overdue money')}</caption>
-                        <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
+                        <thead className="bg-gray-50 dark:bg-slate-800/60 text-xs uppercase tracking-wide text-gray-600 dark:text-slate-300">
                             <tr>
                                 <th scope="col" className="px-4 py-3 font-semibold">{t('Tenant')}</th>
                                 <th scope="col" className="px-4 py-3 font-semibold">{t('Property / room')}</th>
@@ -349,28 +349,28 @@ function ArrearsTab({ arrears, money, formatDate, t }) {
                                 <th scope="col" className="px-4 py-3 text-right font-semibold">{t('Total owed')}</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                             {rows.map(row => (
                                 <tr key={row.tenancy_id} className="align-top hover:bg-gray-50/70">
                                     <td className="px-4 py-3">
-                                        <Link href={route('tenants.show', row.tenant.id)} className="font-semibold text-gray-900 hover:text-[#0E3B2E] hover:underline">{row.tenant.name}</Link>
-                                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
-                                            {row.tenant.phone && <a href={`tel:${row.tenant.phone}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E]"><Phone size={12} aria-hidden="true" />{row.tenant.phone}</a>}
-                                            {row.tenant.email && <a href={`mailto:${row.tenant.email}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E]"><Mail size={12} aria-hidden="true" />{row.tenant.email}</a>}
+                                        <Link href={route('tenants.show', row.tenant.id)} className="font-semibold text-gray-900 dark:text-slate-100 hover:text-[#0E3B2E] dark:hover:text-emerald-200 hover:underline">{row.tenant.name}</Link>
+                                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-slate-300">
+                                            {row.tenant.phone && <a href={`tel:${row.tenant.phone}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E] dark:hover:text-emerald-200"><Phone size={12} aria-hidden="true" />{row.tenant.phone}</a>}
+                                            {row.tenant.email && <a href={`mailto:${row.tenant.email}`} className="inline-flex items-center gap-1 hover:text-[#0E3B2E] dark:hover:text-emerald-200"><Mail size={12} aria-hidden="true" />{row.tenant.email}</a>}
                                         </div>
-                                        {row.tenancy_status !== 'active' && <span className="mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700">{t('Moved out')}</span>}
+                                        {row.tenancy_status !== 'active' && <span className="mt-1 inline-block rounded-full bg-gray-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:text-slate-200">{t('Moved out')}</span>}
                                     </td>
-                                    <td className="px-4 py-3 text-gray-700">
-                                        <Link href={route('properties.units.show', [row.property.id, row.unit.id])} className="hover:text-[#0E3B2E] hover:underline">{row.property.name} · {t('Room :number', { number: row.unit.unit_number })}</Link>
+                                    <td className="px-4 py-3 text-gray-700 dark:text-slate-200">
+                                        <Link href={route('properties.units.show', [row.property.id, row.unit.id])} className="hover:text-[#0E3B2E] dark:hover:text-emerald-200 hover:underline">{row.property.name} · {t('Room :number', { number: row.unit.unit_number })}</Link>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <p className="text-gray-800">{formatDate(row.oldest_due)}</p>
-                                        <p className={`mt-0.5 text-xs font-semibold ${row.days_late > 60 ? 'text-red-700' : 'text-amber-800'}`}>{t(':days days late', { days: row.days_late })}</p>
+                                        <p className="text-gray-800 dark:text-slate-100">{formatDate(row.oldest_due)}</p>
+                                        <p className={`mt-0.5 text-xs font-semibold ${row.days_late > 60 ? 'text-red-700 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>{t(':days days late', { days: row.days_late })}</p>
                                     </td>
                                     {buckets.map(([key]) => (
-                                        <td key={key} className={`px-3 py-3 text-right tabular-nums ${Number(row.buckets[key]) > 0 ? 'text-gray-900' : 'text-gray-400'}`}>{Number(row.buckets[key]) > 0 ? money(row.buckets[key]) : '—'}</td>
+                                        <td key={key} className={`px-3 py-3 text-right tabular-nums ${Number(row.buckets[key]) > 0 ? 'text-gray-900 dark:text-slate-100' : 'text-gray-400 dark:text-slate-500'}`}>{Number(row.buckets[key]) > 0 ? money(row.buckets[key]) : '—'}</td>
                                     ))}
-                                    <td className="px-4 py-3 text-right font-[Sora] font-bold tabular-nums text-red-700">{money(row.total)}</td>
+                                    <td className="px-4 py-3 text-right font-[Sora] font-bold tabular-nums text-red-700 dark:text-red-300">{money(row.total)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -386,7 +386,7 @@ function OwnersTab({ statements, money, formatDate, t, isAdmin, filters, visit, 
     const single = lines !== null && rows.length === 1;
 
     if (!rows.length) {
-        return <p className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-600">{t('No owners with properties yet.')}</p>;
+        return <p className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center text-sm text-gray-600 dark:text-slate-300">{t('No owners with properties yet.')}</p>;
     }
 
     if (single) {
@@ -395,30 +395,30 @@ function OwnersTab({ statements, money, formatDate, t, isAdmin, filters, visit, 
         return (
             <div className="space-y-4">
                 {isAdmin && filters.owner_id && (
-                    <button type="button" onClick={() => visit({ owner_id: undefined })} className="screen-only text-sm font-semibold text-[#0E3B2E] hover:underline">← {t('All owners')}</button>
+                    <button type="button" onClick={() => visit({ owner_id: undefined })} className="screen-only text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:underline">← {t('All owners')}</button>
                 )}
-                <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-white p-5 sm:p-6">
+                <article className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-emerald-50 dark:from-emerald-500/10 to-white dark:to-slate-900 p-5 sm:p-6">
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">{t('Owner statement')}</p>
-                            <h2 className="mt-1 font-[Sora] text-xl font-bold text-gray-900">{row.owner.name}</h2>
-                            <p className="mt-1 text-sm text-gray-600">{[row.owner.email, row.owner.phone].filter(Boolean).join(' · ')}</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-300">{t('Owner statement')}</p>
+                            <h2 className="mt-1 font-[Sora] text-xl font-bold text-gray-900 dark:text-slate-100">{row.owner.name}</h2>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{[row.owner.email, row.owner.phone].filter(Boolean).join(' · ')}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Period')}</p>
-                            <p className="mt-1 font-semibold text-gray-900">{periodLabel}</p>
-                            <p className="mt-1 text-xs text-gray-600">{t(row.properties === 1 ? '1 property' : ':count properties', { count: row.properties })}{row.owner.managed ? ` · ${t('Managed by Q.R.A (:rate%)', { rate: Number(row.commission_rate) })}` : ''}</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">{t('Period')}</p>
+                            <p className="mt-1 font-semibold text-gray-900 dark:text-slate-100">{periodLabel}</p>
+                            <p className="mt-1 text-xs text-gray-600 dark:text-slate-300">{t(row.properties === 1 ? '1 property' : ':count properties', { count: row.properties })}{row.owner.managed ? ` · ${t('Managed by Q.R.A (:rate%)', { rate: Number(row.commission_rate) })}` : ''}</p>
                         </div>
                     </header>
 
-                    <dl className="grid gap-px bg-gray-200 sm:grid-cols-3">
+                    <dl className="grid gap-px bg-gray-200 dark:bg-slate-700 sm:grid-cols-3">
                         {[
-                            [t('Rent collected'), row.rent_collected, 'text-gray-900'],
-                            [t('Q.R.A commission'), row.commission, 'text-amber-800'],
-                            [t('Payout to owner'), row.payout, 'text-emerald-800'],
+                            [t('Rent collected'), row.rent_collected, 'text-gray-900 dark:text-slate-100'],
+                            [t('Q.R.A commission'), row.commission, 'text-amber-800 dark:text-amber-300'],
+                            [t('Payout to owner'), row.payout, 'text-emerald-800 dark:text-emerald-300'],
                         ].map(([label, value, tone]) => (
-                            <div key={label} className="bg-white px-5 py-4">
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</dt>
+                            <div key={label} className="bg-white dark:bg-slate-900 px-5 py-4">
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-300">{label}</dt>
                                 <dd className={`mt-1 font-[Sora] text-2xl font-bold tabular-nums ${tone}`}>{money(value)}</dd>
                             </div>
                         ))}
@@ -427,7 +427,7 @@ function OwnersTab({ statements, money, formatDate, t, isAdmin, filters, visit, 
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[720px] text-left text-sm">
                             <caption className="sr-only">{t('Rent payments in this period')}</caption>
-                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
+                            <thead className="bg-gray-50 dark:bg-slate-800/60 text-xs uppercase tracking-wide text-gray-600 dark:text-slate-300">
                                 <tr>
                                     <th scope="col" className="px-4 py-3 font-semibold">{t('Date paid')}</th>
                                     <th scope="col" className="px-4 py-3 font-semibold">{t('Tenant')}</th>
@@ -436,35 +436,35 @@ function OwnersTab({ statements, money, formatDate, t, isAdmin, filters, visit, 
                                     <th scope="col" className="px-4 py-3 text-right font-semibold">{t('Amount')}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                                 {lines.length ? lines.map(line => (
                                     <tr key={line.id}>
                                         <td className="px-4 py-3">
-                                            <p className="text-gray-900">{formatDate(line.paid_at)}</p>
-                                            {line.receipt_number && <p className="font-mono text-[11px] text-gray-500">{line.receipt_number}</p>}
+                                            <p className="text-gray-900 dark:text-slate-100">{formatDate(line.paid_at)}</p>
+                                            {line.receipt_number && <p className="font-mono text-[11px] text-gray-500 dark:text-slate-400">{line.receipt_number}</p>}
                                         </td>
-                                        <td className="px-4 py-3 font-medium text-gray-900">{line.tenant}</td>
-                                        <td className="px-4 py-3 text-gray-700">{line.property} · {t('Room :number', { number: line.unit })}</td>
-                                        <td className="px-4 py-3 text-gray-700">
+                                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-slate-100">{line.tenant}</td>
+                                        <td className="px-4 py-3 text-gray-700 dark:text-slate-200">{line.property} · {t('Room :number', { number: line.unit })}</td>
+                                        <td className="px-4 py-3 text-gray-700 dark:text-slate-200">
                                             {t(line.months === 1 ? '1 month' : ':count months', { count: line.months })}
-                                            {line.period_start && <span className="block text-xs text-gray-500">{formatDate(line.period_start)} – {formatDate(line.period_end)}</span>}
+                                            {line.period_start && <span className="block text-xs text-gray-500 dark:text-slate-400">{formatDate(line.period_start)} – {formatDate(line.period_end)}</span>}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-semibold tabular-nums text-gray-900">{money(line.amount)}</td>
+                                        <td className="px-4 py-3 text-right font-semibold tabular-nums text-gray-900 dark:text-slate-100">{money(line.amount)}</td>
                                     </tr>
                                 )) : (
-                                    <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">{t('No rent was received in this period.')}</td></tr>
+                                    <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600 dark:text-slate-300">{t('No rent was received in this period.')}</td></tr>
                                 )}
                             </tbody>
                             {lines.length > 0 && (
-                                <tfoot className="border-t-2 border-gray-200 bg-gray-50 text-sm">
-                                    <tr><th scope="row" colSpan={4} className="px-4 py-2 text-right font-semibold text-gray-700">{t('Rent collected')}</th><td className="px-4 py-2 text-right font-semibold tabular-nums">{money(row.rent_collected)}</td></tr>
-                                    {row.owner.managed && <tr><th scope="row" colSpan={4} className="px-4 py-2 text-right font-semibold text-amber-800">{t('Less Q.R.A commission (:rate%)', { rate: Number(row.commission_rate) })}</th><td className="px-4 py-2 text-right font-semibold tabular-nums text-amber-800">− {money(row.commission)}</td></tr>}
-                                    <tr><th scope="row" colSpan={4} className="px-4 py-2 text-right font-bold text-gray-900">{t('Payout to owner')}</th><td className="px-4 py-2 text-right font-[Sora] text-base font-bold tabular-nums text-emerald-800">{money(row.payout)}</td></tr>
+                                <tfoot className="border-t-2 border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 text-sm">
+                                    <tr><th scope="row" colSpan={4} className="px-4 py-2 text-right font-semibold text-gray-700 dark:text-slate-200">{t('Rent collected')}</th><td className="px-4 py-2 text-right font-semibold tabular-nums">{money(row.rent_collected)}</td></tr>
+                                    {row.owner.managed && <tr><th scope="row" colSpan={4} className="px-4 py-2 text-right font-semibold text-amber-800 dark:text-amber-300">{t('Less Q.R.A commission (:rate%)', { rate: Number(row.commission_rate) })}</th><td className="px-4 py-2 text-right font-semibold tabular-nums text-amber-800 dark:text-amber-300">− {money(row.commission)}</td></tr>}
+                                    <tr><th scope="row" colSpan={4} className="px-4 py-2 text-right font-bold text-gray-900 dark:text-slate-100">{t('Payout to owner')}</th><td className="px-4 py-2 text-right font-[Sora] text-base font-bold tabular-nums text-emerald-800 dark:text-emerald-300">{money(row.payout)}</td></tr>
                                 </tfoot>
                             )}
                         </table>
                     </div>
-                    <p className="border-t border-gray-100 px-5 py-3 text-xs text-gray-600">
+                    <p className="border-t border-gray-100 dark:border-slate-800 px-5 py-3 text-xs text-gray-600 dark:text-slate-300">
                         {t('Security deposits received (:amount) are held for tenants and are not part of the payout.', { amount: money(row.deposits_received) })}
                     </p>
                 </article>
@@ -473,15 +473,15 @@ function OwnersTab({ statements, money, formatDate, t, isAdmin, filters, visit, 
     }
 
     return (
-        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="grid gap-px border-b border-gray-200 bg-gray-200 sm:grid-cols-3">
+        <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="grid gap-px border-b border-gray-200 dark:border-slate-700 bg-gray-200 dark:bg-slate-700 sm:grid-cols-3">
                 {[
-                    [t('Rent collected'), totals.rent_collected, 'text-gray-900'],
-                    [t('Q.R.A commission'), totals.commission, 'text-amber-800'],
-                    [t('Payouts to owners'), totals.payout, 'text-emerald-800'],
+                    [t('Rent collected'), totals.rent_collected, 'text-gray-900 dark:text-slate-100'],
+                    [t('Q.R.A commission'), totals.commission, 'text-amber-800 dark:text-amber-300'],
+                    [t('Payouts to owners'), totals.payout, 'text-emerald-800 dark:text-emerald-300'],
                 ].map(([label, value, tone]) => (
-                    <div key={label} className="bg-white px-5 py-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</p>
+                    <div key={label} className="bg-white dark:bg-slate-900 px-5 py-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-300">{label}</p>
                         <p className={`mt-1 font-[Sora] text-xl font-bold tabular-nums ${tone}`}>{money(value)}</p>
                     </div>
                 ))}
@@ -489,7 +489,7 @@ function OwnersTab({ statements, money, formatDate, t, isAdmin, filters, visit, 
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
                     <caption className="sr-only">{t('Owner statements')}</caption>
-                    <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
+                    <thead className="bg-gray-50 dark:bg-slate-800/60 text-xs uppercase tracking-wide text-gray-600 dark:text-slate-300">
                         <tr>
                             <th scope="col" className="px-4 py-3 font-semibold">{t('Owner')}</th>
                             <th scope="col" className="px-4 py-3 text-right font-semibold">{t('Rent collected')}</th>
@@ -499,24 +499,24 @@ function OwnersTab({ statements, money, formatDate, t, isAdmin, filters, visit, 
                             <th scope="col" className="screen-only px-4 py-3"><span className="sr-only">{t('Actions')}</span></th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                         {rows.map(row => (
                             <tr key={row.owner.id} className="hover:bg-gray-50/70">
                                 <td className="px-4 py-3">
-                                    <p className="flex items-center gap-2 font-semibold text-gray-900"><UserRound size={15} className="text-gray-400" aria-hidden="true" />{row.owner.name}</p>
-                                    <p className="mt-0.5 text-xs text-gray-600">
+                                    <p className="flex items-center gap-2 font-semibold text-gray-900 dark:text-slate-100"><UserRound size={15} className="text-gray-400 dark:text-slate-500" aria-hidden="true" />{row.owner.name}</p>
+                                    <p className="mt-0.5 text-xs text-gray-600 dark:text-slate-300">
                                         {t(row.properties === 1 ? '1 property' : ':count properties', { count: row.properties })}
                                         {row.owner.managed
-                                            ? <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-900 ring-1 ring-amber-200">{t('Managed · :rate%', { rate: Number(row.commission_rate) })}</span>
-                                            : <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-700">{t('Self-managed')}</span>}
+                                            ? <span className="ml-2 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-900 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">{t('Managed · :rate%', { rate: Number(row.commission_rate) })}</span>
+                                            : <span className="ml-2 rounded-full bg-gray-100 dark:bg-slate-800 px-2 py-0.5 font-semibold text-gray-700 dark:text-slate-200">{t('Self-managed')}</span>}
                                     </p>
                                 </td>
                                 <td className="px-4 py-3 text-right tabular-nums">{money(row.rent_collected)}</td>
-                                <td className="px-4 py-3 text-right tabular-nums text-amber-800">{row.owner.managed ? money(row.commission) : '—'}</td>
-                                <td className="px-4 py-3 text-right font-semibold tabular-nums text-emerald-800">{money(row.payout)}</td>
-                                <td className="px-4 py-3 text-right tabular-nums text-violet-800">{money(row.deposits_received)}</td>
+                                <td className="px-4 py-3 text-right tabular-nums text-amber-800 dark:text-amber-300">{row.owner.managed ? money(row.commission) : '—'}</td>
+                                <td className="px-4 py-3 text-right font-semibold tabular-nums text-emerald-800 dark:text-emerald-300">{money(row.payout)}</td>
+                                <td className="px-4 py-3 text-right tabular-nums text-violet-800 dark:text-violet-300">{money(row.deposits_received)}</td>
                                 <td className="screen-only px-4 py-3 text-right">
-                                    <button type="button" onClick={() => visit({ owner_id: row.owner.id })} className="inline-flex items-center gap-1.5 rounded-lg border border-[#0E3B2E]/20 bg-white px-3 py-1.5 text-xs font-semibold text-[#0E3B2E] hover:bg-emerald-50">
+                                    <button type="button" onClick={() => visit({ owner_id: row.owner.id })} className="inline-flex items-center gap-1.5 rounded-lg border border-[#0E3B2E]/20 dark:border-emerald-400/20 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10">
                                         <FileText size={13} aria-hidden="true" /> {t('Statement')}
                                     </button>
                                 </td>
@@ -538,16 +538,16 @@ function OccupancyTab({ properties, summary, money, t }) {
                 <StatCard icon={Percent} label={t('Occupancy')} value={`${summary.occupancy_rate}%`} tone="blue" />
                 <StatCard icon={Users} label={t('Monthly rent of empty rooms')} value={money(summary.vacant_rent)} note={t('Income you could add by renting them')} tone="amber" />
             </div>
-            <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
-                    <h2 className="font-[Sora] font-semibold text-gray-900">{t('Occupancy by property')}</h2>
-                    <Link href={route('properties.index')} className="screen-only inline-flex items-center gap-1 text-sm font-semibold text-[#0E3B2E] hover:underline">{t('Manage properties')} <ArrowUpRight size={15} aria-hidden="true" /></Link>
+            <section className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-slate-800 px-5 py-4">
+                    <h2 className="font-[Sora] font-semibold text-gray-900 dark:text-slate-100">{t('Occupancy by property')}</h2>
+                    <Link href={route('properties.index')} className="screen-only inline-flex items-center gap-1 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:underline">{t('Manage properties')} <ArrowUpRight size={15} aria-hidden="true" /></Link>
                 </div>
                 {properties.length ? (
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[760px] text-left text-sm">
                             <caption className="sr-only">{t('Occupancy by property')}</caption>
-                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
+                            <thead className="bg-gray-50 dark:bg-slate-800/60 text-xs uppercase tracking-wide text-gray-600 dark:text-slate-300">
                                 <tr>
                                     <th scope="col" className="px-5 py-3 font-semibold">{t('Property')}</th>
                                     <th scope="col" className="px-5 py-3 font-semibold">{t('Rooms rented')}</th>
@@ -556,28 +556,28 @@ function OccupancyTab({ properties, summary, money, t }) {
                                     <th scope="col" className="px-5 py-3 font-semibold">{t('Current tenants')}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                                 {properties.map(property => (
                                     <tr key={property.id} className="align-top hover:bg-gray-50/70">
-                                        <td className="px-5 py-4"><Link href={route('properties.show', property.id)} className="font-semibold text-gray-900 hover:text-[#0E3B2E] hover:underline">{property.name}</Link></td>
-                                        <td className="px-5 py-4 tabular-nums text-gray-800">{property.occupied_units_count} / {property.units_count}</td>
+                                        <td className="px-5 py-4"><Link href={route('properties.show', property.id)} className="font-semibold text-gray-900 dark:text-slate-100 hover:text-[#0E3B2E] dark:hover:text-emerald-200 hover:underline">{property.name}</Link></td>
+                                        <td className="px-5 py-4 tabular-nums text-gray-800 dark:text-slate-100">{property.occupied_units_count} / {property.units_count}</td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-2">
-                                                <div className="h-2 w-24 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-[#0E3B2E]" style={{ width: `${property.occupancy_rate}%` }} /></div>
-                                                <span className="text-xs font-semibold text-gray-800">{property.occupancy_rate}%</span>
+                                                <div className="h-2 w-24 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800"><div className="h-full rounded-full bg-[#0E3B2E]" style={{ width: `${property.occupancy_rate}%` }} /></div>
+                                                <span className="text-xs font-semibold text-gray-800 dark:text-slate-100">{property.occupancy_rate}%</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 text-right tabular-nums">
-                                            <span className="text-gray-900">{property.available_units_count}</span>
-                                            {Number(property.vacant_rent) > 0 && <span className="block text-xs text-amber-800">{money(property.vacant_rent)}</span>}
+                                            <span className="text-gray-900 dark:text-slate-100">{property.available_units_count}</span>
+                                            {Number(property.vacant_rent) > 0 && <span className="block text-xs text-amber-800 dark:text-amber-300">{money(property.vacant_rent)}</span>}
                                         </td>
-                                        <td className="px-5 py-4 text-xs text-gray-700">{property.active_tenants.length ? property.active_tenants.map(record => `${record.tenant} · ${record.unit}`).join(', ') : t('No active tenants')}</td>
+                                        <td className="px-5 py-4 text-xs text-gray-700 dark:text-slate-200">{property.active_tenants.length ? property.active_tenants.map(record => `${record.tenant} · ${record.unit}`).join(', ') : t('No active tenants')}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                ) : <p className="p-8 text-center text-sm text-gray-600">{t('Add a property to start seeing portfolio reports.')}</p>}
+                ) : <p className="p-8 text-center text-sm text-gray-600 dark:text-slate-300">{t('Add a property to start seeing portfolio reports.')}</p>}
             </section>
         </div>
     );

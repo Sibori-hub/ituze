@@ -16,8 +16,8 @@ export default function VerifyLoginOtp({ destinations = [], expiresIn, status, d
             destination={
                 <span className="mt-2 flex flex-col items-center gap-1.5">
                     {destinations.map(({ channel, value }) => (
-                        <span key={channel} className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm ring-1 ring-inset ring-gray-200">
-                            {channel === 'whatsapp' ? <RwandaFlag className="h-3 w-[18px]" /> : <Mail size={14} className="text-[#1F7A5A]" />}
+                        <span key={channel} className="inline-flex items-center gap-2 rounded-full bg-gray-100 dark:bg-slate-800 px-3 py-1 text-sm ring-1 ring-inset ring-gray-200 dark:ring-slate-700">
+                            {channel === 'whatsapp' ? <RwandaFlag className="h-3 w-[18px]" /> : <Mail size={14} className="text-[#1F7A5A] dark:text-emerald-400" />}
                             {value}
                         </span>
                     ))}
@@ -48,7 +48,7 @@ export default function VerifyLoginOtp({ destinations = [], expiresIn, status, d
                                   href="http://127.0.0.1:8025"
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex items-center justify-center gap-1.5 rounded-lg bg-white py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:ring-amber-400"
+                                  className="flex items-center justify-center gap-1.5 rounded-lg bg-white dark:bg-slate-900 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30 transition hover:ring-amber-400"
                               >
                                   <ExternalLink size={13} />
                                   {t('Open Mailpit inbox')}

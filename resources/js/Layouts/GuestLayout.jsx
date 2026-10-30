@@ -2,6 +2,7 @@ import BrandLockup from '@/Components/BrandLockup';
 import FlashToast from '@/Components/FlashToast';
 import InlineAlert from '@/Components/InlineAlert';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
+import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/localization';
@@ -45,7 +46,7 @@ function RegisterShell({ flash, children, mode = 'register' }) {
     const isLogin = mode === 'login';
 
     return (
-        <div className="relative min-h-screen bg-[#F3F6F4] font-[Inter] text-[#17241f] lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="relative min-h-screen bg-[#F3F6F4] dark:bg-slate-950 font-[Inter] text-[#17241f] dark:text-slate-100 lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <aside className="relative hidden overflow-hidden bg-[#0B3127] text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:justify-between lg:gap-8 lg:self-start lg:p-12 xl:p-16">
                 {/* Soft light washes and a fine grid give depth without an image. */}
                 <div aria-hidden="true" className="pointer-events-none absolute inset-0">
@@ -142,20 +143,21 @@ function RegisterShell({ flash, children, mode = 'register' }) {
                     <Link href="/" className="min-w-0 rounded-xl lg:invisible">
                         <BrandLockup
                             logoClassName="h-10 w-10 sm:h-11 sm:w-11"
-                            nameClassName="text-[13px] font-bold text-[#0E3B2E] sm:text-sm"
+                            nameClassName="text-[13px] font-bold text-[#0E3B2E] dark:text-emerald-300 sm:text-sm"
                             subtitleClassName="hidden text-[8px] font-medium text-[#0E3B2E]/65 sm:block"
                         />
                     </Link>
                     <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-                        <span className="hidden text-sm text-gray-500 sm:inline">
+                        <span className="hidden text-sm text-gray-500 dark:text-slate-400 sm:inline">
                             {isLogin ? t("Don't have an account?") : t('Already have an account?')}
                         </span>
                         <Link
                             href={route(isLogin ? 'register' : 'login')}
-                            className="rounded-full border border-[#0E3B2E]/15 bg-white px-4 py-2 text-sm font-semibold text-[#0E3B2E] shadow-sm transition hover:border-[#0E3B2E]/30 hover:shadow"
+                            className="rounded-full border border-[#0E3B2E]/15 dark:border-emerald-400/15 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 shadow-sm transition hover:border-[#0E3B2E]/30 hover:shadow"
                         >
                             {isLogin ? t('Register') : t('Login')}
                         </Link>
+                        <ThemeToggle tone="light" className="rounded-full" />
                         <LanguageSwitcher className="rounded-full bg-[#0E3B2E] p-1.5" />
                     </div>
                 </div>
@@ -202,12 +204,15 @@ export default function GuestLayout({ children }) {
             ) : isRegister ? (
                 <RegisterShell flash={flash}>{children}</RegisterShell>
             ) : (
-                <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#EAF2EE] via-[#F1F5F2] to-[#F4F6F5] px-4 pb-10 pt-20 font-[Inter] sm:py-10">
-                    <LanguageSwitcher className="absolute right-4 top-4 rounded-lg bg-[#0E3B2E] p-1.5 sm:right-6 sm:top-6" />
+                <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#EAF2EE] dark:from-slate-950 via-[#F1F5F2] dark:via-slate-950 to-[#F4F6F5] dark:to-slate-950 px-4 pb-10 pt-20 font-[Inter] sm:py-10">
+                    <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
+                        <ThemeToggle tone="light" />
+                        <LanguageSwitcher className="rounded-lg bg-[#0E3B2E] p-1.5" />
+                    </div>
                     <Link href="/" className="mb-6 rounded-xl">
                         <BrandLockup
                             logoClassName="h-14 w-14"
-                            nameClassName="text-base font-bold text-[#0E3B2E]"
+                            nameClassName="text-base font-bold text-[#0E3B2E] dark:text-emerald-300"
                             subtitleClassName="text-[9px] font-medium text-[#0E3B2E]/70"
                         />
                     </Link>
@@ -228,7 +233,7 @@ export default function GuestLayout({ children }) {
                         </div>
                     )}
 
-                    <div className="w-full overflow-hidden rounded-2xl bg-white shadow-xl shadow-[#0E3B2E]/5 ring-1 ring-black/5 transition-shadow sm:max-w-xl">
+                    <div className="w-full overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-xl shadow-[#0E3B2E]/5 ring-1 ring-black/5 transition-shadow sm:max-w-xl">
                         <div className="px-6 pb-7 pt-2 sm:px-10">{children}</div>
                     </div>
                 </div>

@@ -7,6 +7,9 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { LanguageProvider } from '@/localization';
+import { startTheme } from '@/lib/theme';
+
+startTheme();
 
 // Install (PWA): Chrome may offer one-tap install as soon as the page loads,
 // before the install banner's code has arrived. Catch it here, first.

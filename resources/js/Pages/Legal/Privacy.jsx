@@ -14,11 +14,11 @@ export default function Privacy({ version, updatedAt, company }) {
                 sections={privacySections}
             >
                 <section className="mt-8">
-                    <h2 className="font-[Sora] text-lg font-semibold text-[#0E3B2E]">
+                    <h2 className="font-[Sora] text-lg font-semibold text-[#0E3B2E] dark:text-emerald-300">
                         {privacySections.length + 1}. Contact
                     </h2>
-                    <div className="mt-3 space-y-1 text-sm leading-7 text-gray-600">
-                        <p className="font-semibold text-[#0E3B2E]">{company.name}</p>
+                    <div className="mt-3 space-y-1 text-sm leading-7 text-gray-600 dark:text-slate-300">
+                        <p className="font-semibold text-[#0E3B2E] dark:text-emerald-300">{company.name}</p>
                         <p>Email: {company.email}</p>
                         <p>Phone: {company.phone}</p>
                         <p>Address: {company.address}</p>

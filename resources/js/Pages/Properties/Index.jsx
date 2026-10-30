@@ -44,12 +44,12 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
 
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 max-w-xs">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                     <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder={t('Search properties...')}
-                        className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-9 pr-3 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white focus:ring-2 focus:ring-[#0E3B2E]/15"
+                        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/40 py-2.5 pl-9 pr-3 text-sm transition-all focus:border-[#0E3B2E] focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-[#0E3B2E]/15"
                     />
                 </div>
 
@@ -59,7 +59,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                             value={filters.owner_id || ''}
                             onChange={event => router.get(route('properties.index'), { search, owner_id: event.target.value || undefined }, { preserveState: true, replace: true })}
                             aria-label={t('Filter by owner')}
-                            className="max-w-56 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15"
+                            className="max-w-56 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-2 focus:ring-[#0E3B2E]/15"
                         >
                             <option value="">{t('All owners')}</option>
                             {owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
@@ -75,12 +75,12 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
                 {properties.data.length === 0 ? (
                     <div className="p-12 text-center">
                         <Building2 size={48} className="mx-auto mb-4 text-gray-300" />
-                        <h3 className="text-lg font-medium text-gray-900">{t('No properties found')}</h3>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">{t('No properties found')}</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                             {t(search ? 'Try adjusting your search filters' : 'Get started by adding your first property')}
                         </p>
                         {!search && canEdit && canCreate && (
@@ -99,10 +99,10 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                             {properties.data.map((property) => (
                                 <div
                                     key={property.id}
-                                    className="group overflow-hidden rounded-xl border border-gray-100 bg-white transition-all hover:shadow-md hover:border-[#0E3B2E]/20"
+                                    className="group overflow-hidden rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all hover:shadow-md hover:border-[#0E3B2E]/20"
                                 >
                                     {property.images && property.images.length > 0 ? (
-                                        <div className="relative h-48 overflow-hidden bg-gray-100">
+                                        <div className="relative h-48 overflow-hidden bg-gray-100 dark:bg-slate-800">
                                             <img
                                                 src={imageSource(property.images.find(img => img.is_cover)?.image_path || property.images[0].image_path)}
                                                 alt={property.name}
@@ -123,7 +123,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="relative h-48 flex items-center justify-center bg-gray-100">
+                                        <div className="relative h-48 flex items-center justify-center bg-gray-100 dark:bg-slate-800">
                                             <ImageIcon size={48} className="text-gray-300" />
                                             <div className="absolute top-2 right-2">
                                             </div>
@@ -143,19 +143,19 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
 
                                     <div className="p-4">
                                         <div className="flex items-start justify-between">
-                                            <h3 className="font-semibold text-gray-900">{property.name}</h3>
+                                            <h3 className="font-semibold text-gray-900 dark:text-slate-100">{property.name}</h3>
                                         </div>
-                                        <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                                        <p className="mt-1 flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400">
                                             <MapPin size={14} />
                                             {property.address}
                                         </p>
                                         {property.cell && (
-                                            <p className="mt-1 text-xs text-gray-400">
+                                            <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
                                                 {property.cell.name}, {property.cell.sector?.district?.name}
                                             </p>
                                         )}
                                         {isAdmin && property.owner && (
-                                            <p className="mt-1 text-xs text-[#0E3B2E]">
+                                            <p className="mt-1 text-xs text-[#0E3B2E] dark:text-emerald-300">
                                                 {t('Owner')}: {property.owner.name}
                                             </p>
                                         )}
@@ -173,7 +173,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                             return (
                                                 <div className="mt-2 flex flex-wrap gap-1">
                                                     {visible.map(k => (
-                                                        <span key={k} className="rounded-md bg-[#0E3B2E]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#0E3B2E]">
+                                                        <span key={k} className="rounded-md bg-[#0E3B2E]/10 dark:bg-emerald-400/15 px-1.5 py-0.5 text-[10px] font-medium text-[#0E3B2E] dark:text-emerald-300">
                                                             {t(keyIcons[k])}
                                                         </span>
                                                     ))}
@@ -183,7 +183,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                         <div className="mt-3 space-y-1.5">
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <span className="text-xs text-gray-400">
+                                                    <span className="text-xs text-gray-400 dark:text-slate-500">
                                                         {(() => {
                                                         const displayUnits = property.units_count !== undefined ? Number(property.units_count) : 0;
                                                         return t(':count :unit', { count: displayUnits, unit: t(displayUnits === 1 ? 'unit' : 'units') });
@@ -191,7 +191,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                     </span>
                                                 </div>
                                                 {property.units_monthly_rent_sum && Number(property.units_monthly_rent_sum) > 0 ? (
-                                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[#0E3B2E]">
+                                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[#0E3B2E] dark:text-emerald-300">
                                                         {Number(property.units_monthly_rent_sum).toLocaleString(({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW')} RWF/mo
                                                     </span>
                                                 ) : null}
@@ -199,7 +199,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                             <div className="flex items-center justify-end gap-2">
                                                 <Link
                                                     href={route('properties.show', property)}
-                                                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] transition-colors hover:bg-[#0E3B2E]/10"
+                                                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#0E3B2E] dark:text-emerald-300 transition-colors hover:bg-[#0E3B2E]/10"
                                                 >
                                                     {t('View')}
                                                 </Link>
@@ -207,13 +207,13 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                     <>
                                                         <Link
                                                             href={route('properties.edit', property)}
-                                                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
+                                                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-slate-300 transition-colors hover:bg-gray-100 dark:hover:bg-slate-800"
                                                         >
                                                             <Edit size={14} />
                                                         </Link>
                                                         <button
                                                             onClick={() => setPropertyToDelete(property)}
-                                                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-50"
+                                                            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>
@@ -227,8 +227,8 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                         </div>
 
                         {properties.links && properties.links.length > 3 && (
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/30 p-4">
-                                <p className="text-xs text-gray-400">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-800/40 p-4">
+                                <p className="text-xs text-gray-400 dark:text-slate-500">
                                     {t('Showing :from to :to of :total properties', { from: properties.from, to: properties.to, total: properties.total })}
                                 </p>
                                 <div className="flex gap-1">
@@ -241,7 +241,7 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
                                                 link.active
                                                     ? 'bg-[#0E3B2E] text-white'
                                                     : link.url
-                                                    ? 'text-gray-600 hover:bg-gray-100'
+                                                    ? 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                                                     : 'cursor-not-allowed text-gray-300'
                                             }`}
                                         />
@@ -256,15 +256,15 @@ export default function PropertiesIndex({ properties, filters, isAdmin, currentU
             {/* Delete Confirmation Modal */}
             {propertyToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                        <h3 className="text-lg font-semibold text-gray-900">{t('Delete Property')}</h3>
-                        <p className="mt-2 text-sm text-gray-500">
+                    <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{t('Delete Property')}</h3>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
                             {t('Are you sure you want to delete :name? This action cannot be undone and will also delete all associated units and images.', { name: propertyToDelete.name })}
                         </p>
                         <div className="mt-6 flex justify-end gap-3">
                             <button
                                 onClick={() => setPropertyToDelete(null)}
-                                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+                                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 transition-colors hover:bg-gray-100 dark:hover:bg-slate-800"
                             >
                                 {t('Cancel')}
                             </button>

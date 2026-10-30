@@ -3,7 +3,7 @@ export default function ApplicationLogo({ className = 'h-10 w-auto', ...props })
         <img
             src="/images/logo.png"
             alt="ITUZE GREEN PLATFORM"
-            className={`object-contain rounded-full bg-white p-0.5 shadow-sm ${className}`}
+            className={`object-contain rounded-full bg-white dark:bg-slate-900 p-0.5 shadow-sm ${className}`}
             {...props}
         />
     );

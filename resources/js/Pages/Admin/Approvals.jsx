@@ -10,11 +10,11 @@ function DocumentThumb({ url }) {
     const [failed, setFailed] = useState(false);
 
     return failed ? (
-        <span className="flex h-48 items-center justify-center bg-gray-50 text-gray-400" aria-hidden="true">
+        <span className="flex h-48 items-center justify-center bg-gray-50 dark:bg-slate-800/60 text-gray-400 dark:text-slate-500" aria-hidden="true">
             <FileText size={26} />
         </span>
     ) : (
-        <img src={url} alt="" onError={() => setFailed(true)} className="block h-48 w-full bg-gray-50 object-contain" />
+        <img src={url} alt="" onError={() => setFailed(true)} className="block h-48 w-full bg-gray-50 dark:bg-slate-800/60 object-contain" />
     );
 }
 
@@ -70,7 +70,7 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
             onClick={onClose}
         >
             <div
-                className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
+                className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white dark:bg-slate-900 shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
                 onClick={(event) => event.stopPropagation()}
             >
                 <header className="flex items-start justify-between gap-4 bg-[#0E3B2E] px-5 py-4 sm:px-6">
@@ -102,36 +102,36 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
                                 className="h-20 w-20 shrink-0 rounded-2xl object-cover ring-2 ring-[#0E3B2E]/10"
                             />
                         ) : (
-                            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#0E3B2E]/10 font-[Sora] text-2xl font-semibold text-[#0E3B2E]">
+                            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#0E3B2E]/10 dark:bg-emerald-400/15 font-[Sora] text-2xl font-semibold text-[#0E3B2E] dark:text-emerald-300">
                                 {user.name.charAt(0).toUpperCase()}
                             </div>
                         )}
                         <div className="min-w-0">
-                            <p className="font-[Sora] text-lg font-semibold text-gray-800">{user.name}</p>
+                            <p className="font-[Sora] text-lg font-semibold text-gray-800 dark:text-slate-100">{user.name}</p>
                             <span className="mt-1 inline-block rounded-full bg-[#D9A441]/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-[#8a651c]">
                                 {t(user.role)}
                             </span>
-                            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-green-700">
+                            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-300">
                                 <CheckCircle2 size={13} />
                                 {t('Email verified · Profile complete')}
                             </p>
                         </div>
                     </div>
 
-                    <dl className="mt-6 border-t border-gray-100">
+                    <dl className="mt-6 border-t border-gray-100 dark:border-slate-800">
                         {details.map(([label, value]) => (
                             <div
                                 key={label}
-                                className="flex items-start justify-between gap-4 border-b border-gray-100 py-2.5 text-sm"
+                                className="flex items-start justify-between gap-4 border-b border-gray-100 dark:border-slate-800 py-2.5 text-sm"
                             >
-                                <dt className="shrink-0 text-gray-500">{t(label)}</dt>
-                                <dd className="text-right font-medium text-gray-800">{value}</dd>
+                                <dt className="shrink-0 text-gray-500 dark:text-slate-400">{t(label)}</dt>
+                                <dd className="text-right font-medium text-gray-800 dark:text-slate-100">{value}</dd>
                             </div>
                         ))}
                     </dl>
 
                     <section className="mt-6" aria-labelledby="identity-documents-title">
-                        <h3 id="identity-documents-title" className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                        <h3 id="identity-documents-title" className="flex items-center gap-1.5 text-sm font-semibold text-gray-800 dark:text-slate-100">
                             <IdCard size={15} aria-hidden="true" />
                             {t('Identity document file')}
                         </h3>
@@ -140,41 +140,41 @@ function ProfileModal({ user, onClose, onApprove, onReject }) {
                                 href={documentUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group mt-3 block overflow-hidden rounded-xl border border-gray-200 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20"
+                                className="group mt-3 block overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20"
                             >
                                 <DocumentThumb url={documentUrl} />
-                                <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700">
+                                <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-200">
                                     {documentLabel}
-                                    <span className="text-[#1F7A5A] group-hover:underline">{t('Open')}</span>
+                                    <span className="text-[#1F7A5A] dark:text-emerald-400 group-hover:underline">{t('Open')}</span>
                                 </span>
                             </a>
                         ) : (
-                            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                            <p className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">
                                 {t('No ID file was uploaded (this account registered before ID uploads were required).')}
                             </p>
                         )}
                         {user.account_type === 'company' && (
                             user.has_rdb_certificate ? (
                                 <a href={route('admin.approvals.rdb-certificate', user.id)} target="_blank" rel="noopener noreferrer"
-                                    className="group mt-3 block overflow-hidden rounded-xl border border-gray-200 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20">
+                                    className="group mt-3 block overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 transition hover:border-[#0E3B2E]/40 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/20">
                                     <DocumentThumb url={route('admin.approvals.rdb-certificate', user.id)} />
-                                    <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700">
+                                    <span className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-200">
                                         {t('RDB registration certificate')}
-                                        <span className="text-[#1F7A5A] group-hover:underline">{t('Open')}</span>
+                                        <span className="text-[#1F7A5A] dark:text-emerald-400 group-hover:underline">{t('Open')}</span>
                                     </span>
                                 </a>
                             ) : (
-                                <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{t('No RDB certificate uploaded yet.')}</p>
+                                <p className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300">{t('No RDB certificate uploaded yet.')}</p>
                             )
                         )}
                     </section>
                 </div>
 
-                <footer className="flex gap-3 border-t border-black/5 bg-gray-50 px-5 py-4 sm:px-6">
+                <footer className="flex gap-3 border-t border-black/5 bg-gray-50 dark:bg-slate-800/60 px-5 py-4 sm:px-6">
                     <button
                         type="button"
                         onClick={onReject}
-                        className="flex-1 rounded-xl border border-red-200 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                        className="flex-1 rounded-xl border border-red-200 dark:border-red-500/30 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
                     >
                         {t('Reject')}
                     </button>
@@ -229,14 +229,14 @@ export default function Approvals({ pendingUsers }) {
             <Head title={t('Approvals')} />
 
             {flash?.status && (
-                <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
+                <div className="mb-4 rounded-lg bg-green-50 dark:bg-green-500/10 p-3 text-sm font-medium text-green-700 dark:text-green-300">
                     {flash.status}
                 </div>
             )}
 
             {pendingUsers.length === 0 ? (
-                <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
-                    <p className="text-sm text-gray-500">
+                <div className="rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-sm">
+                    <p className="text-sm text-gray-500 dark:text-slate-400">
                         {t('No accounts waiting for approval right now.')}
                     </p>
                 </div>
@@ -245,7 +245,7 @@ export default function Approvals({ pendingUsers }) {
                     {pendingUsers.map((user) => (
                         <div
                             key={user.id}
-                            className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                            className="flex flex-col gap-4 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
                         >
                             <div className="flex items-center gap-4">
                                 {user.profile_photo ? (
@@ -255,27 +255,27 @@ export default function Approvals({ pendingUsers }) {
                                         className="h-14 w-14 rounded-full object-cover"
                                     />
                                 ) : (
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#0E3B2E]/10 font-[Sora] font-semibold text-[#0E3B2E]">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#0E3B2E]/10 dark:bg-emerald-400/15 font-[Sora] font-semibold text-[#0E3B2E] dark:text-emerald-300">
                                         {user.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <p className="font-[Sora] font-semibold text-gray-800">{user.name}</p>
+                                        <p className="font-[Sora] font-semibold text-gray-800 dark:text-slate-100">{user.name}</p>
                                         <span className="rounded-full bg-[#D9A441]/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-[#8a651c]">
                                             {t(user.role)}
                                         </span>
                                         {user.account_type === 'company' && (
-                                            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-900 ring-1 ring-sky-200">{t('Company')} · TIN {user.company_tin}</span>
+                                            <span className="rounded-full bg-sky-50 dark:bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-900 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-500/30">{t('Company')} · TIN {user.company_tin}</span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-500">
+                                    <p className="text-sm text-gray-500 dark:text-slate-400">
                                         {user.email} · {user.phone}
                                     </p>
-                                    <p className="mt-1 text-xs font-medium text-green-700">
+                                    <p className="mt-1 text-xs font-medium text-green-700 dark:text-green-300">
                                         {t('Email verified · Profile complete')}
                                     </p>
-                                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-400">
+                                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-400 dark:text-slate-500">
                                         <span className="flex items-center gap-1">
                                             <IdCard size={13} />
                                             {t(user.identity_document_type === 'passport' ? 'Passport' : 'NIDA')}: {user.national_id}
@@ -299,7 +299,7 @@ export default function Approvals({ pendingUsers }) {
                                 <button
                                     type="button"
                                     onClick={() => setProfileUser(user)}
-                                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800"
                                 >
                                     <Eye size={16} />
                                     {t('View full profile')}
@@ -313,7 +313,7 @@ export default function Approvals({ pendingUsers }) {
                                 </button>
                                 <button
                                     onClick={() => openConfirm('reject', user)}
-                                    className="flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                                    className="flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-500/30 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
                                 >
                                     <XCircle size={16} />
                                     {t('Reject')}

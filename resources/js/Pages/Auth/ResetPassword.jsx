@@ -27,12 +27,12 @@ export default function ResetPassword({ token, email }) {
         <GuestLayout>
             <Head title={t('Reset Password')} />
 
-            <h1 className="mb-4 font-[Sora] text-xl font-bold text-gray-900">{t('Reset Password')}</h1>
+            <h1 className="mb-4 font-[Sora] text-xl font-bold text-gray-900 dark:text-slate-100">{t('Reset Password')}</h1>
 
             <form onSubmit={submit} noValidate>
-                <label htmlFor="email" className="mb-1.5 block text-[13px] font-medium text-gray-700">{t('Email')}</label>
+                <label htmlFor="email" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-slate-200">{t('Email')}</label>
                 <div className="relative">
-                    <Mail size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+                    <Mail size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" aria-hidden="true" />
                     <input
                         id="email"
                         type="email"
@@ -40,7 +40,7 @@ export default function ResetPassword({ token, email }) {
                         value={data.email}
                         autoComplete="username"
                         onChange={(e) => setData('email', e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
+                        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-3 pl-11 pr-4 text-sm text-gray-800 dark:text-slate-100 shadow-[0_1px_2px_rgba(16,24,40,0.04)] focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
                     />
                 </div>
                 <InputError message={errors.email ? t(errors.email) : null} className="mt-1" />

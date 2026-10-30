@@ -23,25 +23,25 @@ const ACCOUNT_TYPES = [
 ];
 
 const fieldClass =
-    'w-full rounded-xl border-gray-300 bg-white py-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/15 disabled:bg-gray-100';
-const labelClass = 'mb-1.5 block text-sm font-semibold text-gray-800';
+    'w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-3 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-500 dark:placeholder:text-slate-500 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/15 disabled:bg-gray-100 dark:disabled:bg-slate-800';
+const labelClass = 'mb-1.5 block text-sm font-semibold text-gray-800 dark:text-slate-100';
 const invalidClass = 'border-red-600 focus:border-red-600 focus:ring-red-100';
 
 function Section({ number, title, hint, done, children }) {
     return (
-        <section aria-labelledby={`section-${number}`} className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+        <section aria-labelledby={`section-${number}`} className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 sm:p-6">
             <div className="mb-5 flex items-start gap-3">
                 <span
                     aria-hidden="true"
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                        done ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-300'
+                        done ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 ring-1 ring-inset ring-gray-300 dark:ring-slate-600'
                     }`}
                 >
                     {done ? <Check size={16} strokeWidth={3} /> : number}
                 </span>
                 <div>
-                    <h2 id={`section-${number}`} className="font-[Sora] text-base font-semibold text-gray-900">{title}</h2>
-                    {hint && <p className="mt-0.5 text-sm text-gray-600">{hint}</p>}
+                    <h2 id={`section-${number}`} className="font-[Sora] text-base font-semibold text-gray-900 dark:text-slate-100">{title}</h2>
+                    {hint && <p className="mt-0.5 text-sm text-gray-600 dark:text-slate-300">{hint}</p>}
                 </div>
             </div>
             {children}
@@ -50,7 +50,7 @@ function Section({ number, title, hint, done, children }) {
 }
 
 function Hint({ id, tone = 'muted', children }) {
-    const tones = { muted: 'text-gray-600', error: 'text-red-700 font-medium', ok: 'text-emerald-800 font-medium' };
+    const tones = { muted: 'text-gray-600 dark:text-slate-300', error: 'text-red-700 dark:text-red-300 font-medium', ok: 'text-emerald-800 dark:text-emerald-300 font-medium' };
     return (
         <p id={id} className={`mt-1.5 text-sm ${tones[tone]}`} aria-live="polite">
             {children}
@@ -161,24 +161,24 @@ export default function CreateUser({ locations }) {
             <div className="mx-auto max-w-3xl">
                 <Link
                     href={route('admin.users')}
-                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-[#0E3B2E] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E3B2E]"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E3B2E]"
                 >
                     <ArrowLeft size={16} aria-hidden="true" />
                     {t('Back to users')}
                 </Link>
 
                 <div className="mt-2 flex items-start gap-4">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#0E3B2E] ring-1 ring-emerald-200" aria-hidden="true">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-[#0E3B2E] dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-500/30" aria-hidden="true">
                         <UserPlus size={22} />
                     </span>
                     <div>
-                        <h1 className="font-[Sora] text-2xl font-bold text-gray-900">{t('Add a managed account')}</h1>
-                        <p className="mt-1 text-sm leading-6 text-gray-700">{t('Register an owner or advertiser whose account Q.R.A manages for them.')}</p>
+                        <h1 className="font-[Sora] text-2xl font-bold text-gray-900 dark:text-slate-100">{t('Add a managed account')}</h1>
+                        <p className="mt-1 text-sm leading-6 text-gray-700 dark:text-slate-200">{t('Register an owner or advertiser whose account Q.R.A manages for them.')}</p>
                     </div>
                 </div>
 
-                <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950" role="note">
-                    <Info size={18} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" />
+                <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 p-4 text-sm leading-6 text-sky-950 dark:text-sky-300" role="note">
+                    <Info size={18} className="mt-0.5 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden="true" />
                     <ul className="list-disc space-y-0.5 pl-4">
                         <li>{t('The account is approved straight away. Q.R.A manages everything from this admin panel.')}</li>
                         <li>{t('Owners sign in with the temporary password you set, must change it at first sign-in, and can only view their reports.')}</li>
@@ -197,7 +197,7 @@ export default function CreateUser({ locations }) {
                                         <label
                                             key={value}
                                             className={`relative flex min-h-11 cursor-pointer gap-3 rounded-xl border-2 p-4 transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#0E3B2E]/20 ${
-                                                selected ? 'border-[#0E3B2E] bg-emerald-50/60' : 'border-gray-200 hover:border-gray-300'
+                                                selected ? 'border-[#0E3B2E] dark:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-500'
                                             }`}
                                         >
                                             <input
@@ -208,12 +208,12 @@ export default function CreateUser({ locations }) {
                                                 onChange={() => setData('role', value)}
                                                 className="sr-only"
                                             />
-                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${selected ? 'bg-[#0E3B2E] text-white' : 'bg-gray-100 text-gray-600'}`} aria-hidden="true">
+                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${selected ? 'bg-[#0E3B2E] text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`} aria-hidden="true">
                                                 <Icon size={19} />
                                             </span>
                                             <span className="pr-6">
-                                                <span className="block text-sm font-semibold text-gray-900">{t(label)}</span>
-                                                <span className="mt-0.5 block text-sm leading-5 text-gray-600">{t(description)}</span>
+                                                <span className="block text-sm font-semibold text-gray-900 dark:text-slate-100">{t(label)}</span>
+                                                <span className="mt-0.5 block text-sm leading-5 text-gray-600 dark:text-slate-300">{t(description)}</span>
                                             </span>
                                             {selected && (
                                                 <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#0E3B2E] text-white" aria-hidden="true">
@@ -233,7 +233,7 @@ export default function CreateUser({ locations }) {
                             <div>
                                 <label htmlFor="first_name" className={labelClass}>{t('First Name')}</label>
                                 <div className="relative">
-                                    <User size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true" />
+                                    <User size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400" aria-hidden="true" />
                                     <input id="first_name" value={data.first_name} onChange={(e) => setData('first_name', e.target.value)} autoComplete="off" aria-invalid={Boolean(errors.first_name) || undefined} className={`${fieldClass} pl-10 pr-3 ${errors.first_name ? invalidClass : ''}`} />
                                 </div>
                                 <InputError message={errors.first_name} className="mt-1" />
@@ -241,7 +241,7 @@ export default function CreateUser({ locations }) {
                             <div>
                                 <label htmlFor="last_name" className={labelClass}>{t('Last Name')}</label>
                                 <div className="relative">
-                                    <User size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true" />
+                                    <User size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400" aria-hidden="true" />
                                     <input id="last_name" value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} autoComplete="off" aria-invalid={Boolean(errors.last_name) || undefined} className={`${fieldClass} pl-10 pr-3 ${errors.last_name ? invalidClass : ''}`} />
                                 </div>
                                 <InputError message={errors.last_name} className="mt-1" />
@@ -250,7 +250,7 @@ export default function CreateUser({ locations }) {
                             <div className="sm:col-span-2">
                                 <label htmlFor="email" className={labelClass}>{t('Email')}</label>
                                 <div className="relative">
-                                    <Mail size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true" />
+                                    <Mail size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400" aria-hidden="true" />
                                     <input
                                         id="email"
                                         type="email"
@@ -261,8 +261,8 @@ export default function CreateUser({ locations }) {
                                         aria-describedby="email-hint"
                                         className={`${fieldClass} pl-10 pr-10 ${emailStatus === 'taken' || errors.email ? invalidClass : ''}`}
                                     />
-                                    {emailStatus === 'checking' && <Loader2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 motion-safe:animate-spin" aria-hidden="true" />}
-                                    {emailStatus === 'available' && <Check size={17} strokeWidth={3} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-700" aria-hidden="true" />}
+                                    {emailStatus === 'checking' && <Loader2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 motion-safe:animate-spin" aria-hidden="true" />}
+                                    {emailStatus === 'available' && <Check size={17} strokeWidth={3} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />}
                                 </div>
                                 {errors.email ? (
                                     <Hint id="email-hint" tone="error">{errors.email}</Hint>
@@ -277,8 +277,8 @@ export default function CreateUser({ locations }) {
 
                             <div className="sm:col-span-2">
                                 <label htmlFor="phone" className={labelClass}>{t('Phone number')}</label>
-                                <div className={`flex overflow-hidden rounded-xl border bg-white focus-within:ring-4 ${phoneStatus === 'taken' || errors.phone || (data.phone !== '' && !phoneValid) ? 'border-red-600 focus-within:ring-red-100' : 'border-gray-300 focus-within:border-[#0E3B2E] focus-within:ring-[#0E3B2E]/15'}`}>
-                                    <span className="flex select-none items-center gap-2 border-r border-gray-300 bg-gray-50 px-3.5 text-sm font-semibold text-gray-800">
+                                <div className={`flex overflow-hidden rounded-xl border bg-white dark:bg-slate-900 focus-within:ring-4 ${phoneStatus === 'taken' || errors.phone || (data.phone !== '' && !phoneValid) ? 'border-red-600 focus-within:ring-red-100' : 'border-gray-300 dark:border-slate-600 focus-within:border-[#0E3B2E] focus-within:ring-[#0E3B2E]/15'}`}>
+                                    <span className="flex select-none items-center gap-2 border-r border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/60 px-3.5 text-sm font-semibold text-gray-800 dark:text-slate-100">
                                         <RwandaFlag className="h-[15px] w-[22px]" />
                                         +250
                                     </span>
@@ -293,10 +293,10 @@ export default function CreateUser({ locations }) {
                                             autoComplete="off"
                                             aria-invalid={phoneStatus === 'taken' || (data.phone !== '' && !phoneValid) || Boolean(errors.phone) || undefined}
                                             aria-describedby="phone-hint"
-                                            className="w-full border-0 bg-transparent py-3 pl-3.5 pr-10 text-sm tracking-wide text-gray-900 placeholder:tracking-normal placeholder:text-gray-500 focus:ring-0"
+                                            className="w-full border-0 bg-transparent py-3 pl-3.5 pr-10 text-sm tracking-wide text-gray-900 dark:text-slate-100 placeholder:tracking-normal placeholder:text-gray-500 dark:placeholder:text-slate-500 focus:ring-0"
                                         />
-                                        {phoneStatus === 'checking' && <Loader2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 motion-safe:animate-spin" aria-hidden="true" />}
-                                        {phoneStatus === 'available' && <Check size={17} strokeWidth={3} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-700" aria-hidden="true" />}
+                                        {phoneStatus === 'checking' && <Loader2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400 motion-safe:animate-spin" aria-hidden="true" />}
+                                        {phoneStatus === 'available' && <Check size={17} strokeWidth={3} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />}
                                     </div>
                                 </div>
                                 {errors.phone ? (
@@ -315,7 +315,7 @@ export default function CreateUser({ locations }) {
                     </Section>
 
                     <Section number={3} title={t('Identity document')} hint={t('Used to confirm the account holder\'s identity.')} done={idValid}>
-                        <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('Identity document')}>
+                        <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 dark:bg-slate-800 p-1" role="radiogroup" aria-label={t('Identity document')}>
                             {[
                                 { value: 'nida', label: t('National ID (NIDA)'), Icon: IdCard },
                                 { value: 'passport', label: t('Passport'), Icon: BookUser },
@@ -333,7 +333,7 @@ export default function CreateUser({ locations }) {
                                             clearErrors('national_id');
                                         }}
                                         className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E3B2E] ${
-                                            selected ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-700 hover:text-gray-900'
+                                            selected ? 'bg-white dark:bg-slate-900 text-[#0E3B2E] dark:text-emerald-300 shadow-sm' : 'text-gray-700 dark:text-slate-200 hover:text-gray-900 dark:hover:text-white'
                                         }`}
                                     >
                                         <Icon size={16} aria-hidden="true" />
@@ -359,7 +359,7 @@ export default function CreateUser({ locations }) {
                                 aria-describedby="national-id-hint"
                                 className={`${fieldClass} pl-4 pr-20 font-medium tracking-wider placeholder:font-normal placeholder:tracking-normal ${errors.national_id ? invalidClass : ''}`}
                             />
-                            <span className={`pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-sm font-semibold tabular-nums ${idValid ? 'text-emerald-800' : 'text-gray-600'}`}>
+                            <span className={`pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-sm font-semibold tabular-nums ${idValid ? 'text-emerald-800 dark:text-emerald-300' : 'text-gray-600 dark:text-slate-300'}`}>
                                 {idValid && <Check size={15} strokeWidth={3} aria-hidden="true" />}
                                 {!isPassport && `${data.national_id.length}/16`}
                             </span>
@@ -399,12 +399,12 @@ export default function CreateUser({ locations }) {
                     </Section>
 
                     <Section number={5} title={t('Profile photo')} hint={t('Use a clear, recent photo of your face.')} done={photoDone}>
-                        <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-gray-300 p-4 text-center sm:flex-row sm:text-left">
-                            <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 ring-4 ring-gray-100">
-                                {preview ? <img src={preview} alt={t('Profile preview')} className="h-full w-full object-cover" /> : <Camera size={24} className="text-gray-500" aria-hidden="true" />}
+                        <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 p-4 text-center sm:flex-row sm:text-left">
+                            <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800 ring-4 ring-gray-100 dark:ring-slate-700">
+                                {preview ? <img src={preview} alt={t('Profile preview')} className="h-full w-full object-cover" /> : <Camera size={24} className="text-gray-500 dark:text-slate-400" aria-hidden="true" />}
                             </span>
                             <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-800">{preview ? data.profile_photo?.name : t('JPG, PNG or WEBP, up to 2 MB')}</p>
+                                <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{preview ? data.profile_photo?.name : t('JPG, PNG or WEBP, up to 2 MB')}</p>
                                 <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
                                     <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#0E3B2E] px-4 text-sm font-semibold text-white hover:bg-[#124B3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E3B2E]">
                                         <UploadCloud size={16} aria-hidden="true" />
@@ -418,7 +418,7 @@ export default function CreateUser({ locations }) {
                                                 setPreview(null);
                                                 if (fileInput.current) fileInput.current.value = '';
                                             }}
-                                            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-300 px-4 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                                            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-300 dark:border-slate-600 px-4 text-sm font-semibold text-gray-800 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800"
                                         >
                                             <Trash2 size={16} aria-hidden="true" />
                                             {t('Remove')}
@@ -436,7 +436,7 @@ export default function CreateUser({ locations }) {
                                 aria-label={t('Upload profile photo')}
                             />
                         </div>
-                        {photoError && <p className="mt-2 text-sm font-medium text-red-700" role="alert">{photoError}</p>}
+                        {photoError && <p className="mt-2 text-sm font-medium text-red-700 dark:text-red-300" role="alert">{photoError}</p>}
                         <InputError message={errors.profile_photo} className="mt-2" />
                     </Section>
 
@@ -444,19 +444,19 @@ export default function CreateUser({ locations }) {
                         <div className="grid gap-4 sm:grid-cols-2">
                             {data.role === 'owner' && (
                                 <div className="sm:col-span-2">
-                                    <label htmlFor="username" className="mb-1.5 block text-sm font-semibold text-gray-800">{t('Username (used to sign in)')}</label>
+                                    <label htmlFor="username" className="mb-1.5 block text-sm font-semibold text-gray-800 dark:text-slate-100">{t('Username (used to sign in)')}</label>
                                     <input id="username" value={data.username} onChange={(e) => setData('username', e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 30))}
                                         autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={t('e.g. albert.rwibutso')} aria-describedby="username-help"
                                         aria-invalid={Boolean(errors.username) || undefined}
                                         className={`${fieldClass} px-3 font-mono ${errors.username ? invalidClass : ''}`} />
-                                    <p id="username-help" className="mt-1 text-xs text-gray-600">{t('They also get an email and an SMS with this username. The password is never sent: give it to them yourself.')}</p>
-                                    {errors.username && <p className="mt-1 text-xs font-medium text-red-600">{t(errors.username)}</p>}
+                                    <p id="username-help" className="mt-1 text-xs text-gray-600 dark:text-slate-300">{t('They also get an email and an SMS with this username. The password is never sent: give it to them yourself.')}</p>
+                                    {errors.username && <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{t(errors.username)}</p>}
                                 </div>
                             )}
                             <div>
                                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                                    <label htmlFor="password" className="text-sm font-semibold text-gray-800">{t('Temporary password')}</label>
-                                    <button type="button" onClick={generatePassword} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[#0E3B2E] underline decoration-2 underline-offset-4 hover:bg-emerald-50">
+                                    <label htmlFor="password" className="text-sm font-semibold text-gray-800 dark:text-slate-100">{t('Temporary password')}</label>
+                                    <button type="button" onClick={generatePassword} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 underline decoration-2 underline-offset-4 hover:bg-emerald-50 dark:hover:bg-emerald-500/10">
                                         <KeyRound size={14} aria-hidden="true" />
                                         {t('Generate')}
                                     </button>
@@ -475,7 +475,7 @@ export default function CreateUser({ locations }) {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword((show) => !show)}
-                                        className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
+                                        className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
                                         aria-label={showPassword ? t('Hide password') : t('Show password')}
                                     >
                                         {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -499,8 +499,8 @@ export default function CreateUser({ locations }) {
                         </div>
                         <ul id="password-rules" className="mt-3 grid gap-1.5 sm:grid-cols-2">
                             {passwordChecks.map((rule) => (
-                                <li key={rule.label} className={`flex items-center gap-2 text-sm ${rule.met ? 'text-emerald-800' : 'text-gray-600'}`}>
-                                    <span className={`flex h-4 w-4 items-center justify-center rounded-full ${rule.met ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`} aria-hidden="true">
+                                <li key={rule.label} className={`flex items-center gap-2 text-sm ${rule.met ? 'text-emerald-800 dark:text-emerald-300' : 'text-gray-600 dark:text-slate-300'}`}>
+                                    <span className={`flex h-4 w-4 items-center justify-center rounded-full ${rule.met ? 'bg-emerald-600 text-white' : 'bg-gray-200 dark:bg-slate-700'}`} aria-hidden="true">
                                         {rule.met && <Check size={10} strokeWidth={3.5} />}
                                     </span>
                                     {t(rule.label)}
@@ -526,7 +526,7 @@ export default function CreateUser({ locations }) {
                                         aria-describedby="fee-hint"
                                         className={`${fieldClass} pl-3 pr-10 ${!feeValid || errors.management_fee_percent ? invalidClass : ''}`}
                                     />
-                                    <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-600" aria-hidden="true">%</span>
+                                    <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-600 dark:text-slate-300" aria-hidden="true">%</span>
                                 </div>
                                 {errors.management_fee_percent ? (
                                     <Hint id="fee-hint" tone="error">{errors.management_fee_percent}</Hint>
@@ -537,20 +537,20 @@ export default function CreateUser({ locations }) {
                         )}
                     </Section>
 
-                    <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-5 sm:flex-row sm:items-center sm:justify-end">
-                        <Link href={route('admin.users')} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-gray-300 px-5 text-sm font-semibold text-gray-800 hover:bg-gray-50">
+                    <div className="flex flex-col-reverse gap-3 border-t border-gray-200 dark:border-slate-700 pt-5 sm:flex-row sm:items-center sm:justify-end">
+                        <Link href={route('admin.users')} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-gray-300 dark:border-slate-600 px-5 text-sm font-semibold text-gray-800 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800">
                             {t('Cancel')}
                         </Link>
                         <button
                             type="submit"
                             disabled={!isFormValid || processing}
-                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-6 text-sm font-semibold text-white hover:bg-[#124B3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E3B2E] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-600"
+                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-6 text-sm font-semibold text-white hover:bg-[#124B3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E3B2E] disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-slate-800 disabled:text-gray-600 dark:disabled:text-slate-400"
                         >
                             {processing ? <Loader2 size={17} className="motion-safe:animate-spin" aria-hidden="true" /> : <UserPlus size={17} aria-hidden="true" />}
                             {processing ? t('Saving...') : t('Create managed account')}
                         </button>
                     </div>
-                    {!isFormValid && <p className="text-right text-sm text-gray-600">{t('Complete all six sections to continue.')}</p>}
+                    {!isFormValid && <p className="text-right text-sm text-gray-600 dark:text-slate-300">{t('Complete all six sections to continue.')}</p>}
                 </form>
             </div>
         </AuthenticatedLayout>

@@ -21,7 +21,7 @@ function EmailReset() {
 
     return (
         <form onSubmit={submit} noValidate>
-            <p className="mb-4 text-sm text-gray-600">
+            <p className="mb-4 text-sm text-gray-600 dark:text-slate-300">
                 {t('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.')}
             </p>
             <InputLabel htmlFor="email" value={t('Email')} />
@@ -58,10 +58,10 @@ function PhoneSendCode() {
 
     return (
         <form onSubmit={submit} noValidate>
-            <p className="mb-4 text-sm text-gray-600">
+            <p className="mb-4 text-sm text-gray-600 dark:text-slate-300">
                 {t('Type the phone number on your account. We will send you a 6-digit code by SMS to choose a new password.')}
             </p>
-            <label htmlFor="phone" className="mb-1.5 block text-[13px] font-medium text-gray-700">{t('Phone number (SMS)')}</label>
+            <label htmlFor="phone" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-slate-200">{t('Phone number (SMS)')}</label>
             <RwandaPhoneInput id="phone" value={data.phone} onChange={(digits) => setData('phone', digits)} error={errors.phone} autoFocus />
 
             <div className="mt-4 flex items-center justify-end">
@@ -78,7 +78,7 @@ function StartAgainButton() {
         <button
             type="button"
             onClick={() => router.delete(route('password.phone.cancel'), { preserveScroll: true })}
-            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E] focus-visible:ring-offset-2"
+            className="rounded-md text-sm text-gray-600 dark:text-slate-300 underline hover:text-gray-900 dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E] focus-visible:ring-offset-2"
         >
             {t('Use another number or send a new code')}
         </button>
@@ -97,7 +97,7 @@ function PhoneEnterCode({ phoneReset }) {
 
     return (
         <form onSubmit={submit} noValidate>
-            <p className="mb-4 text-sm text-gray-600">
+            <p className="mb-4 text-sm text-gray-600 dark:text-slate-300">
                 {t('Enter the 6-digit code we sent by SMS to :phone.', { phone: phoneReset.phone })}
             </p>
 
@@ -171,9 +171,9 @@ export default function ForgotPassword({ status, phoneReset }) {
         <GuestLayout>
             <Head title={t('Forgot Password')} />
 
-            <h1 className="mb-4 font-[Sora] text-xl font-bold text-gray-900">{t('Forgot Password')}</h1>
+            <h1 className="mb-4 font-[Sora] text-xl font-bold text-gray-900 dark:text-slate-100">{t('Forgot Password')}</h1>
 
-            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('How do you want to reset your password?')}>
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 dark:bg-slate-800 p-1" role="radiogroup" aria-label={t('How do you want to reset your password?')}>
                 {methods.map(({ value, label, Icon }) => {
                     const selected = method === value;
                     return (
@@ -184,7 +184,7 @@ export default function ForgotPassword({ status, phoneReset }) {
                             aria-checked={selected}
                             onClick={() => setMethod(value)}
                             className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E] ${
-                                selected ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                                selected ? 'bg-white dark:bg-slate-900 text-[#0E3B2E] dark:text-emerald-300 shadow-sm' : 'text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white'
                             }`}
                         >
                             <Icon size={16} aria-hidden="true" />
@@ -195,7 +195,7 @@ export default function ForgotPassword({ status, phoneReset }) {
             </div>
 
             {status && (
-                <div role="status" className="mb-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
+                <div role="status" className="mb-4 rounded-lg bg-green-50 dark:bg-green-500/10 p-3 text-sm font-medium text-green-700 dark:text-green-300">
                     {t(status)}
                 </div>
             )}

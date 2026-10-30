@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
+import ThemeToggle from '@/Components/ThemeToggle';
 import RwandaFlag from '@/Components/RwandaFlag';
 import RwandaPhoneInput, { isRwandaMobile } from '@/Components/RwandaPhoneInput';
 import BrandLockup from '@/Components/BrandLockup';
@@ -93,7 +94,7 @@ function InquiryModal({ property, unit, onClose, onSubmitted }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="inquiry-title">
-            <div className="my-auto w-full max-w-xl overflow-hidden rounded-[1.75rem] bg-white shadow-2xl ring-1 ring-white/20">
+            <div className="my-auto w-full max-w-xl overflow-hidden rounded-[1.75rem] bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-white/20">
                 <div className="relative overflow-hidden bg-gradient-to-br from-[#0e3b2e] via-[#12513d] to-[#064b78] px-6 py-6 text-white sm:px-8 sm:py-7">
                     <div className="absolute -right-10 -top-16 h-48 w-48 rounded-full border-[24px] border-white/5" />
                     <div className="relative flex items-start justify-between gap-4">
@@ -111,13 +112,13 @@ function InquiryModal({ property, unit, onClose, onSubmitted }) {
                     </div>
                 </div>
                 <form onSubmit={submit} className="space-y-4 p-6 sm:p-8">
-                    {form.errors.inquiry && <div role="alert" className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><MessageCircle size={18} className="mt-0.5 shrink-0 text-amber-600" /><span>{form.errors.inquiry}</span></div>}
+                    {form.errors.inquiry && <div role="alert" className="flex gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm leading-6 text-amber-900 dark:text-amber-300"><MessageCircle size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" /><span>{form.errors.inquiry}</span></div>}
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <label className="text-xs font-bold uppercase tracking-wide text-slate-600">{t('Your name')}
-                            <input required value={form.data.visitor_name} onChange={(event) => form.setData('visitor_name', event.target.value)} placeholder="e.g. Alex" className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
+                        <label className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{t('Your name')}
+                            <input required value={form.data.visitor_name} onChange={(event) => form.setData('visitor_name', event.target.value)} placeholder="e.g. Alex" className="mt-2 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 dark:text-slate-100 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white dark:focus:bg-slate-900 focus:ring-[#0e3b2e]" />
                         </label>
                         <div>
-                            <label htmlFor="visitor_phone" className="text-xs font-bold uppercase tracking-wide text-slate-600">{t('Phone number')}</label>
+                            <label htmlFor="visitor_phone" className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{t('Phone number')}</label>
                             <RwandaPhoneInput
                                 id="visitor_phone"
                                 className="mt-2"
@@ -130,22 +131,22 @@ function InquiryModal({ property, unit, onClose, onSubmitted }) {
                             />
                         </div>
                     </div>
-                    {form.errors.visitor_name && <p className="text-xs font-medium text-red-600">{form.errors.visitor_name}</p>}
-                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">{t('Email address')}
-                        <input required type="email" value={form.data.visitor_email} onChange={(event) => form.setData('visitor_email', event.target.value)} placeholder="you@example.com" className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
+                    {form.errors.visitor_name && <p className="text-xs font-medium text-red-600 dark:text-red-400">{form.errors.visitor_name}</p>}
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{t('Email address')}
+                        <input required type="email" value={form.data.visitor_email} onChange={(event) => form.setData('visitor_email', event.target.value)} placeholder="you@example.com" className="mt-2 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 dark:text-slate-100 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white dark:focus:bg-slate-900 focus:ring-[#0e3b2e]" />
                     </label>
-                    {form.errors.visitor_email && <p className="-mt-2 text-xs font-medium text-red-600">{form.errors.visitor_email}</p>}
-                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">{t('What business will you run here?')}
-                        <input value={form.data.business_use} onChange={(event) => form.setData('business_use', event.target.value)} maxLength={120} list="visitor-business-uses" placeholder={t('e.g. Office, Salon, Shop, Warehouse')} className="mt-2 w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
+                    {form.errors.visitor_email && <p className="-mt-2 text-xs font-medium text-red-600 dark:text-red-400">{form.errors.visitor_email}</p>}
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{t('What business will you run here?')}
+                        <input value={form.data.business_use} onChange={(event) => form.setData('business_use', event.target.value)} maxLength={120} list="visitor-business-uses" placeholder={t('e.g. Office, Salon, Shop, Warehouse')} className="mt-2 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 dark:text-slate-100 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white dark:focus:bg-slate-900 focus:ring-[#0e3b2e]" />
                         <datalist id="visitor-business-uses">{['Office', 'Shop', 'Salon', 'Restaurant', 'Coffee shop', 'Warehouse', 'Clinic', 'Apartment'].map((use) => <option key={use} value={t(use)} />)}</datalist>
                     </label>
-                    {form.errors.business_use && <p className="-mt-2 text-xs font-medium text-red-600">{form.errors.business_use}</p>}
-                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">{t('Your message')}
-                        <textarea required rows="4" value={form.data.message} onChange={(event) => form.setData('message', event.target.value)} placeholder={`Hello, I am interested in ${unit?.unit_type?.name?.toLowerCase() || 'this space'}. Is it available for viewing?`} className="mt-2 w-full resize-y rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white focus:ring-[#0e3b2e]" />
+                    {form.errors.business_use && <p className="-mt-2 text-xs font-medium text-red-600 dark:text-red-400">{form.errors.business_use}</p>}
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">{t('Your message')}
+                        <textarea required rows="4" value={form.data.message} onChange={(event) => form.setData('message', event.target.value)} placeholder={`Hello, I am interested in ${unit?.unit_type?.name?.toLowerCase() || 'this space'}. Is it available for viewing?`} className="mt-2 w-full resize-y rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-sm font-medium normal-case tracking-normal text-slate-900 dark:text-slate-100 placeholder:font-normal focus:border-[#0e3b2e] focus:bg-white dark:focus:bg-slate-900 focus:ring-[#0e3b2e]" />
                     </label>
-                    {form.errors.message && <p className="-mt-2 text-xs font-medium text-red-600">{form.errors.message}</p>}
+                    {form.errors.message && <p className="-mt-2 text-xs font-medium text-red-600 dark:text-red-400">{form.errors.message}</p>}
                     <button disabled={form.processing} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0e3b2e] px-5 py-3.5 font-bold text-white shadow-lg shadow-[#0e3b2e]/15 transition hover:-translate-y-0.5 hover:bg-[#175640] disabled:cursor-not-allowed disabled:opacity-60">{form.processing ? t('Sending inquiry...') : t('Send inquiry to owner')} <Send size={16} /></button>
-                    <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-400"><ShieldCheck size={13} className="text-emerald-600" /> {t('Your details are shared only with the property owner.')}</p>
+                    <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-400"><ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" /> {t('Your details are shared only with the property owner.')}</p>
                 </form>
             </div>
         </div>
@@ -156,16 +157,16 @@ function InquiryConfirmation({ property, unit, onClose }) {
     const { t } = useTranslation();
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="inquiry-confirmation-title">
-            <div className="my-auto w-full max-w-md overflow-hidden rounded-[1.75rem] bg-white text-center shadow-2xl">
+            <div className="my-auto w-full max-w-md overflow-hidden rounded-[1.75rem] bg-white dark:bg-slate-900 text-center shadow-2xl">
                 <div className="bg-gradient-to-br from-[#0e3b2e] to-[#064b78] px-6 pb-8 pt-9 text-white">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/10"><CheckCircle2 size={34} className="text-emerald-200" /></div>
                     <h2 id="inquiry-confirmation-title" className="mt-5 text-2xl font-black">{t('We received your inquiry!')}</h2>
                     <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-white/75">{t('Your message about :space at :property has been sent to the owner.', { space: unit?.unit_type?.name || t('this space'), property: property.name })}</p>
                 </div>
                 <div className="p-6 sm:p-8">
-                    <div className="rounded-xl bg-[#f2f7f4] p-4 text-sm leading-6 text-slate-600">{t('The owner will review your details and get back to you as soon as possible, usually within a few minutes.')}</div>
+                    <div className="rounded-xl bg-[#f2f7f4] dark:bg-slate-950 p-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{t('The owner will review your details and get back to you as soon as possible, usually within a few minutes.')}</div>
                     <button type="button" onClick={onClose} className="mt-5 w-full rounded-xl bg-[#0e3b2e] px-5 py-3.5 font-bold text-white transition hover:bg-[#175640]">{t('Got it')}</button>
-                    <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-slate-400"><ShieldCheck size={13} className="text-emerald-600" /> {t('Your contact details were shared with the owner.')}</p>
+                    <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-slate-400"><ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" /> {t('Your contact details were shared with the owner.')}</p>
                 </div>
             </div>
         </div>
@@ -203,8 +204,8 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
     return (
         <>
             <Head title={`${isUnitDetail ? `${selectedUnit?.unit_type?.name || 'Rental unit'} ${selectedUnit?.unit_number || ''} | ` : ''}${property.name} | Property for rent in ${location}`} />
-            <div className="min-h-screen bg-[#f8faf9] text-slate-900">
-                <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">
+            <div className="min-h-screen bg-[#f8faf9] dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+                <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
                     <div className="bg-[#063f67] text-white">
                         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 text-xs font-medium sm:px-6 lg:px-8">
                             <a href={companyMapUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 text-white/85 transition hover:text-white">
@@ -216,18 +217,19 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                                 <span className="hidden sm:inline">{companyPhoneDisplay}</span>
                                 <span className="sm:hidden">Call us</span>
                             </a>
+                            <ThemeToggle className="!p-1.5" />
                             <LanguageSwitcher className="rounded-lg bg-white/10 p-1" />
                         </div>
                     </div>
                     <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6 lg:px-8">
-                        <Link href="/" className="min-w-0 rounded-xl text-[#064b78]">
+                        <Link href="/" className="min-w-0 rounded-xl text-[#064b78] dark:text-sky-300">
                             <BrandLockup
                                 logoClassName="h-14 w-14"
                                 nameClassName="text-xs font-black sm:text-sm"
                                 subtitleClassName="text-[8px] font-semibold"
                             />
                         </Link>
-                        <nav className="hidden items-center gap-6 text-xs font-bold uppercase text-slate-700 lg:flex">
+                        <nav className="hidden items-center gap-6 text-xs font-bold uppercase text-slate-700 dark:text-slate-200 lg:flex">
                             <Link href="/" className="transition hover:text-[#078dcc]">Home</Link>
                             <Link href="/#categories" className="transition hover:text-[#078dcc]">Property types</Link>
                         </nav>
@@ -238,7 +240,7 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                 </header>
 
                 <main className="mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-12">
-                    <div className="mb-8 flex items-center gap-2 text-sm text-slate-500"><Link href="/" className="transition hover:text-[#0e3b2e]">Home</Link><ChevronRight size={15} /><span>{location}</span><ChevronRight size={15} /><span className="truncate text-slate-800">{isUnitDetail ? `${selectedUnit?.unit_type?.name || 'Unit'} ${selectedUnit?.unit_number || ''}` : property.name}</span></div>
+                    <div className="mb-8 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400"><Link href="/" className="transition hover:text-[#0e3b2e] dark:hover:text-emerald-200">Home</Link><ChevronRight size={15} /><span>{location}</span><ChevronRight size={15} /><span className="truncate text-slate-800 dark:text-slate-100">{isUnitDetail ? `${selectedUnit?.unit_type?.name || 'Unit'} ${selectedUnit?.unit_number || ''}` : property.name}</span></div>
                     <section className={`grid gap-3 overflow-hidden rounded-[1.75rem] bg-[#dcebe5] ${hasMultipleImages ? 'lg:grid-cols-[1.45fr_.55fr]' : ''}`}>
                         <div className={`group relative overflow-hidden ${hasMultipleImages ? 'h-[22rem] sm:h-[32rem]' : 'h-[22rem] sm:h-[36rem]'}`}>
                             {gallery[activeImage]?.image_path ? <img src={imageSource(gallery[activeImage].image_path)} alt={`${property.name}${selectedUnit ? ` unit ${selectedUnit.unit_number}` : ''}`} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.02]" /> : <div className="flex h-full items-center justify-center"><Building2 className="h-24 w-24 text-[#0e3b2e]/20" /></div>}
@@ -259,26 +261,26 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
 
                     <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_350px]">
                         <article>
-                            <div className="border-b border-slate-200 pb-8">
-                            <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#b57c35]"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#edf5f0] px-3 py-1.5 text-[#0e3b2e]"><CheckCircle2 size={13} /> {t('Available for rent')}</span><span>{selectedUnit?.unit_type?.name || t('Rental space')}</span></div>
-                                <h1 className="mt-5 text-4xl font-black leading-tight tracking-[-.03em] text-slate-900 sm:text-5xl">{isUnitDetail ? `${selectedUnit?.unit_type?.name || t('Rental Unit')} ${selectedUnit?.unit_number || ''}` : property.name}</h1>
-                                {isUnitDetail && <p className="mt-2 text-sm font-medium text-slate-500">{property.name}</p>}
-                                <p className="mt-4 flex items-center gap-2 text-base text-slate-500"><MapPin size={18} className="text-[#b57c35]" /> {location}</p>
+                            <div className="border-b border-slate-200 dark:border-slate-700 pb-8">
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#b57c35] dark:text-amber-300"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#edf5f0] dark:bg-emerald-500/10 px-3 py-1.5 text-[#0e3b2e] dark:text-emerald-300"><CheckCircle2 size={13} /> {t('Available for rent')}</span><span>{selectedUnit?.unit_type?.name || t('Rental space')}</span></div>
+                                <h1 className="mt-5 text-4xl font-black leading-tight tracking-[-.03em] text-slate-900 dark:text-slate-100 sm:text-5xl">{isUnitDetail ? `${selectedUnit?.unit_type?.name || t('Rental Unit')} ${selectedUnit?.unit_number || ''}` : property.name}</h1>
+                                {isUnitDetail && <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">{property.name}</p>}
+                                <p className="mt-4 flex items-center gap-2 text-base text-slate-500 dark:text-slate-400"><MapPin size={18} className="text-[#b57c35] dark:text-amber-300" /> {location}</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 border-b border-slate-200 py-7 sm:grid-cols-4">
-                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Rent')}</p><p className="mt-2 text-lg font-black text-[#0e3b2e]">{formatRent(selectedUnit, t)}</p></div>
-                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Unit')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit?.unit_number || '—'}</p></div>
-                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Type')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit?.unit_type?.name || t('Rental unit')}</p></div>
-                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Size / Floor')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit?.size_sqm ? `${selectedUnit.size_sqm} m²` : '—'}{selectedUnit?.floor_number !== null && selectedUnit?.floor_number !== undefined ? ` · ${t('Floor')} ${selectedUnit.floor_number}` : ''}</p></div>
+                            <div className="grid grid-cols-2 gap-4 border-b border-slate-200 dark:border-slate-700 py-7 sm:grid-cols-4">
+                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Rent')}</p><p className="mt-2 text-lg font-black text-[#0e3b2e] dark:text-emerald-300">{formatRent(selectedUnit, t)}</p></div>
+                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Unit')}</p><p className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">{selectedUnit?.unit_number || '—'}</p></div>
+                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Type')}</p><p className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">{selectedUnit?.unit_type?.name || t('Rental unit')}</p></div>
+                                <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Size / Floor')}</p><p className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">{selectedUnit?.size_sqm ? `${selectedUnit.size_sqm} m²` : '—'}{selectedUnit?.floor_number !== null && selectedUnit?.floor_number !== undefined ? ` · ${t('Floor')} ${selectedUnit.floor_number}` : ''}</p></div>
                                 {isApartmentUnit(selectedUnit) && <>
-                                    <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Bedrooms')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit.bedrooms ?? '—'}</p></div>
-                                    <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Bathrooms')}</p><p className="mt-2 text-lg font-black text-slate-900">{selectedUnit.bathrooms ?? '—'}</p></div>
+                                    <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Bedrooms')}</p><p className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">{selectedUnit.bedrooms ?? '—'}</p></div>
+                                    <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Bathrooms')}</p><p className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">{selectedUnit.bathrooms ?? '—'}</p></div>
                                 </>}
                             </div>
-                            <section className="border-b border-slate-200 py-8"><h2 className="text-2xl font-black">{isUnitDetail ? t('Description') : t('About this property')}</h2><p className="mt-4 max-w-3xl whitespace-pre-line text-[16px] leading-8 text-slate-600">{selectedUnit?.description || property.description || t('This :type in :location is available for rent. Contact the owner to arrange a viewing and learn more.', { type: selectedUnit?.unit_type?.name?.toLowerCase() || t('rental space'), location })}</p></section>
-                                    <section className="border-b border-slate-200 py-8"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-black">{t('Address')}</h2><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.address}, ${location}`)}`} target="_blank" rel="noreferrer" className="rounded-lg bg-[#b57c35] px-4 py-2 text-sm font-bold text-white">{t('Open in Google Maps')}</a></div><dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="font-semibold text-slate-500">{t('Property')}</dt><dd className="mt-1 text-slate-800">{property.name}</dd></div><div><dt className="font-semibold text-slate-500">{t('Street address')}</dt><dd className="mt-1 text-slate-800">{property.address}</dd></div><div><dt className="font-semibold text-slate-500">{t('Location')}</dt><dd className="mt-1 text-slate-800">{location}</dd></div><div><dt className="font-semibold text-slate-500">{t('Floor')}</dt><dd className="mt-1 text-slate-800">{selectedUnit?.floor_number ?? t('Not specified')}</dd></div></dl></section>
-                                    <section className="border-b border-slate-200 py-8"><h2 className="text-2xl font-black">{t('Property amenities')}</h2>{amenities.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">{amenities.map((amenity) => <div key={amenity} className="flex items-center gap-3 rounded-xl bg-white p-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-100"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#edf5f0] text-[#0e3b2e]"><CheckCircle2 size={16} /></span>{t(amenity)}</div>)}</div> : <p className="mt-4 text-slate-500">{t('Contact the owner for available facilities and amenities.')}</p>}</section>
-                                    <section className="border-b border-slate-200 py-8"><h2 className="text-2xl font-black">{t('Nearby infrastructure')}</h2>{proximity.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">{proximity.map((place) => <div key={place} className="flex items-center gap-3 text-sm text-slate-600"><Compass size={17} className="text-[#b57c35]" /> {t(place)}</div>)}</div> : <p className="mt-4 text-slate-500">{t('Strategically located with convenient access to surrounding services.')}</p>}</section>
+                            <section className="border-b border-slate-200 dark:border-slate-700 py-8"><h2 className="text-2xl font-black">{isUnitDetail ? t('Description') : t('About this property')}</h2><p className="mt-4 max-w-3xl whitespace-pre-line text-[16px] leading-8 text-slate-600 dark:text-slate-300">{selectedUnit?.description || property.description || t('This :type in :location is available for rent. Contact the owner to arrange a viewing and learn more.', { type: selectedUnit?.unit_type?.name?.toLowerCase() || t('rental space'), location })}</p></section>
+                                    <section className="border-b border-slate-200 dark:border-slate-700 py-8"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-black">{t('Address')}</h2><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.address}, ${location}`)}`} target="_blank" rel="noreferrer" className="rounded-lg bg-[#b57c35] px-4 py-2 text-sm font-bold text-white">{t('Open in Google Maps')}</a></div><dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="font-semibold text-slate-500 dark:text-slate-400">{t('Property')}</dt><dd className="mt-1 text-slate-800 dark:text-slate-100">{property.name}</dd></div><div><dt className="font-semibold text-slate-500 dark:text-slate-400">{t('Street address')}</dt><dd className="mt-1 text-slate-800 dark:text-slate-100">{property.address}</dd></div><div><dt className="font-semibold text-slate-500 dark:text-slate-400">{t('Location')}</dt><dd className="mt-1 text-slate-800 dark:text-slate-100">{location}</dd></div><div><dt className="font-semibold text-slate-500 dark:text-slate-400">{t('Floor')}</dt><dd className="mt-1 text-slate-800 dark:text-slate-100">{selectedUnit?.floor_number ?? t('Not specified')}</dd></div></dl></section>
+                                    <section className="border-b border-slate-200 dark:border-slate-700 py-8"><h2 className="text-2xl font-black">{t('Property amenities')}</h2>{amenities.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">{amenities.map((amenity) => <div key={amenity} className="flex items-center gap-3 rounded-xl bg-white dark:bg-slate-900 p-3 text-sm font-semibold text-slate-700 dark:text-slate-200 ring-1 ring-slate-100 dark:ring-slate-700"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#edf5f0] dark:bg-emerald-500/10 text-[#0e3b2e] dark:text-emerald-300"><CheckCircle2 size={16} /></span>{t(amenity)}</div>)}</div> : <p className="mt-4 text-slate-500 dark:text-slate-400">{t('Contact the owner for available facilities and amenities.')}</p>}</section>
+                                    <section className="border-b border-slate-200 dark:border-slate-700 py-8"><h2 className="text-2xl font-black">{t('Nearby infrastructure')}</h2>{proximity.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">{proximity.map((place) => <div key={place} className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300"><Compass size={17} className="text-[#b57c35] dark:text-amber-300" /> {t(place)}</div>)}</div> : <p className="mt-4 text-slate-500 dark:text-slate-400">{t('Strategically located with convenient access to surrounding services.')}</p>}</section>
                             <section className="py-8">
                                 <h2 className="text-2xl font-black">{t(isUnitDetail ? 'Other available units in this property' : 'Available spaces')}</h2>
                                 <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -288,14 +290,14 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                                             <Link
                                                 key={unit.id}
                                                 href={route('public.units.show', [property.id, unit.id])}
-                                                className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:border-[#b57c35] hover:shadow-md"
+                                                className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-left transition hover:-translate-y-0.5 hover:border-[#b57c35] hover:shadow-md"
                                             >
                                                 {cover?.image_path && (
                                                     <img src={imageSource(cover.image_path)} alt="" className="h-16 w-20 shrink-0 rounded-xl object-cover" />
                                                 )}
                                                 <span className="min-w-0 flex-1">
-                                                    <span className="block truncate text-sm font-bold text-slate-900 group-hover:text-[#0e3b2e]">{unit.unit_type?.name || t('Commercial space')} · {unit.unit_number}</span>
-                                                    <span className="mt-1 block truncate text-xs text-slate-500">{unit.size_sqm ? `${unit.size_sqm} m² · ` : ''}{formatRent(unit, t)}</span>
+                                                    <span className="block truncate text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#0e3b2e]">{unit.unit_type?.name || t('Commercial space')} · {unit.unit_number}</span>
+                                                    <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">{unit.size_sqm ? `${unit.size_sqm} m² · ` : ''}{formatRent(unit, t)}</span>
                                                 </span>
                                                 <ArrowLeft className="h-4 w-4 shrink-0 rotate-180 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[#0e3b2e]" />
                                             </Link>
@@ -305,7 +307,7 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                             </section>
                         </article>
                         <aside id="contact-owner" className="h-fit lg:sticky lg:top-36">
-                            <div className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_22px_60px_-32px_rgba(15,23,42,.5)]">
+                            <div className="overflow-hidden rounded-[1.6rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_22px_60px_-32px_rgba(15,23,42,.5)]">
                                 <div className="relative overflow-hidden bg-gradient-to-br from-[#0e3b2e] via-[#12513d] to-[#064b78] px-6 pb-7 pt-6 text-white">
                                     <div className="absolute -right-12 -top-16 h-48 w-48 rounded-full border-[26px] border-white/5" />
                                     <div className="relative flex items-center gap-4">
@@ -323,16 +325,16 @@ export default function PublicProperty({ property, selectedUnit: selectedUnitPro
                                     </div>
                                 </div>
                                 <div className="p-5 sm:p-6">
-                                    <h2 className="text-lg font-black text-slate-900">{t('Interested in this space?')}</h2>
-                                    <p className="mt-1.5 text-sm leading-6 text-slate-500">{t('Ask a question or arrange a viewing directly with the owner.')}</p>
+                                    <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">{t('Interested in this space?')}</h2>
+                                    <p className="mt-1.5 text-sm leading-6 text-slate-500 dark:text-slate-400">{t('Ask a question or arrange a viewing directly with the owner.')}</p>
                                     <button type="button" onClick={openInquiry} className="group mt-5 flex w-full items-center justify-between rounded-xl bg-[#0e3b2e] px-4 py-3.5 text-left font-bold text-white shadow-lg shadow-[#0e3b2e]/15 transition hover:-translate-y-0.5 hover:bg-[#175640]">
                                         <span className="flex items-center gap-2.5"><MessageCircle size={18} /> {t('Send a message')}</span><ArrowUpRight size={17} className="text-white/70 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-white" />
                                     </button>
-                                    {whatsappHref ? <a href={whatsappHref} target="_blank" rel="noreferrer" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#b9e8c9] bg-[#effaf3] px-3 py-3 text-sm font-bold text-[#168447] transition hover:border-[#83d59f] hover:bg-[#e2f6e9]"><MessageCircle size={17} /> {t('Chat on WhatsApp')}</a> : <span className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-400"><MessageCircle size={17} /> {t('WhatsApp unavailable')}</span>}
-                                    <p className="mt-4 flex items-start gap-2 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-600" /> {t('Your inquiry goes to the owner dashboard. WhatsApp opens a direct chat with the owner.')}</p>
+                                    {whatsappHref ? <a href={whatsappHref} target="_blank" rel="noreferrer" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#b9e8c9] dark:border-emerald-500/30 bg-[#effaf3] dark:bg-emerald-500/10 px-3 py-3 text-sm font-bold text-[#168447] dark:text-emerald-300 transition hover:border-[#83d59f] hover:bg-[#e2f6e9] dark:hover:bg-emerald-500/15"><MessageCircle size={17} /> {t('Chat on WhatsApp')}</a> : <span className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-3 py-3 text-sm font-semibold text-slate-400"><MessageCircle size={17} /> {t('WhatsApp unavailable')}</span>}
+                                    <p className="mt-4 flex items-start gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 text-xs leading-5 text-slate-400"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> {t('Your inquiry goes to the owner dashboard. WhatsApp opens a direct chat with the owner.')}</p>
                                 </div>
                             </div>
-                            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff5e8] text-[#b57c35]"><Sparkles size={18} /></span><span><span className="block text-sm font-bold text-slate-900">{t('A better way to rent')}</span><span className="mt-0.5 block text-xs leading-5 text-slate-500">{t('Real spaces. Direct connections.')}</span></span></div>
+                            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff5e8] dark:bg-amber-500/10 text-[#b57c35] dark:text-amber-300"><Sparkles size={18} /></span><span><span className="block text-sm font-bold text-slate-900 dark:text-slate-100">{t('A better way to rent')}</span><span className="mt-0.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">{t('Real spaces. Direct connections.')}</span></span></div>
                         </aside>
                     </div>
                 </main>

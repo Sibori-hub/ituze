@@ -11,7 +11,7 @@ const MAX_NEW_IMAGES = 10;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const STATUSES = ['available', 'occupied', 'maintenance', 'reserved', 'inactive'];
 
-const inputClass = (invalid) => `mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-gray-900 transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 ${invalid ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
+const inputClass = (invalid) => `mt-1.5 w-full rounded-xl border bg-white dark:bg-slate-900 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${invalid ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 dark:border-slate-600 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
 const imageSource = (path) => (/^https?:\/\//i.test(path || '') ? path : `/storage/${path}`);
 const isNumber = (value) => String(value).trim() !== '' && !Number.isNaN(Number(value));
 
@@ -175,7 +175,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
     };
 
     const FieldError = ({ field }) => errorFor(field) ? (
-        <p id={`room-${field}-error`} className="mt-1 flex items-center gap-1.5 text-sm text-red-600">
+        <p id={`room-${field}-error`} className="mt-1 flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
             <AlertCircle size={14} className="flex-none" aria-hidden="true" />{errorFor(field)}
         </p>
     ) : null;
@@ -189,7 +189,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
         <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col">
             <div className={`min-h-0 flex-1 space-y-5 ${compact ? 'overflow-y-auto px-6 py-5' : ''}`}>
                 {(shown.length > 0 || otherServerError) && (
-                    <div ref={summaryRef} tabIndex={-1} role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500/40">
+                    <div ref={summaryRef} tabIndex={-1} role="alert" className="rounded-2xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-900 dark:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/40">
                         <p className="flex items-center gap-2 font-semibold">
                             <AlertCircle size={18} aria-hidden="true" />
                             {shown.length <= 1 ? t('Please fix 1 field before saving.') : t('Please fix :count fields before saving.', { count: shown.length })}
@@ -197,7 +197,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                         <ul className="mt-2 space-y-1 pl-7">
                             {shown.map(([field, message]) => (
                                 <li key={field}>
-                                    <button type="button" onClick={() => focusField(field)} className="text-left underline underline-offset-2 hover:text-red-700">
+                                    <button type="button" onClick={() => focusField(field)} className="text-left underline underline-offset-2 hover:text-red-700 dark:hover:text-red-200">
                                         <span className="font-medium">{labels[field]}:</span> {message}
                                     </button>
                                 </li>
@@ -209,34 +209,34 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
 
                 {floorMode ? (
                 <div>
-                    <label htmlFor="room-floor_number" className="block text-sm font-medium text-gray-800">{t('Floor')} <span className="text-red-600" aria-hidden="true">*</span></label>
+                    <label htmlFor="room-floor_number" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t('Floor')} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span></label>
                     <select id="room-floor_number" value={data.floor_number} onChange={e => setData('floor_number', e.target.value)} disabled={floorLocked}
-                        className={`${inputClass(false)} disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-700`}>
+                        className={`${inputClass(false)} disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:text-gray-700 dark:disabled:text-slate-400`}>
                         {[...floors].sort((a, b) => a - b).map(floor => <option key={floor} value={floor}>{floorLabel(floor)}</option>)}
                     </select>
                 </div>
                 ) : (
                 <div>
-                    <label htmlFor="room-property_unit_id" className="block text-sm font-medium text-gray-800">{t('Unit')} <span className="text-red-600" aria-hidden="true">*</span></label>
+                    <label htmlFor="room-property_unit_id" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t('Unit')} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span></label>
                     <select {...aria('property_unit_id')} value={data.property_unit_id} onChange={e => { setData('property_unit_id', e.target.value); touch('property_unit_id'); }} disabled={unitLocked}
-                        className={`${inputClass(errorFor('property_unit_id'))} disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-700`}>
+                        className={`${inputClass(errorFor('property_unit_id'))} disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:text-gray-700 dark:disabled:text-slate-400`}>
                         <option value="">{t('Choose the unit')}</option>
                         {[...propertyUnits].sort((a, b) => a.floor_number - b.floor_number).map(u => <option key={u.id} value={u.id}>{unitLabel(u)}</option>)}
                     </select>
-                    {unitLocked && <p className="mt-1 text-xs text-gray-500">{t('This room is added to the unit you chose.')}</p>}
+                    {unitLocked && <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{t('This room is added to the unit you chose.')}</p>}
                     <FieldError field="property_unit_id" />
                 </div>
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label htmlFor="room-unit_number" className="block text-sm font-medium text-gray-800">{t(`${word} number`)} <span className="text-red-600" aria-hidden="true">*</span></label>
+                        <label htmlFor="room-unit_number" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t(`${word} number`)} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span></label>
                         <input {...aria('unit_number')} type="text" value={data.unit_number} maxLength={50} placeholder={floorMode ? t('e.g. 001') : t('e.g. 005')} autoComplete="off"
                             onChange={e => setData('unit_number', e.target.value)} onBlur={() => touch('unit_number')} className={inputClass(errorFor('unit_number'))} />
                         <FieldError field="unit_number" />
                     </div>
                     <div>
-                        <label htmlFor="room-size_sqm" className="block text-sm font-medium text-gray-800">{t(floorMode ? 'Size (m²)' : 'Room size (m²)')}</label>
+                        <label htmlFor="room-size_sqm" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t(floorMode ? 'Size (m²)' : 'Room size (m²)')}</label>
                         <input {...aria('size_sqm')} type="number" inputMode="decimal" min="0" step="0.01" value={data.size_sqm} placeholder={t('e.g., 60')}
                             onChange={e => setData('size_sqm', e.target.value)} onBlur={() => touch('size_sqm')} className={inputClass(errorFor('size_sqm'))} />
                         <FieldError field="size_sqm" />
@@ -245,11 +245,11 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
 
                 <div className={`grid gap-4 ${isApartment ? 'sm:grid-cols-2' : ''}`}>
                     <div>
-                        <label htmlFor="room-rent_amount" className="block text-sm font-medium text-gray-800">
-                            {t(isApartment && data.rent_frequency === 'daily' ? 'Daily rate (RWF)' : 'Monthly Rent (RWF)')} <span className="text-red-600" aria-hidden="true">*</span>
+                        <label htmlFor="room-rent_amount" className="block text-sm font-medium text-gray-800 dark:text-slate-100">
+                            {t(isApartment && data.rent_frequency === 'daily' ? 'Daily rate (RWF)' : 'Monthly Rent (RWF)')} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span>
                         </label>
                         <div className="relative">
-                            <span className="pointer-events-none absolute left-4 top-1/2 mt-[3px] -translate-y-1/2 text-xs font-semibold text-gray-500" aria-hidden="true">RWF</span>
+                            <span className="pointer-events-none absolute left-4 top-1/2 mt-[3px] -translate-y-1/2 text-xs font-semibold text-gray-500 dark:text-slate-400" aria-hidden="true">RWF</span>
                             <input {...aria('rent_amount')} type="number" inputMode="numeric" min="0" step="100" value={data.rent_amount} placeholder={t('e.g., 150000')}
                                 onChange={e => setData('rent_amount', e.target.value)} onBlur={() => touch('rent_amount')} className={`${inputClass(errorFor('rent_amount'))} pl-14`} />
                         </div>
@@ -257,7 +257,7 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                     </div>
                     {isApartment && (
                         <div>
-                            <label htmlFor="room-rent_frequency" className="block text-sm font-medium text-gray-800">{t('Rent Frequency')}</label>
+                            <label htmlFor="room-rent_frequency" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t('Rent Frequency')}</label>
                             <select id="room-rent_frequency" value={data.rent_frequency} onChange={e => setData('rent_frequency', e.target.value)} className={inputClass(false)}>
                                 <option value="monthly">{t('Monthly')}</option>
                                 <option value="daily">{t('Daily')}</option>
@@ -269,13 +269,13 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                 {isApartment && (
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div>
-                            <label htmlFor="room-bedrooms" className="block text-sm font-medium text-gray-800">{t('Bedrooms')} <span className="text-red-600" aria-hidden="true">*</span></label>
+                            <label htmlFor="room-bedrooms" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t('Bedrooms')} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span></label>
                             <input {...aria('bedrooms')} type="number" inputMode="numeric" min="0" max="50" step="1" value={data.bedrooms}
                                 onChange={e => setData('bedrooms', e.target.value)} onBlur={() => touch('bedrooms')} className={inputClass(errorFor('bedrooms'))} />
                             <FieldError field="bedrooms" />
                         </div>
                         <div>
-                            <label htmlFor="room-bathrooms" className="block text-sm font-medium text-gray-800">{t('Bathrooms')} <span className="text-red-600" aria-hidden="true">*</span></label>
+                            <label htmlFor="room-bathrooms" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t('Bathrooms')} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span></label>
                             <input {...aria('bathrooms')} type="number" inputMode="decimal" min="0" max="30" step="0.5" value={data.bathrooms}
                                 onChange={e => setData('bathrooms', e.target.value)} onBlur={() => touch('bathrooms')} className={inputClass(errorFor('bathrooms'))} />
                             <FieldError field="bathrooms" />
@@ -285,28 +285,28 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
 
                 {isEdit ? (
                     <div>
-                        <label htmlFor="room-status" className="block text-sm font-medium text-gray-800">{t('Status')}</label>
+                        <label htmlFor="room-status" className="block text-sm font-medium text-gray-800 dark:text-slate-100">{t('Status')}</label>
                         <select {...aria('status')} value={data.status} onChange={e => setData('status', e.target.value)} className={inputClass(errorFor('status'))}>
                             {STATUSES.map(status => <option key={status} value={status}>{t(status.charAt(0).toUpperCase() + status.slice(1))}</option>)}
                         </select>
                         <FieldError field="status" />
                     </div>
                 ) : (
-                    <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-900">{floorMode ? t('New units start as Available. What it is used for (office, salon, warehouse…) is chosen with each client who rents it.') : t('New rooms start as Available. You can change the status later by editing the room.')}</p>
+                    <p className="rounded-xl bg-green-50 dark:bg-green-500/10 px-4 py-3 text-sm text-green-900 dark:text-green-300">{floorMode ? t('New units start as Available. What it is used for (office, salon, warehouse…) is chosen with each client who rents it.') : t('New rooms start as Available. You can change the status later by editing the room.')}</p>
                 )}
 
                 <div>
-                    <p id="room-photos" tabIndex={-1} className="text-sm font-medium text-gray-800">{t(`${word} photos`)} <span className="text-red-600" aria-hidden="true">*</span></p>
+                    <p id="room-photos" tabIndex={-1} className="text-sm font-medium text-gray-800 dark:text-slate-100">{t(`${word} photos`)} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span></p>
                     <input ref={photoInput} type="file" multiple accept="image/*" className="hidden" tabIndex={-1} aria-hidden="true"
                         onChange={e => { addImages(e.target.files); e.target.value = ''; }} />
                     <ul className="mt-2 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
                         {savedImages.map(image => {
                             const removed = removedImageIds.includes(image.id);
                             return (
-                                <li key={`saved-${image.id}`} className="relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
+                                <li key={`saved-${image.id}`} className="relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800">
                                     <img src={imageSource(image.image_path)} alt="" className={`h-full w-full object-cover transition-opacity ${removed ? 'opacity-30 grayscale' : ''}`} />
                                     <button type="button" onClick={() => setRemovedImageIds(ids => removed ? ids.filter(id => id !== image.id) : [...ids, image.id])}
-                                        className="absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-semibold text-gray-800 shadow hover:bg-white"
+                                        className="absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-white/95 dark:bg-slate-900/95 px-2 py-1 text-xs font-semibold text-gray-800 dark:text-slate-100 shadow hover:bg-white dark:hover:bg-slate-800"
                                         aria-label={removed ? t('Keep this photo') : t('Remove this photo')}>
                                         {removed ? <><Undo2 size={12} aria-hidden="true" />{t('Keep')}</> : <X size={13} aria-hidden="true" />}
                                     </button>
@@ -314,32 +314,32 @@ export default function RoomForm({ property, propertyUnits = [], room = null, in
                             );
                         })}
                         {newImages.map((image, index) => (
-                            <li key={image.url} className="relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
+                            <li key={image.url} className="relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800">
                                 <img src={image.url} alt="" className="h-full w-full object-cover" />
                                 <span className="absolute bottom-1.5 left-1.5 rounded-full bg-[#0E3B2E] px-2 py-0.5 text-[11px] font-semibold text-white">{t('New')}</span>
-                                <button type="button" onClick={() => removeNewImage(index)} className="absolute right-1.5 top-1.5 rounded-full bg-white/95 p-1 text-gray-800 shadow hover:bg-white" aria-label={t('Remove :file', { file: image.file.name })}>
+                                <button type="button" onClick={() => removeNewImage(index)} className="absolute right-1.5 top-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 p-1 text-gray-800 dark:text-slate-100 shadow hover:bg-white dark:hover:bg-slate-800" aria-label={t('Remove :file', { file: image.file.name })}>
                                     <X size={13} aria-hidden="true" />
                                 </button>
                             </li>
                         ))}
                         <li className="aspect-[4/3]">
                             <button type="button" onClick={() => photoInput.current?.click()}
-                                className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-xs font-semibold text-[#0E3B2E] transition-colors hover:border-[#0E3B2E]/60 hover:bg-[#0E3B2E]/[0.04]">
+                                className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/60 text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300 transition-colors hover:border-[#0E3B2E]/60 hover:bg-[#0E3B2E]/[0.04]">
                                 <ImagePlus size={20} aria-hidden="true" />
                                 {savedImages.length + newImages.length > 0 ? t('Add more') : t('Add photos')}
                             </button>
                         </li>
                     </ul>
-                    <p className="mt-1.5 text-xs text-gray-500">{t('JPG, PNG, GIF or WebP · up to 2 MB each')}</p>
-                    {(imageNotice || imageServerError || errorFor('images')) && <p className="mt-1 text-sm text-red-600" role="alert">{imageNotice || imageServerError || errorFor('images')}</p>}
+                    <p className="mt-1.5 text-xs text-gray-500 dark:text-slate-400">{t('JPG, PNG, GIF or WebP · up to 2 MB each')}</p>
+                    {(imageNotice || imageServerError || errorFor('images')) && <p className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">{imageNotice || imageServerError || errorFor('images')}</p>}
                 </div>
 
                 <RoomDescriptionField property={property} data={{ ...data, bedrooms: isApartment ? data.bedrooms : '', bathrooms: isApartment ? data.bathrooms : '' }} setData={setData} error={errorFor('description')} />
             </div>
 
-            <div className={`flex gap-3 ${compact ? 'border-t border-gray-100 bg-white px-6 py-4' : 'mt-6 justify-end'}`}>
+            <div className={`flex gap-3 ${compact ? 'border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4' : 'mt-6 justify-end'}`}>
                 <button type="button" onClick={onCancel} disabled={processing}
-                    className={`rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60 ${compact ? 'flex-1' : ''}`}>
+                    className={`rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60 ${compact ? 'flex-1' : ''}`}>
                     {t('Cancel')}
                 </button>
                 <button type="submit" disabled={processing}

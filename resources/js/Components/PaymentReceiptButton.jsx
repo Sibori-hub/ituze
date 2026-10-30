@@ -62,17 +62,17 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
             <button
                 type="button"
                 onClick={printReceipt}
-                className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-[#0E3B2E]/20 bg-white px-3 py-2 text-xs font-semibold text-[#0E3B2E] transition hover:bg-emerald-50"
+                className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-[#0E3B2E]/20 dark:border-emerald-400/20 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
             >
                 <Printer size={14} />
                 {t('Print receipt')}
             </button>
             <section ref={receiptRef} data-payment-receipt className="hidden">
-                <div className="payment-receipt-content mx-auto max-w-2xl bg-white p-8 font-sans text-gray-900">
-                    <header className="flex items-center gap-4 border-b-2 border-[#0E3B2E] pb-5">
+                <div className="payment-receipt-content mx-auto max-w-2xl bg-white dark:bg-slate-900 p-8 font-sans text-gray-900 dark:text-slate-100">
+                    <header className="flex items-center gap-4 border-b-2 border-[#0E3B2E] dark:border-emerald-500 pb-5">
                         <BrandLockup
                             logoClassName="h-20 w-20"
-                            nameClassName="text-xs font-bold text-[#0E3B2E]"
+                            nameClassName="text-xs font-bold text-[#0E3B2E] dark:text-emerald-300"
                             subtitleClassName="text-[8px] font-medium text-[#0E3B2E]/70"
                         />
                         <div>
@@ -81,15 +81,15 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
                     </header>
                     <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">{t('App receipt number')}</p>
-                            <p className="mt-1 text-lg font-bold text-[#0E3B2E]">{payment.receipt_number || t('Receipt pending')}</p>
+                            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">{t('App receipt number')}</p>
+                            <p className="mt-1 text-lg font-bold text-[#0E3B2E] dark:text-emerald-300">{payment.receipt_number || t('Receipt pending')}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs uppercase tracking-wide text-gray-500">{t('Date paid')}</p>
+                            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">{t('Date paid')}</p>
                             <p className="mt-1 font-semibold">{formatDateTime(payment.paid_at, language)}</p>
                         </div>
                     </div>
-                    <dl className="mt-6 divide-y divide-gray-200 border-y border-gray-200">
+                    <dl className="mt-6 divide-y divide-gray-200 dark:divide-slate-700 border-y border-gray-200 dark:border-slate-700">
                         {[
                             [t('Received from'), tenant?.name || '—'],
                             [t('Agreement ID'), agreement?.reference || '—'],
@@ -99,33 +99,33 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
                             [t('External transaction reference'), payment.reference || t('No transaction reference recorded')],
                         ].map(([label, value]) => (
                             <div key={label} className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-4 py-3 text-sm">
-                                <dt className="text-gray-500">{label}</dt>
+                                <dt className="text-gray-500 dark:text-slate-400">{label}</dt>
                                 <dd className="break-words text-right font-medium">{value}</dd>
                             </div>
                         ))}
                     </dl>
                     {isCombined && (
-                        <div className="mt-5 rounded-xl bg-gray-50 px-5 py-4 text-sm">
-                            <p className="font-semibold text-gray-800">{t('This payment covers')}</p>
-                            <ul className="mt-2 divide-y divide-gray-200">
+                        <div className="mt-5 rounded-xl bg-gray-50 dark:bg-slate-800/60 px-5 py-4 text-sm">
+                            <p className="font-semibold text-gray-800 dark:text-slate-100">{t('This payment covers')}</p>
+                            <ul className="mt-2 divide-y divide-gray-200 dark:divide-slate-700">
                                 {rentItems.map((item, index) => (
                                     <li key={item.id} className="flex justify-between gap-4 py-1.5">
-                                        <span className="text-gray-700">
+                                        <span className="text-gray-700 dark:text-slate-200">
                                             <span className="font-medium">{t('Month :number', { number: index + 1 })}</span>
-                                            {item.charge?.period_label && <span className="text-gray-500"> · {item.charge.period_label}</span>}
+                                            {item.charge?.period_label && <span className="text-gray-500 dark:text-slate-400"> · {item.charge.period_label}</span>}
                                         </span>
                                         <span className="font-medium">{formatMoney(item.amount)}</span>
                                     </li>
                                 ))}
                                 {depositItems.map(item => (
                                     <li key={item.id} className="flex justify-between gap-4 py-1.5">
-                                        <span className="text-gray-700"><span className="font-medium">{t('Security deposit')}</span> <span className="text-gray-500">· {t('refundable at move-out')}</span></span>
+                                        <span className="text-gray-700 dark:text-slate-200"><span className="font-medium">{t('Security deposit')}</span> <span className="text-gray-500 dark:text-slate-400">· {t('refundable at move-out')}</span></span>
                                         <span className="font-medium">{formatMoney(item.amount)}</span>
                                     </li>
                                 ))}
                                 {payments.filter(item => !['rent', 'deposit'].includes(typeOf(item))).map(item => (
                                     <li key={item.id} className="flex justify-between gap-4 py-1.5">
-                                        <span className="font-medium text-gray-700">{t(typeOf(item))}</span>
+                                        <span className="font-medium text-gray-700 dark:text-slate-200">{t(typeOf(item))}</span>
                                         <span className="font-medium">{formatMoney(item.amount)}</span>
                                     </li>
                                 ))}
@@ -133,31 +133,31 @@ export default function PaymentReceiptButton({ payment, payments = [payment], ch
                         </div>
                     )}
                     {(charge.charge_type === 'rent' || isCombined) && (
-                        <dl className="mt-5 space-y-2 rounded-xl bg-gray-50 px-5 py-4 text-sm">
+                        <dl className="mt-5 space-y-2 rounded-xl bg-gray-50 dark:bg-slate-800/60 px-5 py-4 text-sm">
                             {taxedItems.some(item => item.vat_amount === null || item.vat_amount === undefined) ? (
                                 <p>{t('VAT breakdown not recorded')}</p>
                             ) : (
                                 <>
                                     <div className="flex justify-between gap-4">
-                                        <dt className="text-gray-600">{t('Recorded rent amount')}</dt>
+                                        <dt className="text-gray-600 dark:text-slate-300">{t('Recorded rent amount')}</dt>
                                         <dd className="font-medium">{totalTaxable.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF</dd>
                                     </div>
                                     <div className="flex justify-between gap-4">
-                                        <dt className="text-gray-600">{t('VAT at :rate% of amount', { rate: Number(taxedItems.find(item => item.vat_rate !== null && item.vat_rate !== undefined)?.vat_rate ?? payment.vat_rate) })}</dt>
+                                        <dt className="text-gray-600 dark:text-slate-300">{t('VAT at :rate% of amount', { rate: Number(taxedItems.find(item => item.vat_rate !== null && item.vat_rate !== undefined)?.vat_rate ?? payment.vat_rate) })}</dt>
                                         <dd className="font-medium">{totalVat.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF</dd>
                                     </div>
                                 </>
                             )}
                         </dl>
                     )}
-                    <div className="mt-6 flex items-center justify-between rounded-xl bg-emerald-50 px-5 py-4">
+                    <div className="mt-6 flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-500/10 px-5 py-4">
                         <span className="font-semibold">{t('Amount received')}</span>
-                        <span className="text-xl font-bold text-[#0E3B2E]">
+                        <span className="text-xl font-bold text-[#0E3B2E] dark:text-emerald-300">
                             {totalAmount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RWF
                         </span>
                     </div>
-                    {payment.notes && <p className="mt-5 text-sm text-gray-600"><span className="font-semibold">{t('Note')}:</span> {payment.notes}</p>}
-                    <p className="mt-10 border-t border-gray-200 pt-4 text-center text-xs text-gray-500">
+                    {payment.notes && <p className="mt-5 text-sm text-gray-600 dark:text-slate-300"><span className="font-semibold">{t('Note')}:</span> {payment.notes}</p>}
+                    <p className="mt-10 border-t border-gray-200 dark:border-slate-700 pt-4 text-center text-xs text-gray-500 dark:text-slate-400">
                         {t('Thank you for your payment.')}
                         <span className="mt-2 block">{t('This payment receipt is not a VAT invoice or tax return.')}</span>
                     </p>

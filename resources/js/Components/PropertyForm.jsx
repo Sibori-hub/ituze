@@ -35,8 +35,8 @@ export const PROXIMITY = [
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-const inputBase = 'mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-gray-900 transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400';
-const inputClass = (invalid) => `${inputBase} ${invalid ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
+const inputBase = 'mt-1.5 w-full rounded-xl border bg-white dark:bg-slate-900 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800 disabled:text-gray-400 dark:disabled:text-slate-500';
+const inputClass = (invalid) => `${inputBase} ${invalid ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 dark:border-slate-600 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
 
 const imageSource = (path) => (/^https?:\/\//i.test(path || '') ? path : `/storage/${path}`);
 
@@ -277,7 +277,7 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
         <form onSubmit={submit} noValidate className="mx-auto grid max-w-6xl gap-6 pb-24 lg:grid-cols-[minmax(0,1fr)_260px] lg:pb-0">
             <div className="space-y-5">
                 {errorCount > 0 && (
-                    <div ref={summaryRef} tabIndex={-1} role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500/40">
+                    <div ref={summaryRef} tabIndex={-1} role="alert" className="rounded-2xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-900 dark:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/40">
                         <p className="flex items-center gap-2 font-semibold">
                             <AlertCircle size={18} aria-hidden="true" />
                             {errorCount === 1 ? t('Please fix 1 field before saving.') : t('Please fix :count fields before saving.', { count: errorCount })}
@@ -285,7 +285,7 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                         <ul className="mt-2 space-y-1 pl-7">
                             {Object.entries(shownErrors).map(([field, message]) => (
                                 <li key={field}>
-                                    <button type="button" onClick={() => focusField(field)} className="text-left underline underline-offset-2 hover:text-red-700">
+                                    <button type="button" onClick={() => focusField(field)} className="text-left underline underline-offset-2 hover:text-red-700 dark:hover:text-red-200">
                                         <span className="font-medium">{fieldLabels[field]}:</span> {message}
                                     </button>
                                 </li>
@@ -297,7 +297,7 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                 <Section id="pf-section-basics" number={1} title={t('Basics')} description={t('Who owns the building and what it is called.')}>
                     {askOwner && (
                         <Field id="pf-owner" label={t('Property owner')} required error={errorFor('owner_id')}
-                            hint={<>{owners.length === 0 ? t('No owners created by an administrator yet.') : t('Only owners created by an administrator are listed.')}{' '}<Link href={route('admin.users.create')} className="font-semibold text-[#0E3B2E] underline underline-offset-2">{t('Create an owner')}</Link></>}>
+                            hint={<>{owners.length === 0 ? t('No owners created by an administrator yet.') : t('Only owners created by an administrator are listed.')}{' '}<Link href={route('admin.users.create')} className="font-semibold text-[#0E3B2E] dark:text-emerald-300 underline underline-offset-2">{t('Create an owner')}</Link></>}>
                             {(props) => (
                                 <select {...props} value={data.owner_id} onChange={e => { setData('owner_id', e.target.value); touch('owner_id'); }} onBlur={() => touch('owner_id')} className={inputClass(props['aria-invalid'])}>
                                     <option value="">{t('Select an owner')}</option>
@@ -333,7 +333,7 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                                 const invalid = Boolean(errorFor('cell_id')) && !level.value && !level.disabled;
                                 return (
                                     <div key={level.id}>
-                                        <label htmlFor={level.id} className="block text-sm font-medium text-gray-800">{level.label} <span className="text-red-600" aria-hidden="true">*</span></label>
+                                        <label htmlFor={level.id} className="block text-sm font-medium text-gray-800 dark:text-slate-100">{level.label} <span className="text-red-600 dark:text-red-400" aria-hidden="true">*</span></label>
                                         <select id={level.id} value={level.value} disabled={level.disabled} aria-invalid={invalid ? 'true' : undefined}
                                             onChange={e => level.onChange(e.target.value)} onBlur={() => level.id === 'pf-cell' && touch('cell_id')} className={inputClass(invalid)}>
                                             <option value="">{level.placeholder}</option>
@@ -343,7 +343,7 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                                 );
                             })}
                         </div>
-                        {errorFor('cell_id') && <p id="pf-location-error" className="mt-2 flex items-center gap-1.5 text-sm text-red-600"><AlertCircle size={14} aria-hidden="true" />{errorFor('cell_id')}</p>}
+                        {errorFor('cell_id') && <p id="pf-location-error" className="mt-2 flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400"><AlertCircle size={14} aria-hidden="true" />{errorFor('cell_id')}</p>}
                     </fieldset>
                 </Section>
 
@@ -368,27 +368,27 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                             id="pf-photos-button"
                             onClick={openPhotoPicker}
                             {...dropHandlers}
-                            className={`group flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40 ${dragging ? 'scale-[1.01] border-[#0E3B2E] bg-[#0E3B2E]/5' : 'border-gray-300 bg-gray-50 hover:border-[#0E3B2E]/60 hover:bg-[#0E3B2E]/[0.03]'}`}
+                            className={`group flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40 ${dragging ? 'scale-[1.01] border-[#0E3B2E] dark:border-emerald-500 bg-[#0E3B2E]/5 dark:bg-emerald-400/10' : 'border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/60 hover:border-[#0E3B2E]/60 hover:bg-[#0E3B2E]/[0.03]'}`}
                         >
-                            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#0E3B2E] shadow-sm ring-1 ring-gray-200 transition-transform duration-200 group-hover:-translate-y-0.5">
+                            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white dark:bg-slate-900 text-[#0E3B2E] dark:text-emerald-300 shadow-sm ring-1 ring-gray-200 dark:ring-slate-700 transition-transform duration-200 group-hover:-translate-y-0.5">
                                 <ImagePlus size={26} aria-hidden="true" />
                             </span>
-                            <span className="mt-3 text-base font-semibold text-gray-900">{t('Add photos')}</span>
-                            <span className="mt-1 text-sm text-gray-600">{dragging ? t('Drop the photos to add them') : t('Click to choose from your device, or drag photos here')}</span>
-                            <span className="mt-2 text-xs text-gray-500">{t('JPG, PNG, GIF or WebP · up to 2 MB each')}</span>
+                            <span className="mt-3 text-base font-semibold text-gray-900 dark:text-slate-100">{t('Add photos')}</span>
+                            <span className="mt-1 text-sm text-gray-600 dark:text-slate-300">{dragging ? t('Drop the photos to add them') : t('Click to choose from your device, or drag photos here')}</span>
+                            <span className="mt-2 text-xs text-gray-500 dark:text-slate-400">{t('JPG, PNG, GIF or WebP · up to 2 MB each')}</span>
                         </button>
                     ) : (
-                        <div {...dropHandlers} className={`rounded-2xl transition-colors ${dragging ? 'bg-[#0E3B2E]/5 ring-2 ring-[#0E3B2E]/40' : ''}`}>
+                        <div {...dropHandlers} className={`rounded-2xl transition-colors ${dragging ? 'bg-[#0E3B2E]/5 dark:bg-emerald-400/10 ring-2 ring-[#0E3B2E]/40' : ''}`}>
                             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                 {savedImages.map(image => {
                                     const removed = removedImageIds.includes(image.id);
                                     return (
-                                        <li key={`saved-${image.id}`} className="group relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
+                                        <li key={`saved-${image.id}`} className="group relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800">
                                             <img src={imageSource(image.image_path)} alt="" className={`h-full w-full object-cover transition-all duration-300 ${removed ? 'opacity-30 grayscale' : 'group-hover:scale-[1.03]'}`} />
                                             {coverKey === `saved-${image.id}` && <span className="absolute bottom-2 left-2 rounded-full bg-[#0E3B2E] px-2.5 py-0.5 text-xs font-semibold text-white shadow">{t('Cover')}</span>}
-                                            {removed && <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-gray-800">{t('Will be removed')}</span>}
+                                            {removed && <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-gray-800 dark:text-slate-100">{t('Will be removed')}</span>}
                                             <button type="button" onClick={() => setRemovedImageIds(ids => removed ? ids.filter(id => id !== image.id) : [...ids, image.id])}
-                                                className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-semibold text-gray-800 shadow transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]"
+                                                className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 dark:bg-slate-900/95 px-2 py-1 text-xs font-semibold text-gray-800 dark:text-slate-100 shadow transition hover:bg-white dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]"
                                                 aria-label={removed ? t('Keep this photo') : t('Remove this photo')}>
                                                 {removed ? <><Undo2 size={12} aria-hidden="true" />{t('Keep')}</> : <X size={14} aria-hidden="true" />}
                                             </button>
@@ -396,13 +396,13 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                                     );
                                 })}
                                 {newImages.map((image, index) => (
-                                    <li key={image.url} className="group relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
+                                    <li key={image.url} className="group relative aspect-[4/3] animate-fade-in overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-800">
                                         <img src={image.url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-                                        <span className={`absolute bottom-2 left-2 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow ${coverKey === image.url ? 'bg-[#0E3B2E] text-white' : 'bg-white/95 text-gray-800'}`}>
+                                        <span className={`absolute bottom-2 left-2 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow ${coverKey === image.url ? 'bg-[#0E3B2E] text-white' : 'bg-white/95 dark:bg-slate-900/95 text-gray-800 dark:text-slate-100'}`}>
                                             {coverKey === image.url ? t('Cover') : t('New')}
                                         </span>
                                         <button type="button" onClick={() => removeNewImage(index)}
-                                            className="absolute right-2 top-2 rounded-full bg-white/95 p-1.5 text-gray-800 shadow transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]"
+                                            className="absolute right-2 top-2 rounded-full bg-white/95 dark:bg-slate-900/95 p-1.5 text-gray-800 dark:text-slate-100 shadow transition hover:bg-white dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]"
                                             aria-label={t('Remove :file', { file: image.file.name })}>
                                             <X size={14} aria-hidden="true" />
                                         </button>
@@ -410,17 +410,17 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                                 ))}
                                 <li className="aspect-[4/3]">
                                     <button type="button" id="pf-photos-button" onClick={openPhotoPicker}
-                                        className="flex h-full w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-sm font-semibold text-[#0E3B2E] transition-colors hover:border-[#0E3B2E]/60 hover:bg-[#0E3B2E]/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40">
+                                        className="flex h-full w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/60 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 transition-colors hover:border-[#0E3B2E]/60 hover:bg-[#0E3B2E]/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40">
                                         <ImagePlus size={22} aria-hidden="true" />
                                         {t('Add more')}
                                     </button>
                                 </li>
                             </ul>
-                            <p className="mt-2 text-xs text-gray-600" aria-live="polite">{t(':count photos selected', { count: photoCount })}</p>
+                            <p className="mt-2 text-xs text-gray-600 dark:text-slate-300" aria-live="polite">{t(':count photos selected', { count: photoCount })}</p>
                         </div>
                     )}
                     {(imageNotice || shownErrors.images) && (
-                        <p className="mt-2 flex items-start gap-1.5 text-sm text-red-600" role="alert"><AlertCircle size={14} className="mt-0.5 flex-none" aria-hidden="true" />{imageNotice || shownErrors.images}</p>
+                        <p className="mt-2 flex items-start gap-1.5 text-sm text-red-600 dark:text-red-400" role="alert"><AlertCircle size={14} className="mt-0.5 flex-none" aria-hidden="true" />{imageNotice || shownErrors.images}</p>
                     )}
                 </Section>
 
@@ -431,9 +431,9 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
 
                 <Section id="pf-section-description" number={6} title={t('Description')} description={t('Write it yourself or let AI draft it from the details above.')} optional>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <label htmlFor="pf-description" className="text-sm font-medium text-gray-800">{t('Description')}</label>
+                        <label htmlFor="pf-description" className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('Description')}</label>
                         <button type="button" onClick={generateDescription} disabled={ai.busy}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-[#0E3B2E]/30 bg-[#0E3B2E]/5 px-3 py-2 text-xs font-semibold text-[#0E3B2E] transition-colors hover:bg-[#0E3B2E]/10 disabled:opacity-60">
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-[#0E3B2E]/30 dark:border-emerald-400/30 bg-[#0E3B2E]/5 dark:bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300 transition-colors hover:bg-[#0E3B2E]/10 disabled:opacity-60">
                             {ai.busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
                             {ai.busy ? t('Writing...') : t('Write with AI')}
                         </button>
@@ -442,26 +442,26 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                         aria-invalid={errorFor('description') ? 'true' : undefined}
                         className={inputClass(Boolean(errorFor('description')))} placeholder={t('What makes this building a good place to rent?')} />
                     <div className="mt-1 flex justify-between gap-3 text-xs">
-                        <p aria-live="polite" className={ai.tone === 'warning' ? 'text-amber-800' : 'text-gray-600'}>{ai.message}</p>
-                        <span className="flex-none text-gray-500">{t(':count characters', { count: data.description.length })}</span>
+                        <p aria-live="polite" className={ai.tone === 'warning' ? 'text-amber-800 dark:text-amber-300' : 'text-gray-600 dark:text-slate-300'}>{ai.message}</p>
+                        <span className="flex-none text-gray-500 dark:text-slate-400">{t(':count characters', { count: data.description.length })}</span>
                     </div>
-                    {errorFor('description') && <p className="mt-1 text-sm text-red-600">{errorFor('description')}</p>}
+                    {errorFor('description') && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errorFor('description')}</p>}
                 </Section>
             </div>
 
             <aside className="hidden lg:block">
                 <div className="sticky top-24 space-y-4">
-                    <nav aria-label={t('Form progress')} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                        <p className="text-sm font-semibold text-gray-900">{isEdit ? t('Edit property') : t('New property')}</p>
+                    <nav aria-label={t('Form progress')} className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{isEdit ? t('Edit property') : t('New property')}</p>
                         <ol className="mt-3 space-y-1">
                             {steps.map((step, index) => (
                                 <li key={step.id}>
-                                    <a href={`#${step.id}`} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+                                    <a href={`#${step.id}`} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800">
                                         {step.done
-                                            ? <CheckCircle2 size={17} className="flex-none text-[#0E3B2E]" aria-hidden="true" />
+                                            ? <CheckCircle2 size={17} className="flex-none text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true" />
                                             : <Circle size={17} className="flex-none text-gray-300" aria-hidden="true" />}
-                                        <span className={step.done ? 'font-medium text-gray-900' : ''}>{index + 1}. {step.label}</span>
-                                        {step.optional && <span className="ml-auto text-[11px] text-gray-500">{t('optional')}</span>}
+                                        <span className={step.done ? 'font-medium text-gray-900 dark:text-slate-100' : ''}>{index + 1}. {step.label}</span>
+                                        {step.optional && <span className="ml-auto text-[11px] text-gray-500 dark:text-slate-400">{t('optional')}</span>}
                                         <span className="sr-only">{step.done ? t('complete') : t('not complete')}</span>
                                     </a>
                                 </li>
@@ -472,7 +472,7 @@ export default function PropertyForm({ mode = 'create', property = null, isAdmin
                 </div>
             </aside>
 
-            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-4 py-3 backdrop-blur lg:hidden">
                 <SaveButtons isEdit={isEdit} processing={processing} progress={uploadProgress} busy={ai.busy} cancelHref={isEdit ? route('properties.show', property.id) : route('properties.index')} />
             </div>
         </form>
@@ -483,15 +483,15 @@ function Section({ id, number, title, description, optional = false, children })
     const { t } = useTranslation();
 
     return (
-        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6">
             <div className="mb-5 flex items-start gap-3">
-                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#0E3B2E]/10 text-sm font-bold text-[#0E3B2E]" aria-hidden="true">{number}</span>
+                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#0E3B2E]/10 dark:bg-emerald-400/15 text-sm font-bold text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true">{number}</span>
                 <div>
-                    <h2 id={`${id}-title`} className="text-base font-semibold text-gray-900">
+                    <h2 id={`${id}-title`} className="text-base font-semibold text-gray-900 dark:text-slate-100">
                         {title}
-                        {optional && <span className="ml-2 text-xs font-normal text-gray-500">({t('optional')})</span>}
+                        {optional && <span className="ml-2 text-xs font-normal text-gray-500 dark:text-slate-400">({t('optional')})</span>}
                     </h2>
-                    {description && <p className="mt-0.5 text-sm text-gray-600">{description}</p>}
+                    {description && <p className="mt-0.5 text-sm text-gray-600 dark:text-slate-300">{description}</p>}
                 </div>
             </div>
             <div className="space-y-4">{children}</div>
@@ -505,15 +505,15 @@ function Field({ id, label, required = false, optional = false, hint, error, chi
 
     return (
         <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-800">
+            <label htmlFor={id} className="block text-sm font-medium text-gray-800 dark:text-slate-100">
                 {label}
-                {required && <span className="text-red-600" aria-hidden="true"> *</span>}
-                {optional && <span className="font-normal text-gray-500"> ({t('optional')})</span>}
+                {required && <span className="text-red-600 dark:text-red-400" aria-hidden="true"> *</span>}
+                {optional && <span className="font-normal text-gray-500 dark:text-slate-400"> ({t('optional')})</span>}
             </label>
             {children({ id, 'aria-invalid': error ? 'true' : undefined, 'aria-required': required ? 'true' : undefined, 'aria-describedby': describedBy })}
-            {hint && <p id={`${id}-hint`} className="mt-1 text-xs text-gray-600">{hint}</p>}
+            {hint && <p id={`${id}-hint`} className="mt-1 text-xs text-gray-600 dark:text-slate-300">{hint}</p>}
             {error && (
-                <p id={`${id}-error`} className="mt-1 flex items-center gap-1.5 text-sm text-red-600">
+                <p id={`${id}-error`} className="mt-1 flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
                     <AlertCircle size={14} className="flex-none" aria-hidden="true" />{error}
                 </p>
             )}
@@ -526,13 +526,13 @@ function ChipGroup({ title, items, values, onToggle }) {
 
     return (
         <fieldset>
-            <legend className="text-sm font-medium text-gray-800">{title}</legend>
+            <legend className="text-sm font-medium text-gray-800 dark:text-slate-100">{title}</legend>
             <div className="mt-2 flex flex-wrap gap-2">
                 {items.map(({ key, label, icon: Icon }) => {
                     const on = Boolean(values[key]);
                     return (
                         <button key={key} type="button" aria-pressed={on} onClick={() => onToggle(key)}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40 ${on ? 'border-[#0E3B2E] bg-[#0E3B2E] text-white shadow-sm' : 'border-gray-300 bg-white text-gray-700 hover:border-[#0E3B2E]/50 hover:bg-gray-50'}`}>
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40 ${on ? 'border-[#0E3B2E] dark:border-emerald-500 bg-[#0E3B2E] text-white shadow-sm' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 hover:border-[#0E3B2E]/50 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                             <Icon size={15} aria-hidden="true" />
                             {t(label)}
                         </button>
@@ -553,7 +553,7 @@ function SaveButtons({ isEdit, processing, progress = null, busy, cancelHref, st
                 {processing ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Building2 size={16} aria-hidden="true" />}
                 {processing ? (progress !== null && progress < 100 ? t('Uploading photos :percent%', { percent: progress }) : t('Saving...')) : (isEdit ? t('Save changes') : t('Create property'))}
             </button>
-            <Link href={cancelHref} className="inline-flex flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+            <Link href={cancelHref} className="inline-flex flex-1 items-center justify-center rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-5 py-3 text-sm font-semibold text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800">
                 {t('Cancel')}
             </Link>
         </div>

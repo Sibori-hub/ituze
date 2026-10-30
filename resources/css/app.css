@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark mode (html.dark, see resources/js/lib/theme.js). :where() keeps these as weak as the
+   forms plugin's own field styles, so a field's own classes still win. */
+:where(.dark) body {
+    background-color: theme('colors.slate.950');
+    color: theme('colors.slate.100');
+}
+:where(.dark) [type='text'], :where(.dark) [type='email'], :where(.dark) [type='url'],
+:where(.dark) [type='password'], :where(.dark) [type='number'], :where(.dark) [type='date'],
+:where(.dark) [type='datetime-local'], :where(.dark) [type='month'], :where(.dark) [type='search'],
+:where(.dark) [type='tel'], :where(.dark) [type='time'], :where(.dark) [type='week'],
+:where(.dark) [multiple], :where(.dark) textarea, :where(.dark) select {
+    background-color: theme('colors.slate.900');
+    border-color: theme('colors.slate.700');
+    color: theme('colors.slate.100');
+}
+:where(.dark) [type='checkbox'], :where(.dark) [type='radio'] {
+    background-color: theme('colors.slate.800');
+    border-color: theme('colors.slate.500');
+}
+:where(.dark) ::placeholder {
+    color: theme('colors.slate.500');
+}
+
 html,
 body,
 #app {

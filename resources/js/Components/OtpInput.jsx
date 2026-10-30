@@ -119,9 +119,9 @@ export default function OtpInput({
                     aria-label={t('Digit :number of :total', { number: index + 1, total: length })}
                     aria-invalid={invalid || undefined}
                     aria-describedby={describedBy}
-                    className={`h-14 w-11 rounded-xl border-2 bg-white text-center font-[Sora] text-2xl font-semibold text-gray-900 caret-[#0E3B2E] outline-none transition-colors sm:h-16 sm:w-14 ${
-                        invalid ? 'border-red-600 bg-red-50' : digit ? 'border-[#0E3B2E]' : 'border-gray-400'
-                    } focus-visible:border-[#0E3B2E] focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/25 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500`}
+                    className={`h-14 w-11 rounded-xl border-2 bg-white dark:bg-slate-900 text-center font-[Sora] text-2xl font-semibold text-gray-900 dark:text-slate-100 caret-[#0E3B2E] outline-none transition-colors sm:h-16 sm:w-14 ${
+                        invalid ? 'border-red-600 bg-red-50 dark:bg-red-500/10' : digit ? 'border-[#0E3B2E] dark:border-emerald-500' : 'border-gray-400'
+                    } focus-visible:border-[#0E3B2E] focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/25 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:text-gray-500`}
                 />
             ))}
         </div>

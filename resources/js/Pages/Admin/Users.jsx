@@ -54,17 +54,17 @@ const STATUS_CHIPS = [
 ];
 
 const statusStyles = {
-    approved: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
-    pending: 'bg-amber-50 text-amber-700 ring-amber-600/15',
-    rejected: 'bg-red-50 text-red-700 ring-red-600/15',
-    disabled: 'bg-gray-100 text-gray-600 ring-gray-600/15',
+    approved: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-600/15',
+    pending: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/15',
+    rejected: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 ring-red-600/15',
+    disabled: 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 ring-gray-600/15',
 };
 
 const roleStyles = {
-    admin: 'bg-purple-50 text-purple-700 ring-purple-600/15',
-    owner: 'bg-sky-50 text-sky-700 ring-sky-600/15',
-    advertiser: 'bg-teal-50 text-teal-700 ring-teal-600/15',
-    manager: 'bg-amber-50 text-amber-800 ring-amber-600/15',
+    admin: 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-purple-600/15',
+    owner: 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-600/15',
+    advertiser: 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 ring-teal-600/15',
+    manager: 'bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 ring-amber-600/15',
 };
 
 const ROLE_LABELS = { admin: 'Admin', owner: 'Owner', advertiser: 'Advertiser', manager: 'Manager' };
@@ -97,10 +97,10 @@ function PlanCell({ user }) {
     if (user.role === 'owner' && user.created_by) {
         return (
             <div className="w-36">
-                <p className="text-[11px] font-semibold text-indigo-800">
+                <p className="text-[11px] font-semibold text-indigo-800 dark:text-indigo-300">
                     {t('Management fee :rate%', { rate: Number(user.management_fee_percent ?? 10).toLocaleString(undefined, { maximumFractionDigits: 2 }) })}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500">{user.login_enabled ? t('Can sign in (view only)') : t('No sign-in yet')}</p>
+                <p className="mt-0.5 text-[11px] text-gray-500 dark:text-slate-400">{user.login_enabled ? t('Can sign in (view only)') : t('No sign-in yet')}</p>
             </div>
         );
     }
@@ -108,7 +108,7 @@ function PlanCell({ user }) {
         return <span className="text-xs text-gray-300">{t('Not applicable')}</span>;
     }
     if (user.status !== 'approved') {
-        return <span className="text-xs text-gray-400">{t('Not active')}</span>;
+        return <span className="text-xs text-gray-400 dark:text-slate-500">{t('Not active')}</span>;
     }
 
     const days = Math.max(0, user.plan_remaining_days ?? 0);
@@ -123,12 +123,12 @@ function PlanCell({ user }) {
     return (
         <div className="w-36">
             <div className="flex items-center justify-between text-[11px]">
-                <span className={`font-semibold ${expired ? 'text-red-600' : days <= 30 ? 'text-amber-700' : 'text-gray-700'}`}>{label}</span>
+                <span className={`font-semibold ${expired ? 'text-red-600 dark:text-red-400' : days <= 30 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-slate-200'}`}>{label}</span>
             </div>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800">
                 <div className={`h-full rounded-full ${tone}`} style={{ width: `${expired ? 100 : Math.min(100, (days / 365) * 100)}%` }} />
             </div>
-            <p className="mt-1 text-[11px] text-gray-400">
+            <p className="mt-1 text-[11px] text-gray-400 dark:text-slate-500">
                 {user.expires_at ? t('Until :date', { date: formatDate(user.expires_at, language) }) : t('No expiry date set')}
             </p>
         </div>
@@ -137,11 +137,11 @@ function PlanCell({ user }) {
 
 function IconAction({ label, onClick, disabled, tone = 'gray', children }) {
     const tones = {
-        gray: 'text-gray-500 hover:bg-gray-100 hover:text-gray-800',
-        green: 'text-emerald-600 hover:bg-emerald-50',
-        amber: 'text-amber-600 hover:bg-amber-50',
-        red: 'text-red-500 hover:bg-red-50 hover:text-red-600',
-        brand: 'text-[#0E3B2E] hover:bg-[#0E3B2E]/5',
+        gray: 'text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-white',
+        green: 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10',
+        amber: 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10',
+        red: 'text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600',
+        brand: 'text-[#0E3B2E] dark:text-emerald-300 hover:bg-[#0E3B2E]/5',
     };
 
     return (
@@ -180,9 +180,9 @@ function DialogShell({ open, onClose, title, description, children }) {
             aria-modal="true"
             onMouseDown={(event) => event.target === event.currentTarget && onClose?.()}
         >
-            <div className={`w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}>
-                <h3 className="font-[Sora] text-lg font-bold text-gray-900">{title}</h3>
-                {description && <p className="mt-1 text-sm leading-6 text-gray-500">{description}</p>}
+            <div className={`w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}>
+                <h3 className="font-[Sora] text-lg font-bold text-gray-900 dark:text-slate-100">{title}</h3>
+                {description && <p className="mt-1 text-sm leading-6 text-gray-500 dark:text-slate-400">{description}</p>}
                 {children}
             </div>
         </div>,
@@ -193,19 +193,19 @@ function DialogShell({ open, onClose, title, description, children }) {
 /** A self-registered owner's managers, shown under the owner. The admin follows them; only the owner removes them. */
 function TeamList({ team, ownerId, t }) {
     return (
-        <div className="rounded-xl border border-sky-100 bg-white px-3 py-2">
+        <div className="rounded-xl border border-sky-100 dark:border-sky-500/30 bg-white dark:bg-slate-900 px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-900"><UserCog size={13} aria-hidden="true" />{t('Their managers (:count)', { count: team.length })}</p>
-                <Link href={route('managers.index', { owner_id: ownerId })} className="text-[11px] font-semibold text-[#0E3B2E] underline underline-offset-2">{t('Managers and activity')}</Link>
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-900 dark:text-sky-300"><UserCog size={13} aria-hidden="true" />{t('Their managers (:count)', { count: team.length })}</p>
+                <Link href={route('managers.index', { owner_id: ownerId })} className="text-[11px] font-semibold text-[#0E3B2E] dark:text-emerald-300 underline underline-offset-2">{t('Managers and activity')}</Link>
             </div>
             <ul className="mt-1.5 flex flex-wrap gap-2">
                 {team.map((manager) => (
-                    <li key={manager.id} className={`inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-2.5 py-1 text-xs ring-1 ${manager.disabled ? 'bg-gray-50 text-gray-500 ring-gray-200' : 'bg-sky-50 text-sky-950 ring-sky-100'}`}>
+                    <li key={manager.id} className={`inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-2.5 py-1 text-xs ring-1 ${manager.disabled ? 'bg-gray-50 dark:bg-slate-800/60 text-gray-500 dark:text-slate-400 ring-gray-200 dark:ring-slate-700' : 'bg-sky-50 dark:bg-sky-500/10 text-sky-950 dark:text-sky-300 ring-sky-100 dark:ring-sky-500/30'}`}>
                         <span className="font-semibold">{manager.name}</span>
                         {manager.username && <span className="font-mono text-[11px]">@{manager.username}</span>}
                         {manager.phone && <span className="text-[11px]">{manager.phone}</span>}
                         <span className="text-[11px]">{t(manager.assignments === 1 ? '1 building or unit' : ':count buildings or units', { count: manager.assignments })}</span>
-                        <span className={`rounded-full px-1.5 text-[10px] font-semibold ${manager.disabled ? 'bg-gray-200 text-gray-700' : manager.profile_completed ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
+                        <span className={`rounded-full px-1.5 text-[10px] font-semibold ${manager.disabled ? 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-200' : manager.profile_completed ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300'}`}>
                             {manager.disabled ? t('Disabled') : manager.profile_completed ? t('Active') : t('Not signed in yet')}
                         </span>
                     </li>
@@ -324,7 +324,7 @@ export default function Users({ users, filters, counts = {} }) {
     const actions = (user, onCard = false) => (
         <div className={`flex flex-wrap items-center gap-0.5 ${onCard ? 'justify-start' : 'justify-end'}`}>
             {(user.role === 'owner' && !user.created_by) || user.role === 'manager' ? (
-                <Link href={route('managers.index', { owner_id: user.role === 'manager' ? user.employer_id : user.id })} className="rounded-lg p-2 text-[#0E3B2E] transition hover:bg-emerald-50" title={t('Managers and activity')} aria-label={t('Managers and activity')}>
+                <Link href={route('managers.index', { owner_id: user.role === 'manager' ? user.employer_id : user.id })} className="rounded-lg p-2 text-[#0E3B2E] dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-500/10" title={t('Managers and activity')} aria-label={t('Managers and activity')}>
                     <UserCog size={16} />
                 </Link>
             ) : null}
@@ -401,8 +401,8 @@ export default function Users({ users, filters, counts = {} }) {
 
     const location = (user) =>
         user.sector ? (
-            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                <MapPin size={12} className="shrink-0 text-gray-400" />
+            <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
+                <MapPin size={12} className="shrink-0 text-gray-400 dark:text-slate-500" />
                 {user.sector.name}
                 {user.sector.district?.name ? `, ${user.sector.district.name}` : ''}
             </span>
@@ -412,18 +412,18 @@ export default function Users({ users, filters, counts = {} }) {
 
     const badges = (user) => (
         <div className="flex flex-wrap items-center gap-1.5">
-            <Badge className={roleStyles[user.role] || 'bg-gray-100 text-gray-600 ring-gray-600/15'}>{t(ROLE_LABELS[user.role] ?? user.role)}</Badge>
-            <Badge className={statusStyles[user.status] || 'bg-gray-100 text-gray-600 ring-gray-600/15'}>{t(STATUS_LABELS[user.status] ?? user.status)}</Badge>
+            <Badge className={roleStyles[user.role] || 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 ring-gray-600/15'}>{t(ROLE_LABELS[user.role] ?? user.role)}</Badge>
+            <Badge className={statusStyles[user.status] || 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 ring-gray-600/15'}>{t(STATUS_LABELS[user.status] ?? user.status)}</Badge>
             {user.role !== 'admin' && (
                 user.created_by ? (
                     <span title={user.creator?.name ? t('Added by :name', { name: user.creator.name }) : undefined}>
-                        <Badge className="bg-indigo-50 text-indigo-800 ring-indigo-600/20">
+                        <Badge className="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-800 dark:text-indigo-300 ring-indigo-600/20">
                             <Building2 size={11} className="mr-1" aria-hidden="true" />
                             {t('Managed by Q.R.A')}
                         </Badge>
                     </span>
                 ) : (
-                    <Badge className="bg-white text-gray-700 ring-gray-300">{t('Self-registered')}</Badge>
+                    <Badge className="bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 ring-gray-300 dark:ring-slate-600">{t('Self-registered')}</Badge>
                 )
             )}
         </div>
@@ -436,13 +436,13 @@ export default function Users({ users, filters, counts = {} }) {
             <div className="mx-auto max-w-7xl space-y-4">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <h1 className="font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900">{t('Users')}</h1>
-                        <p className="mt-0.5 text-sm text-gray-500">{t(':count accounts on the platform', { count: counts.all ?? users.total })}</p>
+                        <h1 className="font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900 dark:text-slate-100">{t('Users')}</h1>
+                        <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{t(':count accounts on the platform', { count: counts.all ?? users.total })}</p>
                     </div>
                     <div className="flex items-center gap-2">
                     <Link
                         href={route('admin.users.create')}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#0E3B2E]/20 bg-white px-4 text-sm font-semibold text-[#0E3B2E] shadow-sm transition hover:bg-emerald-50"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#0E3B2E]/20 dark:border-emerald-400/20 bg-white dark:bg-slate-900 px-4 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 shadow-sm transition hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
                     >
                         <UserPlus size={16} aria-hidden="true" />
                         {t('Add user')}
@@ -458,24 +458,24 @@ export default function Users({ users, filters, counts = {} }) {
                             {t('Export')}
                         </button>
                         {exportOpen && (
-                            <div className="absolute right-0 z-20 mt-2 w-52 animate-pop-in overflow-hidden rounded-xl bg-white p-1 shadow-lg ring-1 ring-black/5">
-                                <a href={exportUrl('excel')} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                                    <FileSpreadsheet size={16} className="text-emerald-600" /> {t('Excel (.csv)')}
+                            <div className="absolute right-0 z-20 mt-2 w-52 animate-pop-in overflow-hidden rounded-xl bg-white dark:bg-slate-900 p-1 shadow-lg ring-1 ring-black/5">
+                                <a href={exportUrl('excel')} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800">
+                                    <FileSpreadsheet size={16} className="text-emerald-600 dark:text-emerald-400" /> {t('Excel (.csv)')}
                                 </a>
-                                <a href={exportUrl('pdf')} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                                <a href={exportUrl('pdf')} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800">
                                     <FileText size={16} className="text-red-500" /> PDF
                                 </a>
-                                {hasFilters && <p className="px-3 pb-2 pt-1 text-[11px] text-gray-400">{t('Exports follow the current filters.')}</p>}
+                                {hasFilters && <p className="px-3 pb-2 pt-1 text-[11px] text-gray-400 dark:text-slate-500">{t('Exports follow the current filters.')}</p>}
                             </div>
                         )}
                     </div>
                     </div>
                 </div>
 
-                {errors?.user && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{errors.user}</div>}
+                {errors?.user && <div className="rounded-xl bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm font-medium text-red-700 dark:text-red-300">{errors.user}</div>}
 
-                <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
-                    <div className="space-y-4 border-b border-gray-100 p-4 sm:p-5">
+                <div className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-black/[0.04]">
+                    <div className="space-y-4 border-b border-gray-100 dark:border-slate-800 p-4 sm:p-5">
                         <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label={t('Role')}>
                             {ROLE_TABS.map(({ value, label }) => {
                                 const active = (filters.role || '') === value;
@@ -487,11 +487,11 @@ export default function Users({ users, filters, counts = {} }) {
                                         aria-selected={active}
                                         onClick={() => updateFilter('role', value)}
                                         className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
-                                            active ? 'bg-[#0E3B2E] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+                                            active ? 'bg-[#0E3B2E] text-white shadow-sm' : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                                         }`}
                                     >
                                         {t(label)}
-                                        <span className={`rounded-full px-1.5 py-px text-[11px] tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                        <span className={`rounded-full px-1.5 py-px text-[11px] tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>
                                             {roleCount(value)}
                                         </span>
                                     </button>
@@ -501,20 +501,20 @@ export default function Users({ users, filters, counts = {} }) {
 
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div className="relative w-full lg:max-w-sm">
-                                <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                                 <input
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder={t('Search name, email, phone...')}
-                                    className="w-full rounded-xl border-gray-200 bg-gray-50/60 py-2.5 pl-10 pr-10 text-sm transition focus:border-[#0E3B2E] focus:bg-white focus:ring-4 focus:ring-[#0E3B2E]/10"
+                                    className="w-full rounded-xl border-gray-200 dark:border-slate-700 bg-gray-50/60 dark:bg-slate-800/40 py-2.5 pl-10 pr-10 text-sm transition focus:border-[#0E3B2E] focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-[#0E3B2E]/10"
                                 />
                                 {loading ? (
-                                    <Loader2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />
+                                    <Loader2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-gray-400 dark:text-slate-500" />
                                 ) : search ? (
                                     <button
                                         type="button"
                                         onClick={() => setSearch('')}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600"
                                         aria-label={t('Clear search')}
                                     >
                                         <X size={14} />
@@ -532,16 +532,16 @@ export default function Users({ users, filters, counts = {} }) {
                                             onClick={() => updateFilter('source', active ? '' : value)}
                                             aria-pressed={active}
                                             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition ${
-                                                active ? 'bg-[#0E3B2E] text-white ring-[#0E3B2E]' : 'bg-white text-gray-700 ring-gray-300 hover:ring-gray-400'
+                                                active ? 'bg-[#0E3B2E] text-white ring-[#0E3B2E]' : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 ring-gray-300 dark:ring-slate-600 hover:ring-gray-400'
                                             }`}
                                         >
                                             <Icon size={13} aria-hidden="true" />
                                             {t(label)}
-                                            <span className={`tabular-nums ${active ? 'text-white/80' : 'text-gray-500'}`}>{counts.sources?.[value] ?? 0}</span>
+                                            <span className={`tabular-nums ${active ? 'text-white/80' : 'text-gray-500 dark:text-slate-400'}`}>{counts.sources?.[value] ?? 0}</span>
                                         </button>
                                     );
                                 })}
-                                <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block" aria-hidden="true" />
+                                <span className="mx-1 hidden h-5 w-px bg-gray-200 dark:bg-slate-700 sm:block" aria-hidden="true" />
                                 {STATUS_CHIPS.map(({ value, label, dot }) => {
                                     const active = filters.status === value;
                                     return (
@@ -551,17 +551,17 @@ export default function Users({ users, filters, counts = {} }) {
                                             onClick={() => updateFilter('status', active ? '' : value)}
                                             aria-pressed={active}
                                             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition ${
-                                                active ? 'bg-[#0E3B2E] text-white ring-[#0E3B2E]' : 'bg-white text-gray-600 ring-gray-200 hover:ring-gray-300'
+                                                active ? 'bg-[#0E3B2E] text-white ring-[#0E3B2E]' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 ring-gray-200 dark:ring-slate-700 hover:ring-gray-300'
                                             }`}
                                         >
-                                            <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : dot}`} />
+                                            <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white dark:bg-slate-900' : dot}`} />
                                             {t(label)}
-                                            <span className={`tabular-nums ${active ? 'text-white/70' : 'text-gray-400'}`}>{counts.statuses?.[value] ?? 0}</span>
+                                            <span className={`tabular-nums ${active ? 'text-white/70' : 'text-gray-400 dark:text-slate-500'}`}>{counts.statuses?.[value] ?? 0}</span>
                                         </button>
                                     );
                                 })}
                                 {hasFilters && (
-                                    <button type="button" onClick={clearFilters} className="ml-1 text-xs font-semibold text-[#0E3B2E] underline decoration-[#D9A441] decoration-2 underline-offset-4">
+                                    <button type="button" onClick={clearFilters} className="ml-1 text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300 underline decoration-[#D9A441] decoration-2 underline-offset-4">
                                         {t('Clear filters')}
                                     </button>
                                 )}
@@ -572,13 +572,13 @@ export default function Users({ users, filters, counts = {} }) {
                     <div className={`transition-opacity duration-200 ${loading ? 'opacity-50' : ''}`}>
                         {users.data.length === 0 ? (
                             <div className="px-6 py-16 text-center">
-                                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
+                                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 dark:bg-slate-800/60 text-gray-400 dark:text-slate-500">
                                     {hasFilters ? <SearchX size={24} /> : <UsersRound size={24} />}
                                 </span>
-                                <p className="mt-4 font-semibold text-gray-800">{t('No users found.')}</p>
+                                <p className="mt-4 font-semibold text-gray-800 dark:text-slate-100">{t('No users found.')}</p>
                                 {hasFilters && (
                                     <>
-                                        <p className="mt-1 text-sm text-gray-500">{t('Try another search or clear the filters.')}</p>
+                                        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t('Try another search or clear the filters.')}</p>
                                         <button type="button" onClick={clearFilters} className="mt-4 rounded-lg bg-[#0E3B2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#124B3A]">
                                             {t('Clear filters')}
                                         </button>
@@ -597,49 +597,49 @@ export default function Users({ users, filters, counts = {} }) {
                                         <col className="w-[20%]" />
                                     </colgroup>
                                     <thead>
-                                        <tr className="border-b border-gray-100 bg-gray-50/70 text-[11px] uppercase tracking-wide text-gray-500">
+                                        <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50/70 dark:bg-slate-800/40 text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-400">
                                             <th className="px-4 py-3 font-semibold">{t('User')}</th>
                                             <th className="px-4 py-3 font-semibold">{t('Account')}</th>
                                             <th className="px-4 py-3 font-semibold">{t('Plan')}</th>
                                             <th className="px-4 py-3 text-right font-semibold">{t('Actions')}</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100">
+                                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                                         {users.data.map((user) => (
                                             <tr key={user.id} className="group align-top transition-colors hover:bg-[#0E3B2E]/[0.025]">
                                                 <td className="px-4 py-3.5">
                                                     <div className="flex items-start gap-3">
                                                         <UserAvatar user={user} size="sm" />
                                                         <div className="min-w-0">
-                                                            <p className="truncate font-semibold text-gray-900">
+                                                            <p className="truncate font-semibold text-gray-900 dark:text-slate-100">
                                                                 {user.name}
-                                                                {user.id === currentUserId && <span className="ml-1.5 text-xs font-medium text-gray-400">({t('you')})</span>}
+                                                                {user.id === currentUserId && <span className="ml-1.5 text-xs font-medium text-gray-400 dark:text-slate-500">({t('you')})</span>}
                                                             </p>
-                                                            <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                                            <p className="truncate text-xs text-gray-500 dark:text-slate-400">{user.email}</p>
                                                             {user.account_type === 'company' && (
-                                                                <p className="truncate text-[11px] text-sky-900">{t('Company')} · TIN {user.company_tin} · {t('Rep.')} {`${user.first_name || ''} ${user.last_name || ''}`.trim()}</p>
+                                                                <p className="truncate text-[11px] text-sky-900 dark:text-sky-300">{t('Company')} · TIN {user.company_tin} · {t('Rep.')} {`${user.first_name || ''} ${user.last_name || ''}`.trim()}</p>
                                                             )}
-                                                            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-700">
-                                                                <span className="inline-flex items-center gap-1"><Phone size={12} className="text-gray-400" />{user.phone || '—'}</span>
+                                                            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-700 dark:text-slate-200">
+                                                                <span className="inline-flex items-center gap-1"><Phone size={12} className="text-gray-400 dark:text-slate-500" />{user.phone || '—'}</span>
                                                                 <span className="truncate">{location(user)}</span>
                                                             </p>
-                                                            <p className="mt-0.5 text-[11px] text-gray-400">{t('Joined')} {formatDate(user.created_at, language)}</p>
+                                                            <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-500">{t('Joined')} {formatDate(user.created_at, language)}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3.5">
                                                     {badges(user)}
                                                     {user.created_by && user.creator?.name && (
-                                                        <p className="mt-1.5 truncate text-[11px] text-gray-500">{t('Added by :name', { name: user.creator.name })}</p>
+                                                        <p className="mt-1.5 truncate text-[11px] text-gray-500 dark:text-slate-400">{t('Added by :name', { name: user.creator.name })}</p>
                                                     )}
                                                     {user.national_id && (
-                                                        <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-gray-400">
+                                                        <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500">
                                                             <IdCard size={12} />
                                                             {user.national_id}
                                                         </p>
                                                     )}
                                                     {user.status === 'disabled' && user.disabled_reason && (
-                                                        <p className="mt-1 text-[11px] text-gray-400">{user.disabled_reason}</p>
+                                                        <p className="mt-1 text-[11px] text-gray-400 dark:text-slate-500">{user.disabled_reason}</p>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3.5">
@@ -650,7 +650,7 @@ export default function Users({ users, filters, counts = {} }) {
                                         )).flatMap((row, index) => {
                                             const team = users.data[index].team || [];
                                             return team.length ? [row, (
-                                                <tr key={`team-${users.data[index].id}`} className="bg-sky-50/40">
+                                                <tr key={`team-${users.data[index].id}`} className="bg-sky-50/40 dark:bg-sky-500/10">
                                                     <td colSpan={4} className="px-4 pb-3 pt-0">
                                                         <TeamList team={team} ownerId={users.data[index].id} t={t} />
                                                     </td>
@@ -664,35 +664,35 @@ export default function Users({ users, filters, counts = {} }) {
                                 {/* Phones, tablets and laptops: cards, two per row from tablet size. */}
                                 <ul className="grid gap-3 p-3 sm:p-4 md:grid-cols-2 xl:hidden">
                                     {users.data.map((user) => (
-                                        <li key={user.id} className={`flex min-w-0 flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 transition hover:shadow-md ${user.status === 'disabled' ? 'ring-gray-200 opacity-90' : 'ring-black/[0.06]'}`}>
+                                        <li key={user.id} className={`flex min-w-0 flex-col rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 transition hover:shadow-md ${user.status === 'disabled' ? 'ring-gray-200 dark:ring-slate-700 opacity-90' : 'ring-black/[0.06]'}`}>
                                             <div className="flex items-start gap-3">
                                                 <UserAvatar user={user} size="md" />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="truncate font-semibold text-gray-900">
+                                                    <p className="truncate font-semibold text-gray-900 dark:text-slate-100">
                                                         {user.name}
-                                                        {user.id === currentUserId && <span className="ml-1.5 text-xs font-medium text-gray-400">({t('you')})</span>}
+                                                        {user.id === currentUserId && <span className="ml-1.5 text-xs font-medium text-gray-400 dark:text-slate-500">({t('you')})</span>}
                                                     </p>
-                                                    <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                                    <p className="truncate text-xs text-gray-500 dark:text-slate-400">{user.email}</p>
                                                     {user.account_type === 'company' && (
-                                                        <p className="truncate text-[11px] text-sky-900">{t('Company')} · TIN {user.company_tin}</p>
+                                                        <p className="truncate text-[11px] text-sky-900 dark:text-sky-300">{t('Company')} · TIN {user.company_tin}</p>
                                                     )}
                                                     <div className="mt-2">{badges(user)}</div>
                                                 </div>
                                             </div>
-                                            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl bg-gray-50 px-3 py-2.5 text-xs">
+                                            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl bg-gray-50 dark:bg-slate-800/60 px-3 py-2.5 text-xs">
                                                 <div className="min-w-0">
-                                                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t('Phone')}</dt>
-                                                    <dd className="truncate text-gray-800">{user.phone || '—'}</dd>
+                                                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">{t('Phone')}</dt>
+                                                    <dd className="truncate text-gray-800 dark:text-slate-100">{user.phone || '—'}</dd>
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{t('Joined')}</dt>
-                                                    <dd className="truncate text-gray-800">{formatDate(user.created_at, language)}</dd>
+                                                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">{t('Joined')}</dt>
+                                                    <dd className="truncate text-gray-800 dark:text-slate-100">{formatDate(user.created_at, language)}</dd>
                                                 </div>
                                                 <div className="col-span-2 min-w-0">{location(user)}</div>
                                                 <div className="col-span-2 min-w-0"><PlanCell user={user} /></div>
                                             </dl>
                                             {(user.team || []).length > 0 && <div className="mt-2"><TeamList team={user.team} ownerId={user.id} t={t} /></div>}
-                                            <div className="mt-auto border-t border-gray-100 pt-3">{actions(user, true)}</div>
+                                            <div className="mt-auto border-t border-gray-100 dark:border-slate-800 pt-3">{actions(user, true)}</div>
                                         </li>
                                     ))}
                                 </ul>
@@ -701,15 +701,15 @@ export default function Users({ users, filters, counts = {} }) {
                     </div>
 
                     {users.data.length > 0 && users.last_page > 1 && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 sm:px-5">
-                            <p className="text-xs text-gray-500">{t('Showing :from–:to of :total', { from: users.from, to: users.to, total: users.total })}</p>
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 dark:border-slate-800 px-4 py-3 sm:px-5">
+                            <p className="text-xs text-gray-500 dark:text-slate-400">{t('Showing :from–:to of :total', { from: users.from, to: users.to, total: users.total })}</p>
                             <div className="flex items-center gap-1">
                                 {users.links.map((link, index) => {
                                     const isPrev = index === 0;
                                     const isNext = index === users.links.length - 1;
                                     const content = isPrev ? <ChevronLeft size={16} /> : isNext ? <ChevronRight size={16} /> : link.label;
                                     const className = `flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-semibold transition ${
-                                        link.active ? 'bg-[#0E3B2E] text-white' : link.url ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-300'
+                                        link.active ? 'bg-[#0E3B2E] text-white' : link.url ? 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800' : 'text-gray-300'
                                     }`;
 
                                     return link.url ? (
@@ -763,7 +763,7 @@ export default function Users({ users, filters, counts = {} }) {
                     title={t('Disable this account?')}
                     description={t(':name will be signed out and blocked from signing in. Their data stays untouched and you can re-enable them at any time.', { name: disableShown.name })}
                 >
-                    <label htmlFor="disable-reason" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <label htmlFor="disable-reason" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
                         {t('Reason (optional)')}
                     </label>
                     <input
@@ -773,10 +773,10 @@ export default function Users({ users, filters, counts = {} }) {
                         maxLength={255}
                         onChange={(e) => setDisableReason(e.target.value)}
                         placeholder={t('e.g. Unpaid subscription')}
-                        className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-50/60 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white focus:ring-4 focus:ring-[#0E3B2E]/10"
+                        className="mt-1.5 w-full rounded-xl border-gray-200 dark:border-slate-700 bg-gray-50/60 dark:bg-slate-800/40 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-[#0E3B2E]/10"
                     />
                     <div className="mt-5 flex gap-3">
-                        <button type="button" onClick={() => !processing && setUserToDisable(null)} disabled={processing} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60">
+                        <button type="button" onClick={() => !processing && setUserToDisable(null)} disabled={processing} className="flex-1 rounded-xl border border-gray-200 dark:border-slate-700 py-2.5 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60">
                             {t('Cancel')}
                         </button>
                         <button
@@ -811,29 +811,29 @@ export default function Users({ users, filters, counts = {} }) {
                         <RotateCcw size={15} />
                         {t('Add 1 month')}
                     </button>
-                    <div className="my-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                        <span className="h-px flex-1 bg-gray-200" />
+                    <div className="my-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                        <span className="h-px flex-1 bg-gray-200 dark:bg-slate-700" />
                         {t('or set a date')}
-                        <span className="h-px flex-1 bg-gray-200" />
+                        <span className="h-px flex-1 bg-gray-200 dark:bg-slate-700" />
                     </div>
-                    <label htmlFor="plan-date" className="block text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Plan end date')}</label>
+                    <label htmlFor="plan-date" className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">{t('Plan end date')}</label>
                     <input
                         id="plan-date"
                         type="date"
                         value={planDate}
                         min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
                         onChange={(e) => setPlanDate(e.target.value)}
-                        className="mt-1.5 w-full rounded-xl border-gray-200 bg-gray-50/60 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white focus:ring-4 focus:ring-[#0E3B2E]/10"
+                        className="mt-1.5 w-full rounded-xl border-gray-200 dark:border-slate-700 bg-gray-50/60 dark:bg-slate-800/40 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-[#0E3B2E]/10"
                     />
                     <div className="mt-5 flex gap-3">
-                        <button type="button" onClick={() => !processing && setPlanUser(null)} disabled={processing} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60">
+                        <button type="button" onClick={() => !processing && setPlanUser(null)} disabled={processing} className="flex-1 rounded-xl border border-gray-200 dark:border-slate-700 py-2.5 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60">
                             {t('Cancel')}
                         </button>
                         <button
                             type="button"
                             onClick={() => planUser && submit('patch', route('admin.users.plan', planUser.id), { expires_at: planDate }, () => setPlanUser(null))}
                             disabled={processing || !planDate}
-                            className="flex-1 rounded-xl border border-[#0E3B2E]/20 py-2.5 text-sm font-semibold text-[#0E3B2E] hover:bg-[#0E3B2E]/5 disabled:opacity-60"
+                            className="flex-1 rounded-xl border border-[#0E3B2E]/20 dark:border-emerald-400/20 py-2.5 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:bg-[#0E3B2E]/5 disabled:opacity-60"
                         >
                             {processing ? t('Please wait...') : t('Save date')}
                         </button>
@@ -848,7 +848,7 @@ export default function Users({ users, filters, counts = {} }) {
                     title={t('Management fee')}
                     description={t('Share of the rent collected for :name that Q.R.A keeps.', { name: feeShown.name })}
                 >
-                    <label htmlFor="fee-value" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600">{t('Fee (%)')}</label>
+                    <label htmlFor="fee-value" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-300">{t('Fee (%)')}</label>
                     <input
                         id="fee-value"
                         type="number"
@@ -857,10 +857,10 @@ export default function Users({ users, filters, counts = {} }) {
                         step="0.5"
                         value={feeValue}
                         onChange={(e) => setFeeValue(e.target.value)}
-                        className="mt-1.5 w-full rounded-xl border-gray-300 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
+                        className="mt-1.5 w-full rounded-xl border-gray-300 dark:border-slate-600 px-3 py-2.5 text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
                     />
                     <div className="mt-5 flex gap-3">
-                        <button type="button" onClick={() => !processing && setFeeUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                        <button type="button" onClick={() => !processing && setFeeUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 dark:border-slate-600 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60">
                             {t('Cancel')}
                         </button>
                         <button
@@ -883,8 +883,8 @@ export default function Users({ users, filters, counts = {} }) {
                     description={t(':name signs in with this password and must change it at the next sign-in. Any open sessions are signed out.', { name: passwordShown.name })}
                 >
                     <div className="mt-4 flex items-center justify-between">
-                        <label htmlFor="temp-password" className="text-xs font-semibold uppercase tracking-wide text-gray-600">{t('Temporary password')}</label>
-                        <button type="button" onClick={generatePassword} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[#0E3B2E] underline decoration-2 underline-offset-4 hover:bg-emerald-50">
+                        <label htmlFor="temp-password" className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-300">{t('Temporary password')}</label>
+                        <button type="button" onClick={generatePassword} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 underline decoration-2 underline-offset-4 hover:bg-emerald-50 dark:hover:bg-emerald-500/10">
                             <KeyRound size={14} aria-hidden="true" />
                             {t('Generate')}
                         </button>
@@ -896,12 +896,12 @@ export default function Users({ users, filters, counts = {} }) {
                         onChange={(e) => setNewPassword(e.target.value)}
                         autoComplete="off"
                         aria-describedby="temp-password-hint"
-                        className="mt-1.5 w-full rounded-xl border-gray-300 px-3 py-2.5 font-mono text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
+                        className="mt-1.5 w-full rounded-xl border-gray-300 dark:border-slate-600 px-3 py-2.5 font-mono text-sm focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10"
                     />
-                    <p id="temp-password-hint" className="mt-1.5 text-xs text-gray-600">{t('At least 10 characters with upper and lowercase letters, a number and a symbol.')}</p>
-                    {errors?.password && <p className="mt-1.5 text-sm font-medium text-red-700" role="alert">{errors.password}</p>}
+                    <p id="temp-password-hint" className="mt-1.5 text-xs text-gray-600 dark:text-slate-300">{t('At least 10 characters with upper and lowercase letters, a number and a symbol.')}</p>
+                    {errors?.password && <p className="mt-1.5 text-sm font-medium text-red-700 dark:text-red-300" role="alert">{errors.password}</p>}
                     <div className="mt-5 flex gap-3">
-                        <button type="button" onClick={() => !processing && setPasswordUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                        <button type="button" onClick={() => !processing && setPasswordUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 dark:border-slate-600 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60">
                             {t('Cancel')}
                         </button>
                         <button
@@ -922,10 +922,10 @@ export default function Users({ users, filters, counts = {} }) {
                     title={t('Change phone')}
                     description={t(':name must confirm the new number with an SMS code at the next sign-in. The old number gets an SMS alert, and open sessions are signed out.', { name: phoneShown.name })}
                 >
-                    <label htmlFor="new-phone" className="mb-1.5 mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600">{t('New phone number')}</label>
+                    <label htmlFor="new-phone" className="mb-1.5 mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-300">{t('New phone number')}</label>
                     <RwandaPhoneInput id="new-phone" value={newPhone} onChange={setNewPhone} error={errors?.phone} autoFocus />
                     <div className="mt-5 flex gap-3">
-                        <button type="button" onClick={() => !processing && setPhoneUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                        <button type="button" onClick={() => !processing && setPhoneUser(null)} disabled={processing} className="min-h-11 flex-1 rounded-xl border border-gray-300 dark:border-slate-600 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60">
                             {t('Cancel')}
                         </button>
                         <button

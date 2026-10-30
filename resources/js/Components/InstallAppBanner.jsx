@@ -103,32 +103,32 @@ function InstallAppOffer({ className = '', force = false }) {
             : <>{t('Tap the browser menu')} <EllipsisVertical size={13} className="inline align-text-bottom" aria-label={t('menu')} /> {t('then')} <strong>{t('Install app')}</strong> {t('or')} <strong>{t('Add to Home screen')}</strong>.</>;
 
     return (
-        <div className={`mx-auto mb-4 max-w-7xl animate-fade-in rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-white px-4 py-3 text-sm text-gray-800 shadow-sm ${className}`} role="region" aria-label={t('Install the ITUZE app')}>
+        <div className={`mx-auto mb-4 max-w-7xl animate-fade-in rounded-2xl border border-emerald-200 dark:border-emerald-500/30 bg-gradient-to-r from-emerald-50 dark:from-emerald-500/10 to-white dark:to-slate-900 px-4 py-3 text-sm text-gray-800 dark:text-slate-100 shadow-sm ${className}`} role="region" aria-label={t('Install the ITUZE app')}>
             <div className="flex items-center gap-3">
                 <img src="/icons/icon-192.png" alt="" className="h-10 w-10 flex-none rounded-xl ring-1 ring-black/5" />
                 <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-900">{t('Install the ITUZE app')}</p>
-                    <p className="text-xs text-gray-600">{t('Open it from your home screen like any app, full screen and quick.')}</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{t('Install the ITUZE app')}</p>
+                    <p className="text-xs text-gray-600 dark:text-slate-300">{t('Open it from your home screen like any app, full screen and quick.')}</p>
                 </div>
                 <button type="button" onClick={install} aria-expanded={!canInstall ? showSteps : undefined}
                     className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-[#0E3B2E] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#124B3A]">
                     <Download size={14} aria-hidden="true" />{t('Install')}
                 </button>
-                <button type="button" onClick={dismiss} aria-label={t('Not now')} className="flex-none rounded-lg p-1.5 text-gray-500 hover:bg-white hover:text-gray-800">
+                <button type="button" onClick={dismiss} aria-label={t('Not now')} className="flex-none rounded-lg p-1.5 text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-white">
                     <X size={16} aria-hidden="true" />
                 </button>
             </div>
             {isAndroid() && !canInstall && !isInAppBrowser() && (
-                <div className="mt-2 rounded-xl bg-white px-3 py-2.5 text-xs text-gray-700 ring-1 ring-emerald-100">
-                    <p className="font-semibold text-gray-900">{t('No install option on your phone? Get the Android app:')}</p>
-                    <a href={APK_URL} download="ITUZE.apk" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#D9A441] px-3 py-2 font-semibold text-[#0E3B2E] hover:bg-[#c99535]">
+                <div className="mt-2 rounded-xl bg-white dark:bg-slate-900 px-3 py-2.5 text-xs text-gray-700 dark:text-slate-200 ring-1 ring-emerald-100 dark:ring-emerald-500/30">
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{t('No install option on your phone? Get the Android app:')}</p>
+                    <a href={APK_URL} download="ITUZE.apk" className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#D9A441] px-3 py-2 font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:bg-[#c99535]">
                         <Smartphone size={14} aria-hidden="true" />{t('Download the Android app (1.6 MB)')}
                     </a>
-                    <p className="mt-2 text-gray-600">{t('Then open the downloaded file and tap Install. If your phone asks, allow installing apps from this source.')}</p>
+                    <p className="mt-2 text-gray-600 dark:text-slate-300">{t('Then open the downloaded file and tap Install. If your phone asks, allow installing apps from this source.')}</p>
                 </div>
             )}
             {(showSteps || (!canInstall && isIos())) && (
-                <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-gray-700 ring-1 ring-emerald-100" role="status">{steps}</p>
+                <p className="mt-2 rounded-xl bg-white dark:bg-slate-900 px-3 py-2 text-xs text-gray-700 dark:text-slate-200 ring-1 ring-emerald-100 dark:ring-emerald-500/30" role="status">{steps}</p>
             )}
         </div>
     );

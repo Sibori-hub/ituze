@@ -5,6 +5,7 @@ import FlashToast from '@/Components/FlashToast';
 import InstallAppBanner, { INSTALL_APP_ENABLED, isStandalone, promptInstall } from '@/Components/InstallAppBanner';
 import InlineAlert from '@/Components/InlineAlert';
 import LanguageSwitcher from '@/Components/LanguageSwitcher';
+import ThemeToggle from '@/Components/ThemeToggle';
 import SuccessModal from '@/Components/SuccessModal';
 import UserAvatar from '@/Components/UserAvatar';
 import { Link, usePage } from '@inertiajs/react';
@@ -117,7 +118,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
     return (
         <div
-            className="authenticated-app-shell flex w-full flex-col overflow-hidden bg-[#F4F6F5] font-[Inter]"
+            className="authenticated-app-shell flex w-full flex-col overflow-hidden bg-[#F4F6F5] dark:bg-slate-950 font-[Inter]"
             style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', width: '100vw', height: '100dvh' }}
         >
             {toasts.length > 0 && (
@@ -177,7 +178,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             const isActive = route().current(item.active || item.href) && !item.anchor;
                             const className = `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                                 isActive
-                                    ? 'bg-[#D9A441] text-[#0E3B2E] shadow-sm'
+                                    ? 'bg-[#D9A441] text-[#0E3B2E] dark:text-emerald-300 shadow-sm'
                                     : 'text-white/60 hover:bg-white/10 hover:text-white'
                             }`;
                             const content = (
@@ -186,7 +187,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         size={18}
                                         className={
                                             isActive
-                                                ? 'text-[#0E3B2E]'
+                                                ? 'text-[#0E3B2E] dark:text-emerald-300'
                                                 : 'text-white/50 group-hover:text-white'
                                         }
                                     />
@@ -245,6 +246,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                            <ThemeToggle />
                             <LanguageSwitcher />
 
                             {user.role !== 'advertiser' && (
@@ -270,11 +272,11 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Dropdown.Trigger>
 
                                 <Dropdown.Content width="60">
-                                    <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+                                    <div className="flex items-center gap-3 border-b border-gray-100 dark:border-slate-800 px-4 py-3">
                                         <UserAvatar user={user} size="md" />
                                         <div className="min-w-0">
-                                            <p className="truncate text-sm font-semibold text-gray-900">{user.name}</p>
-                                            <p className="truncate text-xs text-gray-500">{user.email}</p>
+                                            <p className="truncate text-sm font-semibold text-gray-900 dark:text-slate-100">{user.name}</p>
+                                            <p className="truncate text-xs text-gray-500 dark:text-slate-400">{user.email}</p>
                                         </div>
                                     </div>
                                     <Dropdown.Link
@@ -284,7 +286,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     </Dropdown.Link>
                                     {INSTALL_APP_ENABLED && !isStandalone() && (
                                         <button type="button" onClick={async () => { if (!(await promptInstall())) window.dispatchEvent(new Event('ituze:show-install')); }}
-                                            className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition hover:bg-gray-100 focus:bg-gray-100 focus:outline-none">
+                                            className="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 dark:text-slate-200 transition hover:bg-gray-100 dark:hover:bg-slate-800 focus:bg-gray-100 dark:focus:bg-slate-800 focus:outline-none">
                                             {t('Install app')}
                                         </button>
                                     )}
@@ -313,13 +315,13 @@ export default function AuthenticatedLayout({ header, children }) {
                             const unpaid = props.filter((p) => p.state === 'unpaid');
                             const first = late[0] || unpaid[0] || soon[0];
                             const [tone, Icon, text, button] = props.length === 0
-                                ? ['border-emerald-200 bg-emerald-50 text-emerald-950', Building2, t('Welcome to ITUZE! Add your first property. Right after, you pay for it (:price per month) to activate it.', { price: '100,000 RWF' }), [t('Add a property'), route('properties.create')]]
+                                ? ['border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-300', Building2, t('Welcome to ITUZE! Add your first property. Right after, you pay for it (:price per month) to activate it.', { price: '100,000 RWF' }), [t('Add a property'), route('properties.create')]]
                                 : late.length
-                                    ? ['border-red-200 bg-red-50 text-red-950', AlertTriangle, t(':names: subscription ended. Pay to keep adding tenants and to stay on the website.', { names: late.map((p) => p.name).join(', ') }), [t('Pay now'), route('subscription.show', { property: first.id })]]
+                                    ? ['border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-950 dark:text-red-300', AlertTriangle, t(':names: subscription ended. Pay to keep adding tenants and to stay on the website.', { names: late.map((p) => p.name).join(', ') }), [t('Pay now'), route('subscription.show', { property: first.id })]]
                                     : unpaid.length
-                                        ? ['border-amber-200 bg-amber-50 text-amber-950', Building2, t(':names: waiting for payment. Pay to add tenants and to show it on the website.', { names: unpaid.map((p) => p.name).join(', ') }), [t('Pay now'), route('subscription.show', { property: first.id })]]
+                                        ? ['border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-950 dark:text-amber-300', Building2, t(':names: waiting for payment. Pay to add tenants and to show it on the website.', { names: unpaid.map((p) => p.name).join(', ') }), [t('Pay now'), route('subscription.show', { property: first.id })]]
                                         : soon.length
-                                            ? ['border-amber-200 bg-amber-50 text-amber-950', AlertTriangle, t(':names: subscription ends in :days days.', { names: soon.map((p) => p.name).join(', '), days: Math.max(0, Math.min(...soon.map((p) => p.days_left ?? 0))) }), [t('Renew'), route('subscription.show', { property: first.id })]]
+                                            ? ['border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-950 dark:text-amber-300', AlertTriangle, t(':names: subscription ends in :days days.', { names: soon.map((p) => p.name).join(', '), days: Math.max(0, Math.min(...soon.map((p) => p.days_left ?? 0))) }), [t('Renew'), route('subscription.show', { property: first.id })]]
                                             : [null];
                             if (!tone) return null;
                             return (
@@ -331,14 +333,14 @@ export default function AuthenticatedLayout({ header, children }) {
                             );
                         })()}
                         {user.role === 'manager' && pageProps.auth.employer && (
-                            <div className="mx-auto mb-4 flex max-w-7xl items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" role="note">
-                                <Briefcase size={18} className="shrink-0 text-emerald-700" aria-hidden="true" />
+                            <div className="mx-auto mb-4 flex max-w-7xl items-center gap-3 rounded-2xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-950 dark:text-emerald-300" role="note">
+                                <Briefcase size={18} className="shrink-0 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
                                 <p>{t('You manage buildings for :owner. You only see the properties and units they gave you.', { owner: pageProps.auth.employer.name })}</p>
                             </div>
                         )}
                         {pageProps.auth.readOnly && (
-                            <div className="mx-auto mb-4 flex max-w-7xl items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950" role="note">
-                                <Eye size={18} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" />
+                            <div className="mx-auto mb-4 flex max-w-7xl items-start gap-3 rounded-2xl border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-950 dark:text-sky-300" role="note">
+                                <Eye size={18} className="mt-0.5 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden="true" />
                                 <p>
                                     <span className="font-semibold">{t('View-only account.')}</span>{' '}
                                     {t('ITUZE GREEN PLATFORM manages your properties. You can follow everything here; please contact us for any change.')}
@@ -368,7 +370,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         {/* Room so the chat button never covers the end of the page. */}
                         {user.role !== 'admin' && <div className="h-16 shrink-0" aria-hidden="true" />}
                     </main>
-                    <footer className="authenticated-main-footer shrink-0 bg-gray-950 text-gray-400">
+                    <footer className="authenticated-main-footer shrink-0 bg-gray-950 text-gray-400 dark:text-slate-500">
                         <div className="h-0.5 bg-gradient-to-r from-[#0E3B2E] via-emerald-500 to-[#D9A441]" aria-hidden="true" />
                         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 text-xs sm:px-6">
                             <p className="min-w-0 truncate">

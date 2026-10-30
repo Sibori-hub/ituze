@@ -18,10 +18,10 @@ export default function SortHeader({ column, label, filters, onSort, align = 'le
             <button
                 type="button"
                 onClick={() => onSort(column)}
-                className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40 ${active ? 'text-gray-900' : ''}`}
+                className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-900 dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40 ${active ? 'text-gray-900 dark:text-slate-100' : ''}`}
             >
                 {label}
-                <Icon size={13} aria-hidden="true" className={active ? 'text-[#0E3B2E]' : 'text-gray-400'} />
+                <Icon size={13} aria-hidden="true" className={active ? 'text-[#0E3B2E] dark:text-emerald-300' : 'text-gray-400 dark:text-slate-500'} />
             </button>
         </th>
     );

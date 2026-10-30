@@ -8,7 +8,7 @@ import { AlertCircle, Building2, CheckCircle2, Circle, CreditCard, IdCard, Loade
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const fieldClass = (invalid) => `mt-1.5 w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-gray-900 shadow-sm transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 ${invalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
+const fieldClass = (invalid) => `mt-1.5 w-full rounded-xl border bg-white dark:bg-slate-900 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 shadow-sm transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 ${invalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 dark:border-slate-600 focus:border-[#0E3B2E] focus:ring-[#0E3B2E]/15'}`;
 const iconFieldClass = (invalid) => `${fieldClass(invalid)} pl-10`;
 
 /**
@@ -94,7 +94,7 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
     if (!mounted) return null;
 
     const errorText = (field) => shownError(field) && (
-        <span className="mt-1 flex items-center gap-1 text-xs font-normal text-red-600"><AlertCircle size={12} aria-hidden="true" />{shownError(field)}</span>
+        <span className="mt-1 flex items-center gap-1 text-xs font-normal text-red-600 dark:text-red-400"><AlertCircle size={12} aria-hidden="true" />{shownError(field)}</span>
     );
     const otherErrors = Object.entries(errors).filter(([field]) => !['photo', 'gender', 'marital_status', 'identity_document', 'first_name', 'last_name', 'company_name', 'tax_identification_number', 'contact_person', 'identity_number', 'email', 'phone', 'province_id', 'district_id', 'sector_id'].includes(field));
 
@@ -106,17 +106,17 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="create-tenant-title"
-                className={`flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}
+                className={`flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}
             >
                 {/* Header */}
-                <div className="relative border-b border-gray-100 bg-gradient-to-br from-[#0E3B2E]/[0.06] via-white to-amber-50/60 px-6 pb-5 pt-6">
+                <div className="relative border-b border-gray-100 dark:border-slate-800 bg-gradient-to-br from-[#0E3B2E]/[0.06] via-white dark:via-slate-900 to-amber-50/60 px-6 pb-5 pt-6">
                     <div className="flex items-start gap-4">
                         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-[#0E3B2E] text-white shadow-md shadow-[#0E3B2E]/20">
                             <UserPlus size={22} aria-hidden="true" />
                         </span>
                         <div className="min-w-0 pr-8">
-                            <h2 id="create-tenant-title" className="font-[Sora] text-xl font-bold text-gray-900">{t('Create tenant')}</h2>
-                            <p className="mt-1 text-sm text-gray-600">{t('Identity and contact details are required for all tenants.')}</p>
+                            <h2 id="create-tenant-title" className="font-[Sora] text-xl font-bold text-gray-900 dark:text-slate-100">{t('Create tenant')}</h2>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{t('Identity and contact details are required for all tenants.')}</p>
                         </div>
                     </div>
                     <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label={t('Sections')}>
@@ -128,8 +128,8 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                         ].map(([key, label], index) => (
                             <li key={key}>
                                 <button type="button" onClick={() => document.getElementById(`tenant-section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                                    className={`flex w-full items-center gap-1.5 rounded-xl border px-2 py-1.5 text-left text-[11px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/30 sm:text-xs ${done[key] ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-200 bg-white/80 text-gray-600 hover:border-gray-300'}`}>
-                                    <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[10px] ${done[key] ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                    className={`flex w-full items-center gap-1.5 rounded-xl border px-2 py-1.5 text-left text-[11px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/30 sm:text-xs ${done[key] ? 'border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-800 dark:text-green-300' : 'border-gray-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-gray-600 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-500'}`}>
+                                    <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[10px] ${done[key] ? 'bg-green-600 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>
                                         {done[key] ? <CheckCircle2 size={12} aria-hidden="true" /> : index + 1}
                                     </span>
                                     <span className="truncate">{label}</span>
@@ -138,16 +138,16 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                         ))}
                     </ol>
                     <div className="mt-3" aria-live="polite">
-                        <div className="flex items-center justify-between text-xs font-medium text-gray-600">
+                        <div className="flex items-center justify-between text-xs font-medium text-gray-600 dark:text-slate-300">
                             <span>{t(':done of :total sections complete', { done: doneCount, total: 4 })}</span>
-                            {doneCount === 4 && <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 size={13} aria-hidden="true" />{t('Ready to save')}</span>}
+                            {doneCount === 4 && <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-300"><CheckCircle2 size={13} aria-hidden="true" />{t('Ready to save')}</span>}
                         </div>
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-200" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={doneCount} aria-label={t('Form progress')}>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-slate-700" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={doneCount} aria-label={t('Form progress')}>
                             <div className="h-full rounded-full bg-gradient-to-r from-[#0E3B2E] to-green-500 transition-all duration-500" style={{ width: `${(doneCount / 4) * 100}%` }} />
                         </div>
                     </div>
                     <button type="button" onClick={onClose} aria-label={t('Close')}
-                        className="absolute right-4 top-4 rounded-xl p-2 text-gray-500 transition-colors hover:bg-white hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40">
+                        className="absolute right-4 top-4 rounded-xl p-2 text-gray-500 dark:text-slate-400 transition-colors hover:bg-white dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0E3B2E]/40">
                         <X size={20} aria-hidden="true" />
                     </button>
                 </div>
@@ -155,7 +155,7 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                 <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-6">
                     {/* Tenant type */}
                     <fieldset>
-                        <legend className="text-sm font-semibold text-gray-900">{t('Type')}</legend>
+                        <legend className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t('Type')}</legend>
                         <div className="mt-2 grid grid-cols-2 gap-3">
                             {[
                                 { value: 'individual', label: t('Individual'), icon: User },
@@ -164,12 +164,12 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                 const selected = data.type === value;
                                 return (
                                     <label key={value}
-                                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.05] shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition-all focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'border-[#0E3B2E] dark:border-emerald-500 bg-[#0E3B2E]/[0.05] shadow-sm' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-gray-300 dark:hover:border-slate-500'}`}>
                                         <input type="radio" name="tenant-type" value={value} checked={selected} onChange={() => setData('type', value)} className="sr-only" />
-                                        <span className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${selected ? 'bg-[#0E3B2E] text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                        <span className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${selected ? 'bg-[#0E3B2E] text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>
                                             <Icon size={18} aria-hidden="true" />
                                         </span>
-                                        <span className={`text-sm font-semibold ${selected ? 'text-[#0E3B2E]' : 'text-gray-700'}`}>{label}</span>
+                                        <span className={`text-sm font-semibold ${selected ? 'text-[#0E3B2E] dark:text-emerald-300' : 'text-gray-700 dark:text-slate-200'}`}>{label}</span>
                                     </label>
                                 );
                             })}
@@ -185,11 +185,11 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                         <div className="min-w-0 flex-1 space-y-4">
                         {!isCompany ? (
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <label className="text-sm font-medium text-gray-800">{t('First name')}
+                                <label className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('First name')}
                                     <input required value={data.first_name} onChange={event => setData('first_name', event.target.value)} autoComplete="given-name" onBlur={() => touch('first_name')} className={fieldClass(shownError('first_name'))} />
                                     {errorText('first_name')}
                                 </label>
-                                <label className="text-sm font-medium text-gray-800">{t('Last name')}
+                                <label className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('Last name')}
                                     <input required value={data.last_name} onChange={event => setData('last_name', event.target.value)} autoComplete="family-name" onBlur={() => touch('last_name')} className={fieldClass(shownError('last_name'))} />
                                     {errorText('last_name')}
                                 </label>
@@ -200,15 +200,15 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                             </div>
                         ) : (
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <label className="text-sm font-medium text-gray-800 sm:col-span-2">{t('Company name')}
+                                <label className="text-sm font-medium text-gray-800 dark:text-slate-100 sm:col-span-2">{t('Company name')}
                                     <input required value={data.company_name} onChange={event => setData('company_name', event.target.value)} autoComplete="organization" onBlur={() => touch('company_name')} className={fieldClass(shownError('company_name'))} />
                                     {errorText('company_name')}
                                 </label>
-                                <label className="text-sm font-medium text-gray-800">{t('Company TIN')}
+                                <label className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('Company TIN')}
                                     <input required value={data.tax_identification_number} onChange={event => setData('tax_identification_number', event.target.value)} onBlur={() => touch('tax_identification_number')} className={fieldClass(shownError('tax_identification_number'))} />
                                     {errorText('tax_identification_number')}
                                 </label>
-                                <label className="text-sm font-medium text-gray-800">{t('Representative full name')}
+                                <label className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('Representative full name')}
                                     <input required value={data.contact_person} onChange={event => setData('contact_person', event.target.value)} onBlur={() => touch('contact_person')} className={fieldClass(shownError('contact_person'))} />
                                     {errorText('contact_person')}
                                 </label>
@@ -222,7 +222,7 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                     <Section id="identity" done={done.identity} icon={IdCard} title={t('Identity')}>
                         <fieldset>
                             <legend className="sr-only">{t('Identity type')}</legend>
-                            <div className="inline-flex rounded-xl bg-gray-100 p-1">
+                            <div className="inline-flex rounded-xl bg-gray-100 dark:bg-slate-800 p-1">
                                 {[
                                     { value: 'national_id', label: t('National ID'), icon: IdCard },
                                     { value: 'passport', label: t('Passport'), icon: CreditCard },
@@ -230,7 +230,7 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                     const selected = data.identity_type === value;
                                     return (
                                         <label key={value}
-                                            className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}>
+                                            className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'bg-white dark:bg-slate-900 text-[#0E3B2E] dark:text-emerald-300 shadow-sm' : 'text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white'}`}>
                                             <input type="radio" name="identity-type" value={value} checked={selected} onChange={() => setData('identity_type', value)} className="sr-only" />
                                             <Icon size={15} aria-hidden="true" />{label}
                                         </label>
@@ -238,11 +238,11 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                 })}
                             </div>
                         </fieldset>
-                        <label className="mt-4 block text-sm font-medium text-gray-800">
+                        <label className="mt-4 block text-sm font-medium text-gray-800 dark:text-slate-100">
                             <span className="flex items-center justify-between gap-2">
                                 {t(isNationalId ? 'National ID number' : 'Passport number')}
                                 {isNationalId && (
-                                    <span className={`text-xs font-normal ${data.identity_number.length === 16 ? 'text-green-700' : 'text-gray-500'}`}>{data.identity_number.length}/16</span>
+                                    <span className={`text-xs font-normal ${data.identity_number.length === 16 ? 'text-green-700 dark:text-green-300' : 'text-gray-500 dark:text-slate-400'}`}>{data.identity_number.length}/16</span>
                                 )}
                             </span>
                             <input required value={data.identity_number} maxLength={isNationalId ? 16 : 100} inputMode={isNationalId ? 'numeric' : 'text'} pattern={isNationalId ? '[0-9]{16}' : undefined}
@@ -256,29 +256,29 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                 file={data.identity_document}
                                 onChange={(file) => { setData('identity_document', file); touch('identity_document'); }}
                                 error={shownError('identity_document')} />
-                            <p className="mt-2 text-xs text-gray-500">{t('Kept private: only you and the ITUZE team can open it.')}</p>
+                            <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">{t('Kept private: only you and the ITUZE team can open it.')}</p>
                         </div>
                     </Section>
 
                     {/* Contact */}
                     <Section id="contact" done={done.contact} icon={Phone} title={t('Contact')}>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <label className="text-sm font-medium text-gray-800">{t('Email')}
+                            <label className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('Email')}
                                 <span className="relative block">
-                                    <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 mt-[3px] -translate-y-1/2 text-gray-400" aria-hidden="true" />
+                                    <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 mt-[3px] -translate-y-1/2 text-gray-400 dark:text-slate-500" aria-hidden="true" />
                                     <input required type="email" value={data.email} onChange={event => setData('email', event.target.value)} autoComplete="email" onBlur={() => touch('email')} className={iconFieldClass(shownError('email'))} />
                                 </span>
                                 {errorText('email')}
                             </label>
-                            <div className="text-sm font-medium text-gray-800">
+                            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">
                                 <label htmlFor="tenant-phone">{t('Phone')}</label>
                                 {/* Shown as +250 788 123 456 like sign-up; still sent as 0788123456. */}
-                                <div className={`mt-1.5 flex items-stretch overflow-hidden rounded-xl border bg-white shadow-sm transition focus-within:ring-2 ${
+                                <div className={`mt-1.5 flex items-stretch overflow-hidden rounded-xl border bg-white dark:bg-slate-900 shadow-sm transition focus-within:ring-2 ${
                                     shownError('phone') || (phoneDigits !== '' && !phoneValid)
                                         ? 'border-red-400 focus-within:border-red-500 focus-within:ring-red-500/20'
-                                        : 'border-gray-300 focus-within:border-[#0E3B2E] focus-within:ring-[#0E3B2E]/15'
+                                        : 'border-gray-300 dark:border-slate-600 focus-within:border-[#0E3B2E] focus-within:ring-[#0E3B2E]/15'
                                 }`}>
-                                    <span className="flex select-none items-center gap-2 border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-700">
+                                    <span className="flex select-none items-center gap-2 border-r border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 px-3 text-sm font-semibold text-gray-700 dark:text-slate-200">
                                         <RwandaFlag className="h-[15px] w-[22px]" />
                                         +250
                                     </span>
@@ -297,10 +297,10 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                                         onBlur={() => touch('phone')}
                                         aria-invalid={shownError('phone') || (phoneDigits !== '' && !phoneValid) ? 'true' : undefined}
                                         aria-describedby="tenant-phone-help"
-                                        className="w-full min-w-0 border-0 bg-transparent px-3 py-2.5 text-sm tracking-wide text-gray-900 placeholder:tracking-normal placeholder:text-gray-400 focus:ring-0"
+                                        className="w-full min-w-0 border-0 bg-transparent px-3 py-2.5 text-sm tracking-wide text-gray-900 dark:text-slate-100 placeholder:tracking-normal placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-0"
                                     />
                                 </div>
-                                <span id="tenant-phone-help" className={`mt-1 block text-xs font-normal ${phoneDigits !== '' && !phoneValid ? 'text-red-600' : phoneValid ? 'text-green-700' : 'text-gray-500'}`}>
+                                <span id="tenant-phone-help" className={`mt-1 block text-xs font-normal ${phoneDigits !== '' && !phoneValid ? 'text-red-600 dark:text-red-400' : phoneValid ? 'text-green-700 dark:text-green-300' : 'text-gray-500 dark:text-slate-400'}`}>
                                     {phoneValid
                                         ? t(':network number', { network: getNetwork(phoneDigits) })
                                         : t('Enter 10 digits starting with 078, 079, 072, or 073.')}
@@ -323,16 +323,16 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
                     </Section>
 
                     {otherErrors.length > 0 && (
-                        <p role="alert" className="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+                        <p role="alert" className="flex items-start gap-2 rounded-xl bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-300">
                             <AlertCircle size={16} className="mt-0.5 flex-none" aria-hidden="true" />{otherErrors[0][1]}
                         </p>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 border-t border-gray-100 bg-gray-50/70 px-6 py-4">
+                <div className="flex gap-3 border-t border-gray-100 dark:border-slate-800 bg-gray-50/70 dark:bg-slate-800/40 px-6 py-4">
                     <button type="button" onClick={onClose} disabled={processing}
-                        className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60 sm:flex-none sm:px-6">
+                        className="flex-1 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60 sm:flex-none sm:px-6">
                         {t('Cancel')}
                     </button>
                     <button disabled={processing}
@@ -351,13 +351,13 @@ export default function CreateTenantDialog({ open, form, onSubmit, onClose }) {
 function ChoiceChips({ legend, name, value, options, onChange, error, className = '' }) {
     return (
         <fieldset className={className}>
-            <legend className="text-sm font-medium text-gray-800">{legend}</legend>
+            <legend className="text-sm font-medium text-gray-800 dark:text-slate-100">{legend}</legend>
             <div className="mt-1.5 flex flex-wrap gap-2">
                 {options.map(([option, label]) => {
                     const selected = value === option;
                     return (
                         <label key={option}
-                            className={`inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E] text-white shadow-sm' : error ? 'border-red-300 bg-white text-gray-700 hover:border-red-400' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'}`}>
+                            className={`inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition focus-within:ring-2 focus-within:ring-[#0E3B2E]/30 ${selected ? 'border-[#0E3B2E] dark:border-emerald-500 bg-[#0E3B2E] text-white shadow-sm' : error ? 'border-red-300 dark:border-red-500/40 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 hover:border-red-400' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 hover:border-gray-400'}`}>
                             <input type="radio" name={name} value={option} checked={selected} onChange={() => onChange(option)} className="sr-only" />
                             {selected && <CheckCircle2 size={14} aria-hidden="true" />}
                             {label}
@@ -365,7 +365,7 @@ function ChoiceChips({ legend, name, value, options, onChange, error, className 
                     );
                 })}
             </div>
-            {error && <span className="mt-1 flex items-center gap-1 text-xs font-normal text-red-600"><AlertCircle size={12} aria-hidden="true" />{error}</span>}
+            {error && <span className="mt-1 flex items-center gap-1 text-xs font-normal text-red-600 dark:text-red-400"><AlertCircle size={12} aria-hidden="true" />{error}</span>}
         </fieldset>
     );
 }
@@ -374,14 +374,14 @@ function Section({ id, done = false, icon: Icon, title, children }) {
     const { t } = useTranslation();
 
     return (
-        <section id={`tenant-section-${id}`} className={`scroll-mt-4 rounded-2xl border p-4 transition-colors duration-300 sm:p-5 ${done ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'}`}>
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
-                <span className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors duration-300 ${done ? 'bg-green-600 text-white' : 'bg-[#0E3B2E]/10 text-[#0E3B2E]'}`}><Icon size={15} aria-hidden="true" /></span>
+        <section id={`tenant-section-${id}`} className={`scroll-mt-4 rounded-2xl border p-4 transition-colors duration-300 sm:p-5 ${done ? 'border-green-200 dark:border-green-500/30 bg-green-50/30 dark:bg-green-500/10' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900'}`}>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-slate-100">
+                <span className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors duration-300 ${done ? 'bg-green-600 text-white' : 'bg-[#0E3B2E]/10 dark:bg-emerald-400/15 text-[#0E3B2E] dark:text-emerald-300'}`}><Icon size={15} aria-hidden="true" /></span>
                 {title}
                 <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium">
                     {done
-                        ? <span className="inline-flex animate-pop-in items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-800"><CheckCircle2 size={14} aria-hidden="true" />{t('Done')}</span>
-                        : <span className="inline-flex items-center gap-1 text-gray-400"><Circle size={14} aria-hidden="true" /><span className="sr-only">{t('not complete')}</span></span>}
+                        ? <span className="inline-flex animate-pop-in items-center gap-1 rounded-full bg-green-100 dark:bg-green-500/15 px-2 py-0.5 text-green-800 dark:text-green-300"><CheckCircle2 size={14} aria-hidden="true" />{t('Done')}</span>
+                        : <span className="inline-flex items-center gap-1 text-gray-400 dark:text-slate-500"><Circle size={14} aria-hidden="true" /><span className="sr-only">{t('not complete')}</span></span>}
                 </span>
             </h3>
             {children}

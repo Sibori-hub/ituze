@@ -37,12 +37,12 @@ export default function LeaseNoteField({ value, onChange, routeName, routeParams
     return (
         <div className="sm:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <label htmlFor={noteId} className="text-sm font-medium text-gray-700">{t('Lease note (optional)')}</label>
+                <label htmlFor={noteId} className="text-sm font-medium text-gray-700 dark:text-slate-200">{t('Lease note (optional)')}</label>
                 <button
                     type="button"
                     onClick={generateNote}
                     disabled={disabled || generating}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#0E3B2E]/20 px-3 py-1.5 text-xs font-semibold text-[#0E3B2E] hover:bg-[#0E3B2E]/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#0E3B2E]/20 dark:border-emerald-400/20 px-3 py-1.5 text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:bg-[#0E3B2E]/5 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {generating ? <><Loader2 size={13} className="animate-spin" />{t('Generating note…')}</> : <><Sparkles size={13} />{t('Generate note with AI')}</>}
                 </button>
@@ -53,12 +53,12 @@ export default function LeaseNoteField({ value, onChange, routeName, routeParams
                 onChange={event => onChange(event.target.value)}
                 rows="3"
                 maxLength={1000}
-                className="mt-1.5 w-full rounded-xl border-gray-200"
+                className="mt-1.5 w-full rounded-xl border-gray-200 dark:border-slate-700"
                 placeholder={t('Add context for this lease document, or generate a draft to edit.')}
             />
-            <p className="mt-1 text-xs text-gray-500">{t('Names and identifying details are not sent to the AI service.')}</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{t('Names and identifying details are not sent to the AI service.')}</p>
             {message && (
-                <p role={messageType === 'error' ? 'alert' : 'status'} className={`mt-2 text-xs ${messageType === 'error' ? 'text-red-600' : messageType === 'warning' ? 'text-amber-700' : 'text-gray-600'}`}>
+                <p role={messageType === 'error' ? 'alert' : 'status'} className={`mt-2 text-xs ${messageType === 'error' ? 'text-red-600 dark:text-red-400' : messageType === 'warning' ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-slate-300'}`}>
                     {message}
                 </p>
             )}

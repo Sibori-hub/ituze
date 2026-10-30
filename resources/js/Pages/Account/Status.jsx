@@ -30,23 +30,23 @@ export default function Status({ status, expired, managerPaused = false, employe
     return (
         <AuthenticatedLayout header="Account status">
             <Head title={t('Account status')} />
-            <div className="mx-auto max-w-2xl rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm sm:p-12">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#D9A441]/15 text-[#0E3B2E]">
+            <div className="mx-auto max-w-2xl rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-sm sm:p-12">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#D9A441]/15 text-[#0E3B2E] dark:text-emerald-300">
                     <Icon size={30} />
                 </div>
-                <h1 className="mt-5 font-[Sora] text-2xl font-bold text-gray-900">
+                <h1 className="mt-5 font-[Sora] text-2xl font-bold text-gray-900 dark:text-slate-100">
                     {t(title)}
                 </h1>
-                <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-600">
+                <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-600 dark:text-slate-300">
                     {t(message, { owner: employerName || t('the owner') })}
                 </p>
                 {!rejected && !isExpired && !managerPaused && (
-                    <p className="mt-5 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                    <p className="mt-5 rounded-xl bg-gray-50 dark:bg-slate-800/60 px-4 py-3 text-sm text-gray-600 dark:text-slate-300">
                         {t('After approval you pay 100,000 RWF per month to use the system, by mobile money or bank.')}
                     </p>
                 )}
                 {isExpired && canPay && (
-                    <Link href={route('subscription.show')} className="mr-3 mt-7 inline-block rounded-xl bg-[#D9A441] px-5 py-3 text-sm font-semibold text-[#0E3B2E] transition hover:bg-[#c99535]">
+                    <Link href={route('subscription.show')} className="mr-3 mt-7 inline-block rounded-xl bg-[#D9A441] px-5 py-3 text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 transition hover:bg-[#c99535]">
                         {t('Pay my subscription')}
                     </Link>
                 )}

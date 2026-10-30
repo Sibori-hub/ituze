@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/localization';
+import { useTheme } from '@/lib/theme';
+import ThemeToggle from '@/Components/ThemeToggle';
 
 const heroSlides = [
     {
@@ -140,17 +142,6 @@ function cityFilters(city, locations) {
     };
 }
 
-// Light or dark homepage: the visitor's choice, else their device setting.
-// app.blade.php applies it before the first paint; this keeps it in sync.
-const THEME_KEY = 'ituze-theme';
-const prefersDark = () => {
-    try {
-        const saved = window.localStorage.getItem(THEME_KEY);
-        if (saved) return saved === 'dark';
-    } catch {}
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-};
-
 const unitLocation = (unit) => [
     unit.property?.cell?.sector?.name,
     unit.property?.cell?.sector?.district?.name,
@@ -213,7 +204,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
     const [menuOpen, setMenuOpen] = useState(false);
     const [legalDoc, setLegalDoc] = useState(null);
     const [creditsOpen, setCreditsOpen] = useState(false);
-    const [dark, setDark] = useState(prefersDark);
+    const [dark, toggleTheme] = useTheme();
     const [searchForm, setSearchForm] = useState({
         search: searchFilters.search || '',
         category: searchFilters.category || '',
@@ -234,24 +225,6 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
         const timer = window.setTimeout(() => setSlide((value) => (value + 1) % heroSlides.length), 6500);
         return () => window.clearTimeout(timer);
     }, [slide]);
-
-    // Dark mode belongs to the homepage only: leaving it restores the light app.
-    useEffect(() => {
-        const root = document.documentElement;
-        root.classList.toggle('dark', dark);
-        root.style.colorScheme = dark ? 'dark' : '';
-        return () => {
-            root.classList.remove('dark');
-            root.style.colorScheme = '';
-        };
-    }, [dark]);
-
-    const toggleTheme = () => setDark((value) => {
-        try {
-            window.localStorage.setItem(THEME_KEY, value ? 'light' : 'dark');
-        } catch {}
-        return !value;
-    });
 
     // Results update by themselves: lists at once, typing after a short pause.
     const typingPause = useRef(true);
@@ -336,16 +309,7 @@ export default function Welcome({ auth, canLogin, canRegister, units, propertyCa
                             <a href="#contact" className="rounded-full px-3 py-2 transition hover:bg-white dark:hover:bg-slate-700 hover:text-[#078dcc]">{t('Contact us')}</a>
                         </nav>
                         <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={toggleTheme}
-                                aria-pressed={dark}
-                                aria-label={t('Dark mode')}
-                                title={dark ? t('Switch to light mode') : t('Switch to dark mode')}
-                                className="hidden rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-100 sm:inline-flex focus:outline-none focus-visible:ring-2 focus-visible:ring-[#078dcc] dark:border-slate-700 dark:text-amber-300 dark:hover:bg-slate-800"
-                            >
-                                {dark ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
-                            </button>
+                            <ThemeToggle tone="light" className="hidden sm:inline-flex" />
                             <LanguageSwitcher className="hidden rounded-lg bg-[#0E3B2E] p-1 sm:inline-flex" />
                             {auth?.user ? (
                                 <Link href={route('dashboard')} className="hidden rounded bg-[#08a8ec] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white sm:inline-flex sm:text-xs">{t('Dashboard')}</Link>

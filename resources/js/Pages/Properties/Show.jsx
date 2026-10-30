@@ -6,8 +6,8 @@ import { useTranslation } from '@/localization';
 import { ArrowLeft, MapPin, Layers, Edit, Trash2, Image as ImageIcon, CheckCircle, Users, Wrench } from 'lucide-react';
 
 const statusStyles = {
-    active: 'bg-green-50 text-green-700 ring-1 ring-green-600/10',
-    inactive: 'bg-gray-100 text-gray-600 ring-1 ring-gray-500/10',
+    active: 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 ring-1 ring-green-600/10',
+    inactive: 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 ring-1 ring-gray-500/10',
 };
 
 const imageSource = (path) => {
@@ -39,7 +39,7 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
             <div className="mb-6">
                 <Link
                     href={route('properties.index')}
-                    className="inline-flex items-center gap-1.5 text-sm text-gray-600 transition-colors hover:text-[#0E3B2E]"
+                    className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-slate-300 transition-colors hover:text-[#0E3B2E] dark:hover:text-emerald-200"
                 >
                     <ArrowLeft size={16} />
                     Back to Properties
@@ -48,9 +48,9 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
 
             <div className="space-y-6">
                 {/* Property Header */}
-                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm group">
+                <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm group">
                     {property.images && property.images.length > 0 ? (
-                        <div className="relative h-72 overflow-hidden bg-gray-100">
+                        <div className="relative h-72 overflow-hidden bg-gray-100 dark:bg-slate-800">
                             <img
                                 src={imageSource(property.images[0].image_path)}
                                 alt={property.name}
@@ -69,7 +69,7 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                             </div>
                         </div>
                     ) : (
-                        <div className="relative h-72 flex items-center justify-center bg-gray-100 group">
+                        <div className="relative h-72 flex items-center justify-center bg-gray-100 dark:bg-slate-800 group">
                             <ImageIcon size={64} className="text-gray-300" />
                             <div className="absolute bottom-4 left-4 flex flex-col gap-1.5">
                                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-800/60 backdrop-blur-sm px-2.5 py-1 text-xs font-medium text-white ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-[1.03]">
@@ -89,16 +89,16 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                         <div className="flex items-start justify-between">
                             <div>
                                 <div className="flex items-center gap-3">
-                                    <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
+                                    <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{property.name}</h1>
                                 </div>
                                 {property.address && (
-                                    <p className="mt-2 flex items-center gap-1.5 text-gray-600">
+                                    <p className="mt-2 flex items-center gap-1.5 text-gray-600 dark:text-slate-300">
                                         <MapPin size={16} aria-hidden="true" />
                                         {property.address}
                                     </p>
                                 )}
-                                <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
-                                    <Layers size={15} aria-hidden="true" className="text-[#0E3B2E]" />
+                                <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600 dark:text-slate-300">
+                                    <Layers size={15} aria-hidden="true" className="text-[#0E3B2E] dark:text-emerald-300" />
                                     {[
                                         floorLabel(0),
                                         upperFloors > 0 ? (upperFloors === 1 ? t('1 upper floor') : t(':count upper floors', { count: upperFloors })) : null,
@@ -106,21 +106,21 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                                     ].filter(Boolean).join(' · ')}
                                 </p>
                                 {property.cell && (
-                                    <p className="mt-1 text-sm text-gray-500">
+                                    <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                                         {property.cell.name}, {property.cell.sector?.name}, {property.cell.sector?.district?.name}, {property.cell.sector?.district?.province?.name}
                                     </p>
                                 )}
                                 {property.owner && (
-                                    <p className="mt-1 text-sm text-gray-700">
-                                        <span className="font-medium text-gray-500">{t('Owner')}:</span>{' '}
-                                        <span className="font-semibold text-[#0E3B2E]">{property.owner.name}</span>
+                                    <p className="mt-1 text-sm text-gray-700 dark:text-slate-200">
+                                        <span className="font-medium text-gray-500 dark:text-slate-400">{t('Owner')}:</span>{' '}
+                                        <span className="font-semibold text-[#0E3B2E] dark:text-emerald-300">{property.owner.name}</span>
                                     </p>
                                 )}
                                 {property.creator && property.creator.id !== property.owner?.id && (
-                                    <p className="mt-0.5 text-sm text-gray-700">
-                                        <span className="font-medium text-gray-500">{t('Added by')}:</span>{' '}
+                                    <p className="mt-0.5 text-sm text-gray-700 dark:text-slate-200">
+                                        <span className="font-medium text-gray-500 dark:text-slate-400">{t('Added by')}:</span>{' '}
                                         {property.creator.name}
-                                        {property.creator.role === 'admin' && <span className="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{t('Administrator')}</span>}
+                                        {property.creator.role === 'admin' && <span className="ml-1.5 rounded-full bg-gray-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-slate-300">{t('Administrator')}</span>}
                                     </p>
                                 )}
                             </div>
@@ -128,14 +128,14 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                                 <div className="flex items-center gap-2">
                                     {canEditProperty && <Link
                                         href={route('properties.edit', property)}
-                                        className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                                        className="flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800"
                                     >
                                         <Edit size={16} />
                                         {t('Edit')}
                                     </Link>}
                                     {canDeleteProperty && <button
                                         onClick={confirmDelete}
-                                        className="flex items-center gap-1.5 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
+                                        className="flex items-center gap-1.5 rounded-xl border border-red-200 dark:border-red-500/30 px-4 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
                                     >
                                         <Trash2 size={16} />
                                         {t('Delete')}
@@ -144,29 +144,29 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                             )}
                         </div>
 
-                        <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl bg-gray-50 p-4 md:grid-cols-7 md:gap-4">
+                        <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 p-4 md:grid-cols-7 md:gap-4">
                             <div className="text-center">
-                                <p className="text-2xl font-bold text-[#0E3B2E]">
+                                <p className="text-2xl font-bold text-[#0E3B2E] dark:text-emerald-300">
                                     {property.units_count ?? 0}
                                 </p>
-                                <p className="text-xs text-gray-500">{t('Rooms')}</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400">{t('Rooms')}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-xs text-gray-500">{t('Available rooms')}</p>
-                                <p className="text-2xl font-bold text-[#0E3B2E]">
+                                <p className="text-xs text-gray-500 dark:text-slate-400">{t('Available rooms')}</p>
+                                <p className="text-2xl font-bold text-[#0E3B2E] dark:text-emerald-300">
                                     {property.units_available_count ?? 0}
                                 </p>
                             </div>
                             <div className="text-center">
-                                <p className="text-2xl font-bold text-[#0E3B2E]">{property.images?.length || 0}</p>
-                                <p className="text-xs text-gray-500">Images</p>
+                                <p className="text-2xl font-bold text-[#0E3B2E] dark:text-emerald-300">{property.images?.length || 0}</p>
+                                <p className="text-xs text-gray-500 dark:text-slate-400">Images</p>
                             </div>
                             <div className="text-center col-span-2 md:col-span-1">
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-gray-500 dark:text-slate-400">
                                     {t('Monthly income (RWF)')}
                                 </p>
                                 {(property.units_monthly_rent_sum && Number(property.units_monthly_rent_sum) > 0) ? (
-                                    <p className="text-2xl font-bold text-[#0E3B2E]">
+                                    <p className="text-2xl font-bold text-[#0E3B2E] dark:text-emerald-300">
                                         {Number(property.units_monthly_rent_sum).toLocaleString()}
                                     </p>
                                 ) : (
@@ -186,8 +186,8 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                             if (amenitiesList.length === 0 && proximityList.length === 0) {
                                 return property.description ? (
                                     <div className="mt-6">
-                                        <h3 className="text-sm font-medium text-gray-700">Description</h3>
-                                        <p className="mt-2 whitespace-pre-wrap leading-relaxed text-gray-600">{property.description}</p>
+                                        <h3 className="text-sm font-medium text-gray-700 dark:text-slate-200">Description</h3>
+                                        <p className="mt-2 whitespace-pre-wrap leading-relaxed text-gray-600 dark:text-slate-300">{property.description}</p>
                                     </div>
                                 ) : null;
                             }
@@ -207,10 +207,10 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                                 <div className="mt-6 space-y-4">
                                     {amenitiesList.length > 0 && (
                                         <div>
-                                            <h3 className="text-sm font-medium text-gray-700 mb-2">Amenities</h3>
+                                            <h3 className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Amenities</h3>
                                             <div className="flex flex-wrap gap-2">
                                                 {amenitiesList.map(a => (
-                                                    <span key={a} className="inline-flex items-center rounded-full bg-[#0E3B2E]/10 px-2.5 py-1 text-xs font-medium text-[#0E3B2E]">
+                                                    <span key={a} className="inline-flex items-center rounded-full bg-[#0E3B2E]/10 dark:bg-emerald-400/15 px-2.5 py-1 text-xs font-medium text-[#0E3B2E] dark:text-emerald-300">
                                                         {amenityLabels[a] || a.replace(/_/g, ' ')}
                                                     </span>
                                                 ))}
@@ -219,10 +219,10 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                                     )}
                                     {proximityList.length > 0 && (
                                         <div>
-                                            <h3 className="text-sm font-medium text-gray-700 mb-2">Nearby</h3>
+                                            <h3 className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Nearby</h3>
                                             <div className="flex flex-wrap gap-2">
                                                 {proximityList.map(p => (
-                                                    <span key={p} className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-600/10">
+                                                    <span key={p} className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-blue-600/10">
                                                         {proximityLabels[p] || p.replace(/^near_/, '').replace(/_/g, ' ')}
                                                     </span>
                                                 ))}
@@ -230,9 +230,9 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                                         </div>
                                     )}
                                     {property.description && (
-                                        <div className="pt-2 border-t border-gray-100">
-                                            <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-                                            <p className="whitespace-pre-wrap leading-relaxed text-gray-600">{property.description}</p>
+                                        <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
+                                            <h3 className="text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Description</h3>
+                                            <p className="whitespace-pre-wrap leading-relaxed text-gray-600 dark:text-slate-300">{property.description}</p>
                                         </div>
                                     )}
                                 </div>
@@ -243,9 +243,9 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
 
                 {/* Property Images Gallery */}
                 {property.images && property.images.length > 1 && (
-                    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                    <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
                         <div className="p-6">
-                            <h3 className="text-lg font-semibold text-gray-900">Property Images</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Property Images</h3>
                             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {property.images.map((image, index) => (
                                     <div key={image.id} className="overflow-hidden rounded-xl">
@@ -262,16 +262,16 @@ export default function PropertyShow({ property, isAdmin, canEdit, canEditProper
                 )}
 
                 {locked ? (
-                    <section className="mt-6 rounded-3xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-6 text-center" aria-labelledby="locked-title">
+                    <section className="mt-6 rounded-3xl border-2 border-dashed border-amber-300 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-500/10 p-6 text-center" aria-labelledby="locked-title">
                         <div className="mx-auto max-w-md">
                             <PropertySteps current={2} waitingApproval={Boolean(subscription.pending)} />
                         </div>
-                        <h2 id="locked-title" className="mt-4 font-[Sora] text-lg font-bold text-gray-900">
+                        <h2 id="locked-title" className="mt-4 font-[Sora] text-lg font-bold text-gray-900 dark:text-slate-100">
                             {subscription.pending
                                 ? t('Payment sent: ITUZE is checking it.')
                                 : subscription.state === 'paused' ? t('This property is paused') : t('Pay for this property to add units and rooms')}
                         </h2>
-                        <p className="mx-auto mt-1 max-w-lg text-sm text-gray-700">
+                        <p className="mx-auto mt-1 max-w-lg text-sm text-gray-700 dark:text-slate-200">
                             {subscription.pending
                                 ? t('You will get an SMS and email as soon as it is approved; then you can add units, rooms and tenants.')
                                 : t('Each property costs :price per month. Units, rooms and tenants unlock as soon as ITUZE approves your payment.', { price: '100,000 RWF' })}

@@ -43,10 +43,10 @@ function Stepper() {
         <ol className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-2 text-[11px] font-semibold" aria-label={t('Progress')}>
             {steps.map(({ label, done, current }, index) => (
                 <li key={label} className="flex items-center gap-1.5" aria-current={current ? 'step' : undefined}>
-                    {index > 0 && <span className={`h-px w-3 sm:w-4 ${done || current ? 'bg-emerald-300' : 'bg-gray-200'}`} />}
+                    {index > 0 && <span className={`h-px w-3 sm:w-4 ${done || current ? 'bg-emerald-300' : 'bg-gray-200 dark:bg-slate-700'}`} />}
                     <span
                         className={`flex items-center gap-1 rounded-full px-2.5 py-1 ${
-                            done ? 'bg-emerald-50 text-emerald-700' : current ? 'bg-[#0E3B2E] text-white' : 'bg-gray-100 text-gray-400'
+                            done ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : current ? 'bg-[#0E3B2E] text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500'
                         }`}
                     >
                         {done && <Check size={11} strokeWidth={3} />}
@@ -60,18 +60,18 @@ function Stepper() {
 
 function Section({ icon: Icon, title, hint, done, children }) {
     return (
-        <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:p-5">
+        <section className="rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:p-5">
             <div className="mb-4 flex items-start gap-3">
                 <span
                     className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                        done ? 'bg-emerald-500 text-white' : 'bg-[#0E3B2E]/[0.07] text-[#0E3B2E]'
+                        done ? 'bg-emerald-500 text-white' : 'bg-[#0E3B2E]/[0.07] text-[#0E3B2E] dark:text-emerald-300'
                     }`}
                 >
                     {done ? <Check size={17} strokeWidth={3} /> : <Icon size={17} />}
                 </span>
                 <div>
-                    <h3 className="font-[Sora] text-sm font-semibold text-gray-900">{title}</h3>
-                    {hint && <p className="mt-0.5 text-xs text-gray-500">{hint}</p>}
+                    <h3 className="font-[Sora] text-sm font-semibold text-gray-900 dark:text-slate-100">{title}</h3>
+                    {hint && <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">{hint}</p>}
                 </div>
             </div>
             {children}
@@ -124,23 +124,23 @@ function IdDocumentUpload({ id, label, file, onChange, error }) {
 
     return (
         <div>
-            <p id={`${id}-label`} className="mb-1.5 text-[13px] font-medium text-gray-700">{label}</p>
+            <p id={`${id}-label`} className="mb-1.5 text-[13px] font-medium text-gray-700 dark:text-slate-200">{label}</p>
             <div
                 className={`flex items-center gap-3 rounded-xl border-2 border-dashed p-3 ${
-                    message ? 'border-red-300' : file ? 'border-emerald-300 bg-emerald-50/40' : 'border-gray-200'
+                    message ? 'border-red-300 dark:border-red-500/40' : file ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/10' : 'border-gray-200 dark:border-slate-700'
                 }`}
             >
-                <span className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 ring-1 ring-gray-100">
+                <span className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 dark:bg-slate-800/60 ring-1 ring-gray-100 dark:ring-slate-700">
                     {preview ? (
                         <img src={preview} alt={t(':label preview', { label })} className="h-full w-full object-cover" />
                     ) : file ? (
-                        <FileText size={22} className="text-[#0E3B2E]" aria-hidden="true" />
+                        <FileText size={22} className="text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true" />
                     ) : (
-                        <IdCard size={22} className="text-gray-400" aria-hidden="true" />
+                        <IdCard size={22} className="text-gray-400 dark:text-slate-500" aria-hidden="true" />
                     )}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs text-gray-500">{file ? file.name : t('JPG, PNG, WEBP or PDF, up to 5 MB')}</p>
+                    <p className="truncate text-xs text-gray-500 dark:text-slate-400">{file ? file.name : t('JPG, PNG, WEBP or PDF, up to 5 MB')}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                         <button
                             type="button"
@@ -155,7 +155,7 @@ function IdDocumentUpload({ id, label, file, onChange, error }) {
                             <button
                                 type="button"
                                 onClick={remove}
-                                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/15"
+                                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 transition hover:bg-gray-50 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/15"
                             >
                                 <Trash2 size={14} aria-hidden="true" />
                                 {t('Remove')}
@@ -174,7 +174,7 @@ function IdDocumentUpload({ id, label, file, onChange, error }) {
                 />
             </div>
             {message && (
-                <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-medium text-red-600">
+                <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
                     {message}
                 </p>
             )}
@@ -283,7 +283,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
     };
 
     const fieldClass =
-        'w-full rounded-xl border border-gray-200 bg-white py-3 text-sm text-gray-800 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition placeholder:text-gray-400 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400';
+        'w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-3 text-sm text-gray-800 dark:text-slate-100 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/10 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800 disabled:text-gray-400 dark:disabled:text-slate-500';
 
     return (
         <GuestLayout>
@@ -293,18 +293,18 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                 <Stepper />
 
                 <div className="mt-6 text-center">
-                    <h2 className="font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900">{t('Complete Your Profile')}</h2>
-                    <p className="mt-1.5 text-sm text-gray-500">{t('One last step. After this, our team reviews your account.')}</p>
+                    <h2 className="font-[Sora] text-2xl font-bold tracking-[-0.02em] text-gray-900 dark:text-slate-100">{t('Complete Your Profile')}</h2>
+                    <p className="mt-1.5 text-sm text-gray-500 dark:text-slate-400">{t('One last step. After this, our team reviews your account.')}</p>
                 </div>
 
                 <div className="mx-auto mt-4 max-w-xs" aria-live="polite">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800">
                         <div
                             className="h-full rounded-full bg-gradient-to-r from-[#1F7A5A] to-[#D9A441] transition-all duration-500"
                             style={{ width: `${Math.round((doneCount / 3) * 100)}%` }}
                         />
                     </div>
-                    <p className="mt-1.5 text-center text-[11px] font-medium text-gray-400">
+                    <p className="mt-1.5 text-center text-[11px] font-medium text-gray-400 dark:text-slate-500">
                         {t(':done of :total completed', { done: doneCount, total: 3 })}
                     </p>
                 </div>
@@ -316,10 +316,10 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                     {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : initials}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-gray-900">
+                    <p className="truncate font-semibold text-gray-900 dark:text-slate-100">
                         {registration.first_name} {registration.last_name}
                     </p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-slate-400">
                         <span className="inline-flex min-w-0 items-center gap-1">
                             <BadgeCheck size={13} className="shrink-0 text-emerald-500" />
                             <span className="truncate">{registration.email}</span>
@@ -347,26 +347,26 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                             choosePhoto(e.dataTransfer.files?.[0]);
                         }}
                         className={`flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed p-4 text-center transition sm:flex-row sm:text-left ${
-                            dragging ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.03]' : 'border-gray-200'
+                            dragging ? 'border-[#0E3B2E] dark:border-emerald-500 bg-[#0E3B2E]/[0.03]' : 'border-gray-200 dark:border-slate-700'
                         }`}
                     >
                         <button
                             type="button"
                             onClick={() => fileInput.current?.click()}
-                            className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-gray-50 ring-4 ring-gray-100 transition hover:ring-[#0E3B2E]/20"
+                            className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-gray-50 dark:bg-slate-800/60 ring-4 ring-gray-100 dark:ring-slate-700 transition hover:ring-[#0E3B2E]/20"
                             aria-label={t('Upload profile photo')}
                         >
                             {preview ? (
                                 <img src={preview} alt={t('Profile preview')} className="h-full w-full object-cover" />
                             ) : (
-                                <Camera size={24} className="mx-auto text-gray-400 transition group-hover:text-[#0E3B2E]" />
+                                <Camera size={24} className="mx-auto text-gray-400 dark:text-slate-500 transition group-hover:text-[#0E3B2E]" />
                             )}
                         </button>
                         <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-700">
+                            <p className="text-sm font-medium text-gray-700 dark:text-slate-200">
                                 {preview ? data.profile_photo?.name : isCompany ? t('Drag the logo here, or choose it') : t('Drag a photo here, or choose one')}
                             </p>
-                            <p className="mt-0.5 text-xs text-gray-400">{t('JPG, PNG or WEBP, up to 2 MB')}</p>
+                            <p className="mt-0.5 text-xs text-gray-400 dark:text-slate-500">{t('JPG, PNG or WEBP, up to 2 MB')}</p>
                             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
                                 <button
                                     type="button"
@@ -380,7 +380,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                                     <button
                                         type="button"
                                         onClick={removePhoto}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 transition hover:bg-gray-50 dark:hover:bg-slate-800"
                                     >
                                         <Trash2 size={14} />
                                         {t('Remove')}
@@ -402,7 +402,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                 </Section>
 
                 <Section icon={IdCard} title={isCompany ? t('Representative’s identity document') : t('Identity document')} hint={isCompany ? t('The ID of the person who represents the company. Our team uses it to confirm who you are.') : t('Our team uses this to confirm your identity.')} done={idDone && rdbDone}>
-                    <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label={t('Identity document')}>
+                    <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 dark:bg-slate-800 p-1" role="radiogroup" aria-label={t('Identity document')}>
                         {[
                             { value: 'nida', label: t('National ID (NIDA)'), short: 'NIDA', Icon: IdCard },
                             { value: 'passport', label: t('Passport'), short: t('Passport'), Icon: BookUser },
@@ -416,7 +416,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                                     aria-checked={selected}
                                     onClick={() => changeIdType(value)}
                                     className={`flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold transition sm:text-sm ${
-                                        selected ? 'bg-white text-[#0E3B2E] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                        selected ? 'bg-white dark:bg-slate-900 text-[#0E3B2E] dark:text-emerald-300 shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white'
                                     }`}
                                 >
                                     <Icon size={15} />
@@ -427,7 +427,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                         })}
                     </div>
 
-                    <label htmlFor="national_id" className="mb-1.5 mt-4 block text-[13px] font-medium text-gray-700">
+                    <label htmlFor="national_id" className="mb-1.5 mt-4 block text-[13px] font-medium text-gray-700 dark:text-slate-200">
                         {isPassport ? t('Passport number') : t('NIDA number')}
                     </label>
                     <div className="relative">
@@ -440,20 +440,20 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                             autoComplete="off"
                             placeholder={isPassport ? 'PC1234567' : '1 1990 8 0012345 0 12'}
                             className={`${fieldClass} pl-4 pr-20 font-medium tracking-[0.08em] placeholder:font-normal placeholder:tracking-normal ${
-                                errors.national_id ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''
+                                errors.national_id ? 'border-red-300 dark:border-red-500/40 focus:border-red-400 focus:ring-red-100' : ''
                             }`}
                             aria-describedby="national_id-help"
                         />
                         <span
                             className={`pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-xs font-semibold tabular-nums ${
-                                idValid ? 'text-emerald-600' : 'text-gray-400'
+                                idValid ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-slate-500'
                             }`}
                         >
                             {idValid && <Check size={14} strokeWidth={3} />}
                             {isPassport ? '' : `${data.national_id.length}/16`}
                         </span>
                     </div>
-                    <p id="national_id-help" className="mt-1.5 text-xs text-gray-400">
+                    <p id="national_id-help" className="mt-1.5 text-xs text-gray-400 dark:text-slate-500">
                         {isPassport ? t('6 to 20 letters and numbers, exactly as printed.') : t('Exactly 16 digits, as printed on your ID card.')}
                     </p>
                     <InputError message={errors.national_id || errors.identity_document_type} className="mt-1" />
@@ -465,12 +465,12 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                             ['marital_status', isCompany ? t('Representative’s marital status') : t('Marital status'), [['single', t('Single')], ['married', t('Married')], ['divorced', t('Divorced')], ['widowed', t('Widowed')]]],
                         ].map(([field, legend, options]) => (
                             <fieldset key={field} className={field === 'marital_status' ? 'sm:col-span-2' : ''}>
-                                <legend className="mb-1.5 text-[13px] font-medium text-gray-700">{legend}</legend>
+                                <legend className="mb-1.5 text-[13px] font-medium text-gray-700 dark:text-slate-200">{legend}</legend>
                                 <div className="flex flex-wrap gap-2">
                                     {options.map(([value, label]) => {
                                         const selected = data[field] === value;
                                         return (
-                                            <label key={value} className={`inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#0E3B2E]/15 ${selected ? 'border-[#0E3B2E] bg-[#0E3B2E] text-white shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}>
+                                            <label key={value} className={`inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#0E3B2E]/15 ${selected ? 'border-[#0E3B2E] dark:border-emerald-500 bg-[#0E3B2E] text-white shadow-sm' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-500'}`}>
                                                 <input type="radio" name={field} value={value} checked={selected} onChange={() => { clearErrors(field); setData(field, value); }} className="sr-only" />
                                                 {selected && <Check size={14} strokeWidth={3} aria-hidden="true" />}
                                                 {label}
@@ -496,7 +496,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                         />
                     </div>
                     {isCompany && (
-                        <div className="mt-4 border-t border-gray-100 pt-4">
+                        <div className="mt-4 border-t border-gray-100 dark:border-slate-800 pt-4">
                             <IdDocumentUpload
                                 id="rdb_certificate"
                                 label={t('RDB registration certificate of the company')}
@@ -509,7 +509,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                             />
                         </div>
                     )}
-                    <p className="mt-2 text-xs text-gray-400">{isCompany ? t('Only the ITUZE team can see these files. Make sure every word is clear.') : t('Only the ITUZE team can see this file. Make sure every word and the photo are clear.')}</p>
+                    <p className="mt-2 text-xs text-gray-400 dark:text-slate-500">{isCompany ? t('Only the ITUZE team can see these files. Make sure every word is clear.') : t('Only the ITUZE team can see this file. Make sure every word and the photo are clear.')}</p>
                 </Section>
 
                 <Section icon={MapPin} title={isCompany ? t('Company address') : t('Where you live')} hint={isCompany ? t('Where the company is: province, district, sector and street.') : t('Choose your province, district and sector.')} done={locationDone}>
@@ -560,7 +560,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                     <InputError message={errors.sector_id} className="mt-1" />
                     {isCompany && (
                         <div className="mt-3">
-                            <label htmlFor="address" className="mb-1.5 block text-[13px] font-medium text-gray-700">{t('Street address')}</label>
+                            <label htmlFor="address" className="mb-1.5 block text-[13px] font-medium text-gray-700 dark:text-slate-200">{t('Street address')}</label>
                             <input id="address" value={data.address} onChange={(e) => setData('address', e.target.value)} maxLength={255} autoComplete="street-address"
                                 placeholder={t('e.g. KG 7 Ave, Ikaze House, 2nd floor')} className={`${fieldClass} px-3.5`} aria-invalid={Boolean(errors.address) || undefined} />
                             <InputError message={errors.address} className="mt-1" />
@@ -569,14 +569,14 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                 </Section>
 
                 {needsTerms && (
-                    <label htmlFor="terms" className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${data.terms ? 'border-[#0E3B2E]/30 bg-[#0E3B2E]/[0.03]' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <label htmlFor="terms" className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${data.terms ? 'border-[#0E3B2E]/30 dark:border-emerald-400/30 bg-[#0E3B2E]/[0.03]' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-500'}`}>
                         <input id="terms" type="checkbox" checked={data.terms} disabled={processing} onChange={(e) => setData('terms', e.target.checked)}
-                            className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded-md border-gray-300 text-[#0E3B2E] focus:ring-[#0E3B2E]/30" />
-                        <span className="text-xs leading-5 text-gray-600">
+                            className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded-md border-gray-300 dark:border-slate-600 text-[#0E3B2E] dark:text-emerald-300 focus:ring-[#0E3B2E]/30" />
+                        <span className="text-xs leading-5 text-gray-600 dark:text-slate-300">
                             {t('I have read and agree to the')}{' '}
-                            <a href={route('legal.terms')} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] decoration-2 underline-offset-2">{t('Terms and Conditions')}</a>{' '}
+                            <a href={route('legal.terms')} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] dark:text-emerald-300 underline decoration-[#D9A441] decoration-2 underline-offset-2">{t('Terms and Conditions')}</a>{' '}
                             {t('and the')}{' '}
-                            <a href={route('legal.privacy')} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] underline decoration-[#D9A441] decoration-2 underline-offset-2">{t('Privacy Policy')}</a>
+                            <a href={route('legal.privacy')} target="_blank" rel="noreferrer" className="font-semibold text-[#0E3B2E] dark:text-emerald-300 underline decoration-[#D9A441] decoration-2 underline-offset-2">{t('Privacy Policy')}</a>
                         </span>
                     </label>
                 )}
@@ -586,7 +586,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                     <button
                         type="submit"
                         disabled={!isFormValid || processing}
-                        className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D9A441] py-3.5 text-sm font-semibold tracking-wide text-[#0E3B2E] shadow-[0_10px_24px_-12px_rgba(217,164,65,0.9)] transition-all hover:bg-[#c9962f] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
+                        className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D9A441] py-3.5 text-sm font-semibold tracking-wide text-[#0E3B2E] dark:text-emerald-300 shadow-[0_10px_24px_-12px_rgba(217,164,65,0.9)] transition-all hover:bg-[#c9962f] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-slate-800 disabled:text-gray-400 dark:disabled:text-slate-500 disabled:shadow-none"
                     >
                         {processing ? (
                             <>
@@ -601,7 +601,7 @@ export default function Complete({ registrationDetails, locations, needsTerms = 
                         )}
                     </button>
                     {!isFormValid && (
-                        <p className="mt-2 text-center text-xs text-gray-400">{t('Complete the three sections above to continue.')}</p>
+                        <p className="mt-2 text-center text-xs text-gray-400 dark:text-slate-500">{t('Complete the three sections above to continue.')}</p>
                     )}
                 </div>
             </form>

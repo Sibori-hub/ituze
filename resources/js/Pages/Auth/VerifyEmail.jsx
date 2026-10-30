@@ -43,7 +43,7 @@ export default function VerifyEmail({ status, expiresIn, devMode, devOtp }) {
                                       href="http://127.0.0.1:8025"
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:ring-amber-400"
+                                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white dark:bg-slate-900 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30 transition hover:ring-amber-400"
                                   >
                                       <ExternalLink size={13} />
                                       {t('Open Mailpit inbox')}
@@ -52,7 +52,7 @@ export default function VerifyEmail({ status, expiresIn, devMode, devOtp }) {
                                       type="button"
                                       onClick={() => devForm.post(route('dev.verify-email'))}
                                       disabled={devForm.processing}
-                                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-400 py-2 text-xs font-semibold text-amber-950 transition hover:bg-amber-500 disabled:opacity-60"
+                                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-400 py-2 text-xs font-semibold text-amber-950 dark:text-amber-300 transition hover:bg-amber-500 disabled:opacity-60"
                                   >
                                       <Zap size={13} />
                                       {t('Dev: Verify Instantly')}

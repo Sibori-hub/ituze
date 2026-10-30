@@ -14,7 +14,7 @@ const PASSWORD_RULES = [
 ];
 
 const fieldClass =
-    'w-full rounded-xl border-gray-300 bg-white py-3 pl-3.5 pr-12 text-sm text-gray-900 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/15';
+    'w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-3 pl-3.5 pr-12 text-sm text-gray-900 dark:text-slate-100 focus:border-[#0E3B2E] focus:ring-4 focus:ring-[#0E3B2E]/15';
 
 function PasswordInput({ id, label, value, onChange, error, autoComplete, describedBy }) {
     const { t } = useTranslation();
@@ -22,7 +22,7 @@ function PasswordInput({ id, label, value, onChange, error, autoComplete, descri
 
     return (
         <div>
-            <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-gray-800">{label}</label>
+            <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-gray-800 dark:text-slate-100">{label}</label>
             <div className="relative">
                 <input
                     id={id}
@@ -37,7 +37,7 @@ function PasswordInput({ id, label, value, onChange, error, autoComplete, descri
                 <button
                     type="button"
                     onClick={() => setShow((visible) => !visible)}
-                    className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E3B2E]"
+                    className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E3B2E]"
                     aria-label={show ? t('Hide password') : t('Show password')}
                 >
                     {show ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -76,11 +76,11 @@ export default function ChangeTemporaryPassword() {
             <Head title={t('Choose your password')} />
 
             <div className="pt-5 text-center">
-                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-[#0E3B2E] ring-1 ring-emerald-200" aria-hidden="true">
+                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-[#0E3B2E] dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-500/30" aria-hidden="true">
                     <KeyRound size={24} />
                 </span>
-                <h1 className="mt-4 font-[Sora] text-2xl font-bold text-gray-900">{t('Choose your password')}</h1>
-                <p className="mt-2 text-[15px] leading-6 text-gray-700">
+                <h1 className="mt-4 font-[Sora] text-2xl font-bold text-gray-900 dark:text-slate-100">{t('Choose your password')}</h1>
+                <p className="mt-2 text-[15px] leading-6 text-gray-700 dark:text-slate-200">
                     {t('ITUZE GREEN PLATFORM gave you a temporary password. Replace it with one only you know.')}
                 </p>
             </div>
@@ -105,8 +105,8 @@ export default function ChangeTemporaryPassword() {
                 />
                 <ul id="new-password-rules" className="grid gap-1.5 sm:grid-cols-2">
                     {checks.map((rule) => (
-                        <li key={rule.label} className={`flex items-center gap-2 text-sm ${rule.met ? 'text-emerald-800' : 'text-gray-600'}`}>
-                            <span className={`flex h-4 w-4 items-center justify-center rounded-full ${rule.met ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`} aria-hidden="true">
+                        <li key={rule.label} className={`flex items-center gap-2 text-sm ${rule.met ? 'text-emerald-800 dark:text-emerald-300' : 'text-gray-600 dark:text-slate-300'}`}>
+                            <span className={`flex h-4 w-4 items-center justify-center rounded-full ${rule.met ? 'bg-emerald-600 text-white' : 'bg-gray-200 dark:bg-slate-700'}`} aria-hidden="true">
                                 {rule.met && <Check size={10} strokeWidth={3.5} />}
                             </span>
                             {t(rule.label)}
@@ -126,14 +126,14 @@ export default function ChangeTemporaryPassword() {
                 <button
                     type="submit"
                     disabled={!canSubmit || processing}
-                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 text-base font-semibold text-white hover:bg-[#124B3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E3B2E] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-600"
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0E3B2E] px-4 text-base font-semibold text-white hover:bg-[#124B3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E3B2E] disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-slate-800 disabled:text-gray-600 dark:disabled:text-slate-400"
                 >
                     {processing && <Loader2 size={18} className="motion-safe:animate-spin" aria-hidden="true" />}
                     {processing ? t('Saving...') : t('Save my password')}
                 </button>
 
                 <p className="text-center text-sm">
-                    <Link href={route('logout')} method="post" as="button" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold text-gray-700 underline underline-offset-4 hover:text-gray-900">
+                    <Link href={route('logout')} method="post" as="button" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold text-gray-700 dark:text-slate-200 underline underline-offset-4 hover:text-gray-900 dark:hover:text-white">
                         {t('Log Out')}
                     </Link>
                 </p>

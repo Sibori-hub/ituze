@@ -34,24 +34,24 @@ export default function SuccessModal({ message, onClose }) {
             <div
                 role="status"
                 aria-live="polite"
-                className={`group relative w-full max-w-sm overflow-hidden rounded-3xl bg-white p-7 text-center shadow-2xl ring-1 ring-black/5 ${
+                className={`group relative w-full max-w-sm overflow-hidden rounded-3xl bg-white dark:bg-slate-900 p-7 text-center shadow-2xl ring-1 ring-black/5 ${
                     closing ? 'animate-pop-out' : 'animate-pop-in'
                 }`}
             >
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-300 transition hover:bg-gray-100 hover:text-gray-600"
+                    className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-300 transition hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600"
                     aria-label={t('Close')}
                 >
                     <X size={16} />
                 </button>
 
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 ring-8 ring-emerald-50/60">
-                    <CheckCircle2 size={34} className="text-emerald-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-500/10 ring-8 ring-emerald-50/60">
+                    <CheckCircle2 size={34} className="text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h2 className="mt-5 font-[Sora] text-xl font-bold text-gray-900">{t('Success')}</h2>
-                <p className="mt-2 text-sm leading-6 text-gray-600">{shown.current}</p>
+                <h2 className="mt-5 font-[Sora] text-xl font-bold text-gray-900 dark:text-slate-100">{t('Success')}</h2>
+                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-slate-300">{shown.current}</p>
                 <button
                     type="button"
                     onClick={onClose}

@@ -39,11 +39,11 @@ export default function UpdateProfileInformation({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-slate-100">
                     {t('Profile Information')}
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">
                     {t('Update your contact details, identity, location, and profile photo.')}
                 </p>
             </header>
@@ -85,8 +85,8 @@ export default function UpdateProfileInformation({
                     ) : (
                         <>
                             {/* Only an admin changes phone numbers, for security. */}
-                            <TextInput id="phone" type="tel" className="mt-1 block w-full bg-gray-50 text-gray-600" value={data.phone} readOnly aria-describedby="phone-locked" />
-                            <p id="phone-locked" className="mt-1.5 text-xs text-gray-600">{t('For your security, only ITUZE can change your phone number. Contact us if it changed.')}</p>
+                            <TextInput id="phone" type="tel" className="mt-1 block w-full bg-gray-50 dark:bg-slate-800/60 text-gray-600 dark:text-slate-300" value={data.phone} readOnly aria-describedby="phone-locked" />
+                            <p id="phone-locked" className="mt-1.5 text-xs text-gray-600 dark:text-slate-300">{t('For your security, only ITUZE can change your phone number. Contact us if it changed.')}</p>
                         </>
                     )}
                     <InputError className="mt-2" message={errors.phone} />
@@ -95,7 +95,7 @@ export default function UpdateProfileInformation({
                 <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                         <InputLabel htmlFor="identity_document_type" value={t('Identity document')} />
-                        <select id="identity_document_type" value={data.identity_document_type} onChange={(e) => setData('identity_document_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]">
+                        <select id="identity_document_type" value={data.identity_document_type} onChange={(e) => setData('identity_document_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]">
                             <option value="nida">NIDA</option>
                             <option value="passport">{t('Passport')}</option>
                         </select>
@@ -110,7 +110,7 @@ export default function UpdateProfileInformation({
 
                 <div>
                     <InputLabel htmlFor="sector_id" value={t('Sector')} />
-                    <select id="sector_id" value={data.sector_id} onChange={(e) => setData('sector_id', e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]">
+                    <select id="sector_id" value={data.sector_id} onChange={(e) => setData('sector_id', e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-[#0E3B2E] focus:ring-[#0E3B2E]">
                         <option value="">{t('Select sector')}</option>
                         {sectors.map((sector) => (
                             <option key={sector.id} value={sector.id}>
@@ -126,26 +126,26 @@ export default function UpdateProfileInformation({
                     {user.profile_photo && (
                         <img src={`/storage/${user.profile_photo}`} alt={t('Current profile')} className="mb-3 h-16 w-16 rounded-full object-cover" />
                     )}
-                    <input id="profile_photo" type="file" accept="image/*" onChange={(e) => setData('profile_photo', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-medium" />
+                    <input id="profile_photo" type="file" accept="image/*" onChange={(e) => setData('profile_photo', e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-gray-600 dark:text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-medium" />
                     <InputError className="mt-2" message={errors.profile_photo} />
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div>
-                        <p className="mt-2 text-sm text-gray-800">
+                        <p className="mt-2 text-sm text-gray-800 dark:text-slate-100">
                             {t('Your email address is unverified.')}
                             <Link
                                 href={route('verification.send')}
                                 method="post"
                                 as="button"
-                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                className="rounded-md text-sm text-gray-600 dark:text-slate-300 underline hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                             >
                                 {t('Click here to re-send the verification email.')}
                             </Link>
                         </p>
 
                         {status === 'verification-link-sent' && (
-                            <div className="mt-2 text-sm font-medium text-green-600">
+                            <div className="mt-2 text-sm font-medium text-green-600 dark:text-green-400">
                                 {t('A new verification link has been sent to your email address.')}
                             </div>
                         )}
@@ -162,7 +162,7 @@ export default function UpdateProfileInformation({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-slate-300">
                             {t('Saved.')}
                         </p>
                     </Transition>

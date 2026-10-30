@@ -5,12 +5,12 @@ import { ArrowLeft } from 'lucide-react';
 function Section({ index, section }) {
     return (
         <section className="mt-8">
-            <h2 className="font-[Sora] text-lg font-semibold text-[#0E3B2E]">
+            <h2 className="font-[Sora] text-lg font-semibold text-[#0E3B2E] dark:text-emerald-300">
                 {index}. {section.heading}
             </h2>
 
             {(section.body || []).map((paragraph) => (
-                <p key={paragraph} className="mt-3 text-sm leading-7 text-gray-600">
+                <p key={paragraph} className="mt-3 text-sm leading-7 text-gray-600 dark:text-slate-300">
                     {paragraph}
                 </p>
             ))}
@@ -18,7 +18,7 @@ function Section({ index, section }) {
             {section.list && (
                 <ul className="mt-3 space-y-2">
                     {section.list.map((item) => (
-                        <li key={item} className="flex gap-3 text-sm leading-7 text-gray-600">
+                        <li key={item} className="flex gap-3 text-sm leading-7 text-gray-600 dark:text-slate-300">
                             <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[#d9a441]" aria-hidden="true" />
                             <span>{item}</span>
                         </li>
@@ -27,7 +27,7 @@ function Section({ index, section }) {
             )}
 
             {(section.after || []).map((paragraph) => (
-                <p key={paragraph} className="mt-3 text-sm leading-7 text-gray-600">
+                <p key={paragraph} className="mt-3 text-sm leading-7 text-gray-600 dark:text-slate-300">
                     {paragraph}
                 </p>
             ))}
@@ -37,8 +37,8 @@ function Section({ index, section }) {
 
 export default function LegalDocument({ title, updatedAt, version, sections, children }) {
     return (
-        <div className="min-h-screen bg-[#EAF2EE] font-[Inter] px-4 py-8 sm:py-12">
-            <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl shadow-[#0E3B2E]/5 ring-1 ring-black/5">
+        <div className="min-h-screen bg-[#EAF2EE] dark:bg-slate-900 font-[Inter] px-4 py-8 sm:py-12">
+            <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-xl shadow-[#0E3B2E]/5 ring-1 ring-black/5">
                 <header className="border-b border-black/5 bg-[#0E3B2E] px-6 py-7 sm:px-10">
                     <Link href="/" className="w-fit rounded-xl">
                         <BrandLockup
@@ -70,10 +70,10 @@ export default function LegalDocument({ title, updatedAt, version, sections, chi
                             <ArrowLeft size={16} aria-hidden="true" />
                             Back to Ituze
                         </Link>
-                        <Link href={route('login')} className="text-sm font-semibold text-[#0E3B2E] underline">
+                        <Link href={route('login')} className="text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 underline">
                             Login
                         </Link>
-                        <Link href={route('register')} className="text-sm font-semibold text-[#0E3B2E] underline">
+                        <Link href={route('register')} className="text-sm font-semibold text-[#0E3B2E] dark:text-emerald-300 underline">
                             Create an account
                         </Link>
                     </div>

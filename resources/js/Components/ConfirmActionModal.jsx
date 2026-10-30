@@ -51,21 +51,21 @@ export default function ConfirmActionModal({
                 aria-modal="true"
                 aria-labelledby="confirm-action-title"
                 aria-describedby="confirm-action-message"
-                className={`w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}
+                className={`w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-6 text-center shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}
             >
-                <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${isDanger ? 'bg-red-50' : 'bg-[#0E3B2E]/10'}`}>
-                    {isDanger ? <AlertTriangle size={26} className="text-red-500" /> : <CheckCircle2 size={26} className="text-[#0E3B2E]" />}
+                <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${isDanger ? 'bg-red-50 dark:bg-red-500/10' : 'bg-[#0E3B2E]/10 dark:bg-emerald-400/15'}`}>
+                    {isDanger ? <AlertTriangle size={26} className="text-red-500" /> : <CheckCircle2 size={26} className="text-[#0E3B2E] dark:text-emerald-300" />}
                 </div>
 
-                <h3 id="confirm-action-title" className="mt-4 font-[Sora] text-lg font-bold text-gray-900">{shown.title}</h3>
-                <p id="confirm-action-message" className="mt-1.5 text-sm leading-6 text-gray-500">{shown.message}</p>
+                <h3 id="confirm-action-title" className="mt-4 font-[Sora] text-lg font-bold text-gray-900 dark:text-slate-100">{shown.title}</h3>
+                <p id="confirm-action-message" className="mt-1.5 text-sm leading-6 text-gray-500 dark:text-slate-400">{shown.message}</p>
 
                 <div className="mt-6 flex gap-3">
                     <button
                         type="button"
                         onClick={onCancel}
                         disabled={processing}
-                        className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-60"
+                        className="flex-1 rounded-xl border border-gray-200 dark:border-slate-700 py-2.5 text-sm font-semibold text-gray-600 dark:text-slate-300 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60"
                     >
                         {t('Cancel')}
                     </button>

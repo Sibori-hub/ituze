@@ -12,12 +12,12 @@ const DOCUMENTS = {
 function Section({ index, section }) {
     return (
         <section className="mt-7">
-            <h3 className="font-[Sora] text-base font-semibold text-[#0E3B2E]">
+            <h3 className="font-[Sora] text-base font-semibold text-[#0E3B2E] dark:text-emerald-300">
                 {index}. {section.heading}
             </h3>
 
             {(section.body || []).map((paragraph) => (
-                <p key={paragraph} className="mt-2.5 text-sm leading-7 text-gray-600">
+                <p key={paragraph} className="mt-2.5 text-sm leading-7 text-gray-600 dark:text-slate-300">
                     {paragraph}
                 </p>
             ))}
@@ -25,7 +25,7 @@ function Section({ index, section }) {
             {section.list && (
                 <ul className="mt-2.5 space-y-2">
                     {section.list.map((item) => (
-                        <li key={item} className="flex gap-3 text-sm leading-7 text-gray-600">
+                        <li key={item} className="flex gap-3 text-sm leading-7 text-gray-600 dark:text-slate-300">
                             <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[#d9a441]" aria-hidden="true" />
                             <span>{item}</span>
                         </li>
@@ -34,7 +34,7 @@ function Section({ index, section }) {
             )}
 
             {(section.after || []).map((paragraph) => (
-                <p key={paragraph} className="mt-2.5 text-sm leading-7 text-gray-600">
+                <p key={paragraph} className="mt-2.5 text-sm leading-7 text-gray-600 dark:text-slate-300">
                     {paragraph}
                 </p>
             ))}
@@ -78,7 +78,7 @@ export default function LegalModal({ document: documentKey = 'terms', onClose, o
             onClick={onClose}
         >
             <div
-                className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
+                className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white dark:bg-slate-900 shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
                 onClick={(event) => event.stopPropagation()}
             >
                 <header className="flex items-start justify-between gap-4 bg-[#0E3B2E] px-5 py-4 sm:px-8">
@@ -112,11 +112,11 @@ export default function LegalModal({ document: documentKey = 'terms', onClose, o
 
                     {legal.company?.name && (
                         <section className="mt-7">
-                            <h3 className="font-[Sora] text-base font-semibold text-[#0E3B2E]">
+                            <h3 className="font-[Sora] text-base font-semibold text-[#0E3B2E] dark:text-emerald-300">
                                 {doc.sections.length + 1}. {t('Contact')}
                             </h3>
-                            <div className="mt-2.5 space-y-1 text-sm leading-7 text-gray-600">
-                                <p className="font-semibold text-[#0E3B2E]">{legal.company.name}</p>
+                            <div className="mt-2.5 space-y-1 text-sm leading-7 text-gray-600 dark:text-slate-300">
+                                <p className="font-semibold text-[#0E3B2E] dark:text-emerald-300">{legal.company.name}</p>
                                 {legal.company.email && <p>{t('Email')}: {legal.company.email}</p>}
                                 {legal.company.phone && <p>{t('Phone')}: {legal.company.phone}</p>}
                                 {legal.company.address && <p>{t('Address')}: {legal.company.address}</p>}
@@ -125,11 +125,11 @@ export default function LegalModal({ document: documentKey = 'terms', onClose, o
                     )}
                 </div>
 
-                <footer className="flex items-center justify-end gap-2 border-t border-black/5 bg-gray-50 px-5 py-4 sm:px-8">
+                <footer className="flex items-center justify-end gap-2 border-t border-black/5 bg-gray-50 dark:bg-slate-800/60 px-5 py-4 sm:px-8">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                        className="rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-200 transition hover:bg-gray-100 dark:hover:bg-slate-800"
                     >
                         {t('Close')}
                     </button>

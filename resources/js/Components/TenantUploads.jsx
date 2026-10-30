@@ -78,13 +78,13 @@ export function TenantPhotoPicker({ id, file, onChange, error }) {
                 onClick={() => input.current?.click()}
                 aria-describedby={message ? `${id}-error` : `${id}-help`}
                 className={`group relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-2 border-dashed transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/25 ${
-                    message ? 'border-red-300 bg-red-50' : file ? 'border-transparent ring-4 ring-green-100' : 'border-gray-300 bg-gray-50 hover:border-[#0E3B2E] hover:bg-[#0E3B2E]/[0.04]'
+                    message ? 'border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10' : file ? 'border-transparent ring-4 ring-green-100 dark:ring-green-500/30' : 'border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/60 hover:border-[#0E3B2E] hover:bg-[#0E3B2E]/[0.04]'
                 }`}
             >
                 {preview ? (
                     <img src={preview} alt={t('Profile photo preview')} className="h-full w-full object-cover" />
                 ) : (
-                    <span className="flex flex-col items-center gap-1 text-gray-500 group-hover:text-[#0E3B2E]">
+                    <span className="flex flex-col items-center gap-1 text-gray-500 dark:text-slate-400 group-hover:text-[#0E3B2E]">
                         <Camera size={26} aria-hidden="true" />
                         <span className="text-[11px] font-semibold">{t('Add photo')}</span>
                     </span>
@@ -96,9 +96,9 @@ export function TenantPhotoPicker({ id, file, onChange, error }) {
             </button>
             <input ref={input} id={id} type="file" accept="image/jpeg,image/png,image/webp" capture="user" className="hidden"
                 onChange={(event) => { pick(event.target.files?.[0]); event.target.value = ''; }} aria-label={t('Profile photo')} />
-            <p className="mt-2 text-sm font-semibold text-gray-900">{t('Profile photo')}</p>
-            <p id={`${id}-help`} className="text-xs text-gray-500">{t('A clear photo of the face')}</p>
-            {message && <p id={`${id}-error`} role="alert" className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600"><AlertCircle size={12} aria-hidden="true" />{message}</p>}
+            <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-slate-100">{t('Profile photo')}</p>
+            <p id={`${id}-help`} className="text-xs text-gray-500 dark:text-slate-400">{t('A clear photo of the face')}</p>
+            {message && <p id={`${id}-error`} role="alert" className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400"><AlertCircle size={12} aria-hidden="true" />{message}</p>}
         </div>
     );
 }
@@ -114,23 +114,23 @@ export function TenantDocumentPicker({ id, label, file, onChange, error }) {
 
     return (
         <div>
-            <p id={`${id}-label`} className="mb-1.5 text-sm font-medium text-gray-800">{label}</p>
+            <p id={`${id}-label`} className="mb-1.5 text-sm font-medium text-gray-800 dark:text-slate-100">{label}</p>
             <div
                 onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={(event) => { event.preventDefault(); setDragging(false); pick(event.dataTransfer.files?.[0]); }}
                 className={`flex items-center gap-4 rounded-2xl border-2 border-dashed p-3 transition ${
-                    message ? 'border-red-300 bg-red-50/40' : dragging ? 'border-[#0E3B2E] bg-[#0E3B2E]/[0.04]' : file ? 'border-green-300 bg-green-50/40' : 'border-gray-300 bg-gray-50/60'
+                    message ? 'border-red-300 dark:border-red-500/40 bg-red-50/40 dark:bg-red-500/10' : dragging ? 'border-[#0E3B2E] dark:border-emerald-500 bg-[#0E3B2E]/[0.04]' : file ? 'border-green-300 dark:border-green-500/40 bg-green-50/40 dark:bg-green-500/10' : 'border-gray-300 dark:border-slate-600 bg-gray-50/60 dark:bg-slate-800/40'
                 }`}
             >
-                <span className="flex h-16 w-24 flex-none items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-gray-200">
+                <span className="flex h-16 w-24 flex-none items-center justify-center overflow-hidden rounded-xl bg-white dark:bg-slate-900 ring-1 ring-gray-200 dark:ring-slate-700">
                     {preview
                         ? <img src={preview} alt={t(':label preview', { label })} className="h-full w-full object-cover" />
-                        : file ? <FileText size={24} className="text-[#0E3B2E]" aria-hidden="true" /> : <IdCard size={24} className="text-gray-400" aria-hidden="true" />}
+                        : file ? <FileText size={24} className="text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true" /> : <IdCard size={24} className="text-gray-400 dark:text-slate-500" aria-hidden="true" />}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1 truncate text-xs text-gray-600">
-                        {file && <CheckCircle2 size={13} className="flex-none text-green-600" aria-hidden="true" />}
+                    <p className="flex items-center gap-1 truncate text-xs text-gray-600 dark:text-slate-300">
+                        {file && <CheckCircle2 size={13} className="flex-none text-green-600 dark:text-green-400" aria-hidden="true" />}
                         <span className="truncate">{file ? file.name : t('JPG, PNG, WEBP or PDF, up to 5 MB')}</span>
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -140,7 +140,7 @@ export function TenantDocumentPicker({ id, label, file, onChange, error }) {
                         </button>
                         {file && (
                             <button type="button" onClick={() => onChange(null)}
-                                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/15">
+                                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 transition hover:bg-gray-50 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0E3B2E]/15">
                                 <Trash2 size={14} aria-hidden="true" />{t('Remove')}
                             </button>
                         )}
@@ -149,7 +149,7 @@ export function TenantDocumentPicker({ id, label, file, onChange, error }) {
                 <input ref={input} id={id} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
                     onChange={(event) => { pick(event.target.files?.[0]); event.target.value = ''; }} aria-labelledby={`${id}-label`} />
             </div>
-            {message && <p id={`${id}-error`} role="alert" className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600"><AlertCircle size={12} aria-hidden="true" />{message}</p>}
+            {message && <p id={`${id}-error`} role="alert" className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400"><AlertCircle size={12} aria-hidden="true" />{message}</p>}
         </div>
     );
 }

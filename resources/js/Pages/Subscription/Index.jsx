@@ -13,19 +13,19 @@ import { useEffect, useState } from 'react';
 
 const localeFor = (language) => ({ en: 'en-RW', fr: 'fr-FR', rw: 'rw-RW' })[language] || 'en-RW';
 const STATUS_STYLE = {
-    approved: ['bg-emerald-50 text-emerald-800 ring-emerald-200', 'Paid'],
-    pending: ['bg-amber-50 text-amber-900 ring-amber-200', 'Being checked'],
-    rejected: ['bg-red-50 text-red-800 ring-red-200', 'Not accepted'],
-    failed: ['bg-gray-100 text-gray-700 ring-gray-200', 'Not completed'],
+    approved: ['bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/30', 'Paid'],
+    pending: ['bg-amber-50 dark:bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/30', 'Being checked'],
+    rejected: ['bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-300 ring-red-200 dark:ring-red-500/30', 'Not accepted'],
+    failed: ['bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 ring-gray-200 dark:ring-slate-700', 'Not completed'],
 };
 const METHOD_LABEL = { momo_pay: 'MoMo Pay', mobile_money: 'Mobile money', bank_transfer: 'Bank transfer', cheque: 'Cheque' };
 
 const STATE_STYLE = {
-    unpaid: ['bg-amber-50 text-amber-900 ring-amber-200', 'Waiting for payment'],
-    active: ['bg-emerald-50 text-emerald-800 ring-emerald-200', 'Active'],
-    expiring: ['bg-sky-50 text-sky-800 ring-sky-200', 'Ends soon'],
-    grace: ['bg-red-50 text-red-800 ring-red-200', 'Overdue'],
-    paused: ['bg-gray-100 text-gray-700 ring-gray-200', 'Paused'],
+    unpaid: ['bg-amber-50 dark:bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/30', 'Waiting for payment'],
+    active: ['bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-500/30', 'Active'],
+    expiring: ['bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-300 ring-sky-200 dark:ring-sky-500/30', 'Ends soon'],
+    grace: ['bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-300 ring-red-200 dark:ring-red-500/30', 'Overdue'],
+    paused: ['bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 ring-gray-200 dark:ring-slate-700', 'Paused'],
 };
 
 export default function SubscriptionIndex({ subscription: initial, monthlyPrice, monthOptions = [1, 3, 6, 12], payments = [], phone: ownerPhone, bank = null, momoPay = {}, momoApi = false, selectedProperty = null, totals = { properties: 0, per_month: 0, paid: 0, pending: 0 } }) {
@@ -122,28 +122,28 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
 
                 <div className="grid gap-5 lg:grid-cols-5">
                     {/* Pay */}
-                    <section aria-labelledby="pay-title" className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-3">
-                        <h2 id="pay-title" className="flex items-center gap-2 font-[Sora] text-lg font-bold text-gray-900"><Wallet size={19} className="text-[#0E3B2E]" aria-hidden="true" />{t('Pay for a property')}</h2>
+                    <section aria-labelledby="pay-title" className="rounded-3xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-3">
+                        <h2 id="pay-title" className="flex items-center gap-2 font-[Sora] text-lg font-bold text-gray-900 dark:text-slate-100"><Wallet size={19} className="text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true" />{t('Pay for a property')}</h2>
 
                         {properties.length === 0 ? (
-                            <div className="mt-5 rounded-2xl border-2 border-dashed border-gray-200 p-6 text-center">
-                                <p className="text-sm text-gray-700">{t('You have no property yet. Create one, and its payment form opens right after.')}</p>
+                            <div className="mt-5 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-6 text-center">
+                                <p className="text-sm text-gray-700 dark:text-slate-200">{t('You have no property yet. Create one, and its payment form opens right after.')}</p>
                                 <Link href={route('properties.create')} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0E3B2E] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#124B3A]">{t('Add a property')}</Link>
                             </div>
                         ) : (
                         <>
                         <fieldset className="mt-5">
-                            <legend className="text-sm font-semibold text-gray-900">{t('1. Which property?')}</legend>
+                            <legend className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t('1. Which property?')}</legend>
                             <div className="mt-2 space-y-2">
                                 {properties.map((item) => {
                                     const [style, label] = STATE_STYLE[item.state] || STATE_STYLE.active;
                                     return (
-                                        <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition ${propertyId === item.id ? 'border-[#0E3B2E] bg-emerald-50/60' : 'border-gray-200 hover:border-gray-300'}`}>
+                                        <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition ${propertyId === item.id ? 'border-[#0E3B2E] dark:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-500'}`}>
                                             <input type="radio" name="property" value={item.id} checked={propertyId === item.id} onChange={() => setPropertyId(item.id)} className="sr-only" />
-                                            <Building2 size={18} className="flex-none text-[#0E3B2E]" aria-hidden="true" />
+                                            <Building2 size={18} className="flex-none text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true" />
                                             <span className="min-w-0 flex-1">
-                                                <span className="block truncate font-semibold text-gray-900">{item.name}</span>
-                                                <span className="block text-xs text-gray-600">
+                                                <span className="block truncate font-semibold text-gray-900 dark:text-slate-100">{item.name}</span>
+                                                <span className="block text-xs text-gray-600 dark:text-slate-300">
                                                     {item.paid_until ? t('Paid until :date', { date: longDate(item.paid_until) }) : t('Not paid yet')}
                                                     {waiting.has(item.id) ? ` · ${t('a payment is being checked')}` : ''}
                                                 </span>
@@ -156,29 +156,29 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                         </fieldset>
 
                         <fieldset className="mt-5">
-                            <legend className="text-sm font-semibold text-gray-900">{t('2. How many months?')}</legend>
+                            <legend className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t('2. How many months?')}</legend>
                             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                                 {monthOptions.map((option) => (
-                                    <label key={option} className={`relative cursor-pointer rounded-2xl border-2 p-3 text-center transition ${months === option ? 'border-[#0E3B2E] bg-emerald-50/60 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}>
+                                    <label key={option} className={`relative cursor-pointer rounded-2xl border-2 p-3 text-center transition ${months === option ? 'border-[#0E3B2E] dark:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-500/10 shadow-sm' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-500'}`}>
                                         <input type="radio" name="months" value={option} checked={months === option} onChange={() => setMonths(option)} className="sr-only" />
-                                        {option === 12 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#D9A441] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0E3B2E]">{t('1 year')}</span>}
-                                        <span className="block font-[Sora] text-xl font-bold text-gray-900">{option}</span>
-                                        <span className="block text-xs text-gray-600">{t(option === 1 ? 'month' : 'months')}</span>
-                                        <span className="mt-1 block text-xs font-semibold text-[#0E3B2E]">{money(option * monthlyPrice)}</span>
+                                        {option === 12 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#D9A441] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0E3B2E] dark:text-emerald-300">{t('1 year')}</span>}
+                                        <span className="block font-[Sora] text-xl font-bold text-gray-900 dark:text-slate-100">{option}</span>
+                                        <span className="block text-xs text-gray-600 dark:text-slate-300">{t(option === 1 ? 'month' : 'months')}</span>
+                                        <span className="mt-1 block text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300">{money(option * monthlyPrice)}</span>
                                     </label>
                                 ))}
                             </div>
-                            <p className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                                <CalendarCheck2 size={16} className="flex-none text-[#0E3B2E]" aria-hidden="true" />
+                            <p className="mt-3 flex items-center gap-2 rounded-xl bg-gray-50 dark:bg-slate-800/60 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
+                                <CalendarCheck2 size={16} className="flex-none text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true" />
                                 {t('Total :total · :property paid until :date after payment', { total: money(total), property: property?.name ?? '', date: longDate(newEnd) })}
                             </p>
                         </fieldset>
 
                         <fieldset className="mt-6">
-                            <legend className="text-sm font-semibold text-gray-900">{t('3. How do you pay?')}</legend>
+                            <legend className="text-sm font-semibold text-gray-900 dark:text-slate-100">{t('3. How do you pay?')}</legend>
                             <div className={`mt-2 grid gap-2 ${methods.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                 {methods.map(([value, label, Icon]) => (
-                                    <label key={value} className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center text-xs font-semibold transition sm:text-sm ${method === value ? 'border-[#0E3B2E] bg-emerald-50/60 text-[#0E3B2E]' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                                    <label key={value} className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-2 p-3 text-center text-xs font-semibold transition sm:text-sm ${method === value ? 'border-[#0E3B2E] dark:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-500/10 text-[#0E3B2E] dark:text-emerald-300' : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-500'}`}>
                                         <input type="radio" name="method" value={value} checked={method === value} onChange={() => setMethod(value)} className="sr-only" />
                                         <Icon size={20} aria-hidden="true" />
                                         {t(label)}
@@ -198,8 +198,8 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                     </section>
 
                     {/* How it works */}
-                    <aside className="space-y-3 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-2">
-                        <h2 className="font-[Sora] font-semibold text-gray-900">{t('Good to know')}</h2>
+                    <aside className="space-y-3 rounded-3xl bg-white dark:bg-slate-900 p-5 shadow-sm ring-1 ring-black/[0.04] sm:p-6 lg:col-span-2">
+                        <h2 className="font-[Sora] font-semibold text-gray-900 dark:text-slate-100">{t('Good to know')}</h2>
                         {[
                             momoApi
                                 ? [Smartphone, t('Mobile money is applied at once, as soon as you approve with your PIN.')]
@@ -210,8 +210,8 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                             [Clock3, t('Reminders come 7 and 3 days before the end. After the end you have :days days before a pause.', { days: 7 })],
                             [ShieldCheck, t('A pause never deletes anything. Pay and everything is back immediately.')],
                         ].map(([Icon, text], index) => (
-                            <p key={index} className="flex items-start gap-3 text-sm text-gray-700">
-                                <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-emerald-50 text-[#0E3B2E]" aria-hidden="true"><Icon size={15} /></span>
+                            <p key={index} className="flex items-start gap-3 text-sm text-gray-700 dark:text-slate-200">
+                                <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true"><Icon size={15} /></span>
                                 {text}
                             </p>
                         ))}
@@ -219,13 +219,13 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                 </div>
 
                 {/* History */}
-                <section aria-labelledby="history-title" className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/[0.04]">
-                    <h2 id="history-title" className="flex items-center gap-2 border-b border-gray-100 px-5 py-4 font-[Sora] font-semibold text-gray-900"><Receipt size={17} className="text-[#0E3B2E]" aria-hidden="true" />{t('Payment history')}</h2>
+                <section aria-labelledby="history-title" className="overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-black/[0.04]">
+                    <h2 id="history-title" className="flex items-center gap-2 border-b border-gray-100 dark:border-slate-800 px-5 py-4 font-[Sora] font-semibold text-gray-900 dark:text-slate-100"><Receipt size={17} className="text-[#0E3B2E] dark:text-emerald-300" aria-hidden="true" />{t('Payment history')}</h2>
                     {payments.length ? (
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[720px] text-left text-sm">
                                 <caption className="sr-only">{t('Payment history')}</caption>
-                                <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-600">
+                                <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] uppercase tracking-wide text-gray-600 dark:text-slate-300">
                                     <tr>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Date')}</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">{t('Property')}</th>
@@ -236,35 +236,35 @@ export default function SubscriptionIndex({ subscription: initial, monthlyPrice,
                                         <th scope="col" className="px-5 py-3 text-right font-semibold">{t('Amount')}</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                                     {payments.map((payment) => {
                                         const [style, label] = STATUS_STYLE[payment.status] || STATUS_STYLE.failed;
                                         return (
                                             <tr key={payment.id} className="align-top">
                                                 <td className="px-5 py-3">
-                                                    <p className="text-gray-900">{longDate(payment.created_at)}</p>
-                                                    {payment.receipt_number && <p className="font-mono text-[11px] text-gray-500">{payment.receipt_number}</p>}
+                                                    <p className="text-gray-900 dark:text-slate-100">{longDate(payment.created_at)}</p>
+                                                    {payment.receipt_number && <p className="font-mono text-[11px] text-gray-500 dark:text-slate-400">{payment.receipt_number}</p>}
                                                 </td>
-                                                <td className="px-5 py-3 font-medium text-gray-900">{payment.property || '—'}</td>
-                                                <td className="px-5 py-3 text-gray-800">{payment.months}</td>
-                                                <td className="px-5 py-3 text-gray-800">
+                                                <td className="px-5 py-3 font-medium text-gray-900 dark:text-slate-100">{payment.property || '—'}</td>
+                                                <td className="px-5 py-3 text-gray-800 dark:text-slate-100">{payment.months}</td>
+                                                <td className="px-5 py-3 text-gray-800 dark:text-slate-100">
                                                     {t(METHOD_LABEL[payment.method] || payment.method)}
-                                                    {payment.reference && <span className="block break-all font-mono text-[11px] text-gray-500">{payment.reference}</span>}
-                                                    {payment.has_proof && <a href={route('subscription.proof', payment.id)} target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-[#0E3B2E] hover:underline"><FileText size={12} aria-hidden="true" />{t('Proof')}</a>}
+                                                    {payment.reference && <span className="block break-all font-mono text-[11px] text-gray-500 dark:text-slate-400">{payment.reference}</span>}
+                                                    {payment.has_proof && <a href={route('subscription.proof', payment.id)} target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-[#0E3B2E] dark:text-emerald-300 hover:underline"><FileText size={12} aria-hidden="true" />{t('Proof')}</a>}
                                                 </td>
                                                 <td className="px-5 py-3">
                                                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${style}`}>{t(label)}</span>
-                                                    {payment.rejection_reason && <p className="mt-1 max-w-[220px] text-xs text-red-700">{payment.rejection_reason}</p>}
+                                                    {payment.rejection_reason && <p className="mt-1 max-w-[220px] text-xs text-red-700 dark:text-red-300">{payment.rejection_reason}</p>}
                                                 </td>
-                                                <td className="px-5 py-3 text-xs text-gray-700">{payment.period_end ? `${longDate(payment.period_start)} – ${longDate(payment.period_end)}` : '—'}</td>
-                                                <td className="px-5 py-3 text-right font-semibold tabular-nums text-gray-900">{money(payment.amount)}</td>
+                                                <td className="px-5 py-3 text-xs text-gray-700 dark:text-slate-200">{payment.period_end ? `${longDate(payment.period_start)} – ${longDate(payment.period_end)}` : '—'}</td>
+                                                <td className="px-5 py-3 text-right font-semibold tabular-nums text-gray-900 dark:text-slate-100">{money(payment.amount)}</td>
                                             </tr>
                                         );
                                     })}
                                 </tbody>
                             </table>
                         </div>
-                    ) : <p className="px-5 py-8 text-center text-sm text-gray-600">{t('No payments yet.')}</p>}
+                    ) : <p className="px-5 py-8 text-center text-sm text-gray-600 dark:text-slate-300">{t('No payments yet.')}</p>}
                 </section>
             </div>
         </AuthenticatedLayout>

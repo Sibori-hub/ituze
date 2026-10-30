@@ -97,35 +97,35 @@ export default function TenantLocationFields({ data, setData, errors, t, selectC
         }));
     };
 
-    const selectClass = selectClassName || 'mt-1 w-full rounded-xl border-gray-200 text-sm';
+    const selectClass = selectClassName || 'mt-1 w-full rounded-xl border-gray-200 dark:border-slate-700 text-sm';
 
     return (
         <div className={className || 'grid gap-3 sm:grid-cols-3 sm:col-span-2'}>
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
                 {t('Province')}
                 <select required value={data.province_id} onChange={event => updateLocation('province_id', event.target.value)} className={selectClass}>
                     <option value="">{t('Select Province')}</option>
                     {provinces.map(province => <option key={province.id} value={province.id}>{province.name}</option>)}
                 </select>
-                {errors.province_id && <span className="mt-1 block text-xs text-red-600">{errors.province_id}</span>}
+                {errors.province_id && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{errors.province_id}</span>}
             </label>
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
                 {t('District')}
                 <select required disabled={!data.province_id} value={data.district_id} onChange={event => updateLocation('district_id', event.target.value)} className={selectClass}>
                     <option value="">{t('Select District')}</option>
                     {districts.map(district => <option key={district.id} value={district.id}>{district.name}</option>)}
                 </select>
-                {errors.district_id && <span className="mt-1 block text-xs text-red-600">{errors.district_id}</span>}
+                {errors.district_id && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{errors.district_id}</span>}
             </label>
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-gray-700 dark:text-slate-200">
                 {t('Sector')}
                 <select required disabled={!data.district_id} value={data.sector_id} onChange={event => updateLocation('sector_id', event.target.value)} className={selectClass}>
                     <option value="">{t('Select Sector')}</option>
                     {sectors.map(sector => <option key={sector.id} value={sector.id}>{sector.name}</option>)}
                 </select>
-                {errors.sector_id && <span className="mt-1 block text-xs text-red-600">{errors.sector_id}</span>}
+                {errors.sector_id && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{errors.sector_id}</span>}
             </label>
-            {loadError && <p role="alert" className="text-xs text-red-600 sm:col-span-3">{loadError}</p>}
+            {loadError && <p role="alert" className="text-xs text-red-600 dark:text-red-400 sm:col-span-3">{loadError}</p>}
         </div>
     );
 }
